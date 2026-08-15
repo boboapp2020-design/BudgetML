@@ -14,7 +14,8 @@ const Store = (() => {
 
   /* ---------- persistence ---------- */
   function load() {
-    const raw = localStorage.getItem(DB_KEY);
+    let raw = null;
+    try { raw = localStorage.getItem(DB_KEY); } catch (e) { /* storage ถูกปิดใช้งาน — ใช้ข้อมูลในหน่วยความจำ */ }
     db = null;
     if (raw) { try { db = JSON.parse(raw); } catch (e) { db = null; } }
     if (!db || db.meta?.schemaVersion !== SEED.meta.schemaVersion) {
@@ -25,7 +26,7 @@ const Store = (() => {
   }
   let afterSave = null; // hook สำหรับ Sync (ตั้งค่าโดย sync.js)
   function setAfterSave(fn) { afterSave = fn; }
-  function saveSilent() { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+  function saveSilent() { try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) { /* storage เต็ม/ปิดใช้งาน */ } }
   function save() { saveSilent(); if (afterSave) afterSave(); }
   function adoptDb(newDb) { db = newDb; saveSilent(); } // รับข้อมูลจาก Google Sheet มาแทนที่
   function resetDemo() { localStorage.removeItem(DB_KEY); load(); save(); }

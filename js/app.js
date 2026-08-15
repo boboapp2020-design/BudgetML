@@ -104,12 +104,36 @@ const App = (() => {
     route.bind?.()?.(user);
   }
 
-  window.addEventListener('hashchange', render);
+  /* ---------- ตัวดักข้อผิดพลาด: แสดงบนจอแทนหน้าขาว + ปุ่มกู้คืน ---------- */
+  function showFatal(msg) {
+    const el = document.getElementById('root') || document.body;
+    el.innerHTML = `
+      <div style="max-width:560px;margin:60px auto;padding:28px;font-family:'Segoe UI','Leelawadee UI',sans-serif;
+                  background:#fff;border:1px solid #e0b4b4;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.12)">
+        <h2 style="color:#b02f2f;margin-bottom:10px">⚠ ระบบเปิดไม่สำเร็จ</h2>
+        <p style="color:#52514e;margin-bottom:8px">ข้อความข้อผิดพลาด (ส่งภาพนี้ให้ผู้พัฒนาได้เลย):</p>
+        <pre style="background:#f6f6f4;border-radius:8px;padding:12px;font-size:12px;white-space:pre-wrap;word-break:break-word;margin-bottom:16px">${String(msg).slice(0, 600)}</pre>
+        <button onclick="try{localStorage.clear();sessionStorage.clear();}catch(e){};location.href=location.pathname+'?r='+Date.now()"
+          style="font:inherit;background:#256abf;color:#fff;border:none;border-radius:8px;padding:11px 18px;cursor:pointer;font-weight:600">
+          🔄 ล้างข้อมูลในเครื่องแล้วเปิดใหม่</button>
+        <p style="color:#898781;font-size:12px;margin-top:12px">ปุ่มนี้ล้างเฉพาะข้อมูลชั่วคราวในเบราว์เซอร์เครื่องนี้ — ข้อมูลจริงบน Google Sheet ไม่หาย</p>
+      </div>`;
+  }
+  window.addEventListener('error', e => {
+    if (!document.querySelector('.app') && !document.querySelector('.login-wrap')) showFatal(e.message + '\n' + (e.filename || '') + ':' + (e.lineno || ''));
+  });
+
+  function safeRender() {
+    try { render(); }
+    catch (e) { showFatal(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')); }
+  }
+
+  window.addEventListener('hashchange', safeRender);
   window.addEventListener('DOMContentLoaded', () => {
     if (!location.hash) location.hash = '#/login';
-    render();
+    safeRender();
     // ซิงค์กับ Google Sheet (ถ้าตั้งค่าไว้) — ถ้าได้ข้อมูลใหม่มา ให้วาดหน้าจอใหม่
-    Sync.init().then(adopted => { if (adopted) render(); }).catch(() => {});
+    Sync.init().then(adopted => { if (adopted) safeRender(); }).catch(() => {});
   });
 
   return { render };
