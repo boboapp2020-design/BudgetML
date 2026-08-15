@@ -176,11 +176,11 @@ a { color: var(--blue); }
 
 /* ---------- เทียบปีก่อนเดือนต่อเดือนในตารางกรอก ---------- */
 .prev-ghost {
-  display: none; font-size: 10px; color: #d03b3b; font-weight: 600; text-align: right;
+  display: none; font-size: 10px; color: #7f95b8; text-align: right;
   padding: 0 9px 4px; font-variant-numeric: tabular-nums; line-height: 1.2;
 }
 .budget-card.show-prev .prev-ghost { display: block; }
-.budget-card.show-prev .prev-ghost::before { content: 'ปีก่อน '; color: #e39a9a; font-size: 9px; font-weight: 500; }
+.budget-card.show-prev .prev-ghost::before { content: 'ปีก่อน '; color: #b3bfd4; font-size: 9px; }
 .prev-chip {
   position: fixed; z-index: 95; display: none; pointer-events: none;
   background: #0d366b; color: #cfe0f5; font-size: 12px; font-weight: 600;
