@@ -418,8 +418,14 @@ const PagesAcc = (() => {
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
-      + card('ข้อมูลสาธิต (Demo)', `<button class="ghost-btn" id="resetDemoBtn">↺ รีเซ็ตข้อมูลกลับค่าเริ่มต้น</button>
-          <span class="muted small"> ล้างการแก้ไขทั้งหมด กลับเป็นข้อมูลตั้งต้นจากไฟล์ Excel</span>`);
+      + card('ข้อมูลจำลอง (Demo)', `
+          <div class="td-actions">
+            <button class="danger-btn" id="clearAllBtn">🧹 ล้างข้อมูลจำลองปี ${year} ทุกหน่วยงาน</button>
+            <button class="ghost-btn" id="resetDemoBtn">↺ รีเซ็ตกลับข้อมูลจำลองตั้งต้น</button>
+          </div>
+          <p class="muted small" style="margin-top:8px">
+            🧹 = ล้างตัวเลข/เหตุผล/รายละเอียดปี ${year} ของทุกหน่วยงาน → ฟอร์มเปล่า สถานะ Draft (ใช้ก่อนเปิดกรอกจริง · งบปี ${year - 1} baseline ไม่ถูกแตะ)<br>
+            ↺ = คืนข้อมูลจำลองทั้งหมดกลับมาเหมือนเดิม (สำหรับทดลอง/ออกแบบ)</p>`);
   }
   function controlBind(user) {
     document.getElementById('gasSave')?.addEventListener('click', async () => {
@@ -542,6 +548,24 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
+    document.getElementById('clearAllBtn')?.addEventListener('click', () => {
+      const y = UI.year();
+      UI.modal(`🧹 ล้างข้อมูลจำลองปี ${y} ทุกหน่วยงาน`, `
+        <p>ตัวเลขทุกเดือน, MTP, เหตุผล/สมมติฐาน และรายละเอียดค่าใช้จ่าย <b>ของทั้ง ${Store.activeDepartments().length} หน่วยงาน</b>
+        จะถูกล้างเป็นฟอร์มเปล่า สถานะกลับเป็น Draft (งบปี ${y - 1} ไม่ถูกแตะ)</p>
+        <p class="warn-text">⚠ การกระทำนี้ย้อนกลับไม่ได้ และมีผลกับ Google Sheet ทันที</p>
+        <p>พิมพ์ <b>CLEAR</b> เพื่อยืนยัน:</p><input id="clearAllConfirm" placeholder="CLEAR" autocomplete="off">`, [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: '🧹 ยืนยันล้างทุกหน่วยงาน', cls: 'danger-btn', onClick: close => {
+            if (document.getElementById('clearAllConfirm').value.trim().toUpperCase() !== 'CLEAR') { toast('กรุณาพิมพ์ CLEAR เพื่อยืนยัน', 'err'); return; }
+            try {
+              const n = Store.clearAllDeptYear(user, y);
+              toast(`ล้างข้อมูลปี ${y} แล้ว (${n} รายการ GL ทั้ง ${Store.activeDepartments().length} หน่วยงาน) — พร้อมเปิดกรอกจริง`);
+              close(); App.render();
+            } catch (e) { toast(e.message, 'err'); }
+          } },
+      ]);
+    });
     document.getElementById('resetDemoBtn')?.addEventListener('click', () => {
       UI.confirm2('รีเซ็ตข้อมูลสาธิต?', 'ข้อมูลที่แก้ไขทั้งหมดจะถูกล้าง กลับเป็นข้อมูลตั้งต้นจากไฟล์ Excel', 'การกระทำนี้ย้อนกลับไม่ได้',
         () => { Store.resetDemo(); toast('รีเซ็ตแล้ว'); App.render(); });
