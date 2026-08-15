@@ -184,6 +184,7 @@ const PagesAcc = (() => {
 
   function drillDept(user, deptId) {
     const year = UI.year(), prevYear = year - 1;
+    const rv = Store.revisePhase(year);
     const d = Store.dept(deptId);
     const st = Store.deptState(year, deptId);
     const cur = Store.deptTotal(year, deptId), prev = Store.deptTotal(prevYear, deptId);
@@ -192,9 +193,14 @@ const PagesAcc = (() => {
       const c2 = Store.compare(Store.glTotal(year, deptId, g.id), Store.glTotal(prevYear, deptId, g.id));
       const an = Store.glAnomaly(c2);
       const n = Store.note(year, deptId, g.id);
+      const revCols = rv.on ? (() => {
+        const orig = Store.originalGlTotal(year, deptId, g.id);
+        const rc = Store.compare(c2.cur, orig);
+        return `<td class="num">${fmt(orig)}</td><td>${deltaBadge(rc.diff, rc.pct)}</td>`;
+      })() : '';
       return `<tr>
         <td><a class="link" href="#/acc/departments?d=${deptId}&gl=${g.id}"><span class="gl-code">${g.code}</span> ${esc(g.name)}</a></td>
-        <td class="num">${fmt(c2.prev)}</td><td class="num">${fmt(c2.cur)}</td>
+        <td class="num">${fmt(c2.prev)}</td><td class="num">${fmt(c2.cur)}</td>${revCols}
         <td>${deltaBadge(c2.diff, c2.pct)}</td>
         <td>${an ? `<span class="anomaly ${an.level}">⚠ ${an.tag}</span>` : ''}</td>
         <td class="small">${esc((n.reason || '').slice(0, 60))}${(n.reason || '').length > 60 ? '…' : ''}</td>
@@ -211,8 +217,8 @@ const PagesAcc = (() => {
         ${kpi('ความครบถ้วน', Store.completion(year, deptId).pct + '%', 'เป้าหมาย 100%')}
       </div>`
       + card(`แนวโน้มรายเดือน (กีบ)`, `<div id="chDrillMonthly"></div>`)
-      + card(`GL ทั้งหมดของหน่วยงาน — คลิกเพื่อดูรายเดือน`, `<div class="table-scroll"><table class="data-table">
-        <thead><tr><th>GL</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th><th>%</th><th>ตรวจสอบ</th><th>สาเหตุ (ย่อ)</th><th></th></tr></thead>
+      + card(`GL ทั้งหมดของหน่วยงาน — คลิกเพื่อดูรายเดือน${rv.on ? ' · 🔁 รอบ Revise (เทียบงบเดิม)' : ''}`, `<div class="table-scroll"><table class="data-table">
+        <thead><tr><th>GL</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">${rv.on ? 'Revise' : 'ปี'} ${year} (กีบ)</th>${rv.on ? `<th class="num">งบเดิม ${year}</th><th>Δ เดิม</th>` : ''}<th>%ปีก่อน</th><th>ตรวจสอบ</th><th>สาเหตุ (ย่อ)</th><th></th></tr></thead>
         <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
   }
 
@@ -366,15 +372,22 @@ const PagesAcc = (() => {
   function control(user) {
     const year = UI.year();
     const periods = Store.db.budgetPeriods.slice().sort((a, b) => b.year - a.year);
-    const pRows = periods.map(p => `<tr>
+    const pRows = periods.map(p => {
+      const phase = p.phase === 'REVISE' ? `<span class="status-badge st-revision">🔁 REVISE · เกิดจริงถึง ด.${p.actualThru}</span> ` : '';
+      return `<tr>
       <td><b>ปีงบ ${p.year}</b></td>
-      <td>${p.status === 'OPEN' ? '<span class="status-badge st-progress">OPEN · เปิดรับข้อมูล</span>' : '<span class="status-badge st-locked">CLOSED · ปิดรอบแล้ว</span>'}</td>
+      <td>${phase}${p.status === 'OPEN' ? '<span class="status-badge st-progress">OPEN · เปิดรับข้อมูล</span>' : '<span class="status-badge st-locked">CLOSED · ปิดรอบแล้ว</span>'}</td>
       <td class="small">${p.lockedAt ? 'Lock เมื่อ ' + UI.fmtDT(p.lockedAt) + ' โดย ' + esc(p.lockedBy) : 'เปิดเมื่อ ' + UI.fmtDT(p.openedAt)}</td>
       <td class="td-actions">
         ${p.status === 'OPEN'
           ? `<button class="danger-btn small" data-lock="${p.year}">🔒 ปิดรอบ & Lock</button>`
           : `<button class="ghost-btn small" data-unlock="${p.year}">🔓 Unlock (สิทธิ์พิเศษ)</button>`}
-      </td></tr>`).join('');
+        ${p.status === 'CLOSED' && p.phase !== 'REVISE'
+          ? `<button class="primary-btn small" data-revise-open="${p.year}" style="padding:4px 10px;font-size:12px">🔁 เปิดรอบ Revise</button>` : ''}
+        ${p.phase === 'REVISE'
+          ? `<a class="ghost-btn small" href="#/acc/actuals?y=${p.year}">📥 ใส่เกิดจริง</a>` : ''}
+      </td></tr>`;
+    }).join('');
 
     const depts = Store.db.departments;
     const nActive = depts.filter(d => d.active).length;
@@ -556,6 +569,24 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
+    document.querySelectorAll('[data-revise-open]').forEach(b => b.addEventListener('click', () => {
+      const y = b.dataset.reviseOpen;
+      UI.modal(`🔁 เปิดรอบ Revise งบประมาณปี ${y}`, `
+        <p>ระบบจะ <b>เก็บงบเดิมทั้งปีไว้เป็นหลักฐานถาวร (snapshot)</b> แล้วเปิดให้ทุกหน่วยงานปรับคาดการณ์อีกครั้ง</p>
+        <label class="fld"><span>มีตัวเลขเกิดจริงถึงเดือนที่</span>
+          <select id="revThru">${Store.MONTH_TH.map((m, i) => `<option value="${i + 1}" ${i + 1 === 4 ? 'selected' : ''}>เดือน ${i + 1} — ${m}</option>`).join('')}</select></label>
+        <p class="muted small">เดือน 1 ถึงเดือนก่อนหน้า = ล็อกสนิทเป็นเกิดจริง · เดือนสุดท้ายที่เลือก = หน่วยงานเพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือนที่เหลือ = ปรับคาดการณ์ได้</p>
+        <p class="warn-text">⚠ หลังเปิดรอบ สถานะทุกหน่วยงานจะกลับเป็น "กำลังจัดทำ" และต้องส่งข้อมูลอีกครั้ง</p>`, [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: '🔁 ยืนยันเปิดรอบ Revise', cls: 'primary-btn', onClick: close => {
+            try {
+              Store.openRevise(user, y, Number(document.getElementById('revThru').value));
+              toast(`เปิดรอบ Revise ปี ${y} แล้ว — ไปใส่ตัวเลขเกิดจริงต่อได้เลย`); close();
+              location.hash = '#/acc/actuals?y=' + y;
+            } catch (e) { toast(e.message, 'err'); }
+          } },
+      ]);
+    }));
     document.querySelectorAll('[data-editfuel]').forEach(b => b.addEventListener('click', () => {
       const ft = b.dataset.editfuel;
       const f = Store.db.fuelPrices.find(x => x.year === UI.year() && x.fuelType === ft);
@@ -593,6 +624,79 @@ const PagesAcc = (() => {
     });
   }
 
+  /* ============ ใส่ตัวเลขเกิดจริง (รอบ Revise — บัญชีเท่านั้น) ============ */
+  function actuals(user) {
+    const qs = parseQS();
+    const year = Number(qs.y) || UI.year();
+    const rv = Store.revisePhase(year);
+    if (!rv.on) {
+      return pageHead(`ตัวเลขเกิดจริง ปี ${year}`, 'ยังไม่ได้เปิดรอบ Revise')
+        + card('', `<p>ปี ${year} ยังไม่ได้เปิดรอบ Revise — ไปที่ <a class="link" href="#/acc/control">Budget Control</a> แล้วกด "🔁 เปิดรอบ Revise" ก่อน</p>`);
+    }
+    const deptId = qs.d || Store.activeDepartments()[0]?.id;
+    const deptOpts = Store.activeDepartments().map(d =>
+      `<option value="${d.id}" ${d.id === deptId ? 'selected' : ''}>${esc(d.name)} (${d.code})</option>`).join('');
+    const monthCols = Array.from({ length: rv.thru }, (_, i) => i);
+    const rows = Store.deptRows(deptId).map(r => {
+      const am = Store.actualMonths(year, deptId, r.key);
+      const cells = monthCols.map(mi =>
+        `<td class="num cell-td"><input class="cell act-cell" data-row="${r.key}" data-m="${mi}" inputmode="decimal"
+           value="${am[mi] === null ? '' : fmt(am[mi])}" placeholder="กรอก"></td>`).join('');
+      const filled = monthCols.filter(mi => am[mi] !== null).length;
+      return `<tr>
+        <td class="sticky-col td-gl" title="IO ${r.io}"><div class="gl-name-wrap">
+          <span class="gl-code">${r.gl.code}</span><span class="gl-nm" title="${esc(r.gl.name)}">${esc(r.gl.name)}</span></div>
+          ${r.multiCct ? `<div class="cct-tag">↳ ${esc(r.cctName)}</div>` : ''}</td>
+        ${cells}
+        <td class="small ${filled === rv.thru ? 'txt-ok' : 'txt-warn'}">${filled}/${rv.thru}</td></tr>`;
+    }).join('');
+
+    return pageHead(`📥 ใส่ตัวเลขเกิดจริง ปี ${year} (เดือน 1–${rv.thru})`,
+        `รอบ Revise · บัญชีเท่านั้น · บันทึกแล้วช่องของหน่วยงานถูกล็อก/ตั้งพื้นอัตโนมัติ · ${asOf()}`)
+      + `<div class="breadcrumb"><a href="#/acc/control">Budget Control</a> › <b>ใส่เกิดจริง</b></div>`
+      + card('เลือกหน่วยงาน', `<select id="actDeptSel" style="font:inherit;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;min-width:320px">${deptOpts}</select>`)
+      + card(`ตารางเกิดจริง — ${esc(Store.dept(deptId).name)}`, `
+          <div class="table-scroll" style="max-height:55vh"><table class="budget-table" style="min-width:${260 + rv.thru * 100}px"><thead><tr>
+            <th class="sticky-col th-gl">GL / บัญชี</th>
+            ${monthCols.map(mi => `<th class="num th-m">${Store.MONTH_S[mi]}<div class="th-yr">เกิดจริง ${year}</div></th>`).join('')}
+            <th>ครบ</th></tr></thead><tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' })
+      + card('📋 วางจาก Excel ทีเดียว (ทุกหน่วยงาน)', `
+          <p class="muted small">รูปแบบต่อบรรทัด: <code>code a</code> ตามด้วยตัวเลขเดือน 1–${rv.thru} (คั่นด้วย Tab) — หรือ <code>CCT [Tab] รหัส GL</code> ตามด้วยตัวเลข</p>
+          <textarea id="actPaste" rows="6" placeholder="8003310100635202a\t45000000\t120000000\t8000000\t65000000" style="font-family:monospace;font-size:12px"></textarea>
+          <button class="primary-btn" id="actPasteBtn" style="margin-top:8px">📥 นำเข้าเกิดจริง</button>`);
+  }
+  function actualsBind(user) {
+    const qs = parseQS();
+    const year = Number(qs.y) || UI.year();
+    const deptId = qs.d || Store.activeDepartments()[0]?.id;
+    document.getElementById('actDeptSel')?.addEventListener('change', e => {
+      location.hash = `#/acc/actuals?y=${year}&d=${e.target.value}`;
+    });
+    const parseNum = s => { s = String(s).replace(/[,\s]/g, '').trim(); if (s === '') return null; const v = Number(s); return isFinite(v) ? v : NaN; };
+    document.querySelectorAll('.act-cell').forEach(inp => {
+      inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
+      inp.addEventListener('blur', () => {
+        const v = parseNum(inp.value);
+        if (Number.isNaN(v)) { toast('รูปแบบตัวเลขไม่ถูกต้อง', 'err'); return; }
+        try {
+          Store.setActual(user, year, deptId, inp.dataset.row, Number(inp.dataset.m), v);
+          inp.value = v === null ? '' : UI.fmt(v);
+          inp.classList.add('cell-changed');
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    });
+    document.getElementById('actPasteBtn')?.addEventListener('click', () => {
+      const text = document.getElementById('actPaste').value;
+      if (!text.trim()) { toast('วางข้อมูลก่อน', 'err'); return; }
+      try {
+        const r = Store.pasteActuals(user, year, text);
+        toast(`นำเข้าแล้ว ${r.matched} แถว${r.unmatched.length ? ` · จับคู่ไม่ได้ ${r.unmatched.length} แถว (${r.unmatched.slice(0, 3).join(', ')}…)` : ''}`,
+          r.unmatched.length ? 'err' : 'ok');
+        App.render();
+      } catch (e) { toast(e.message, 'err'); }
+    });
+  }
+
   /* ============ Audit Log ============ */
   function audit(user) {
     const logs = Store.db.auditLogs.slice(0, 300);
@@ -612,5 +716,5 @@ const PagesAcc = (() => {
         <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
   }
 
-  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, audit };
+  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, audit, actuals, actualsBind };
 })();

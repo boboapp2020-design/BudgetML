@@ -155,9 +155,11 @@ const SEED = (() => {
   ];
 
   return {
-    meta: { schemaVersion: 7, seededAt: null, appName: 'Annual Budget Planner', company: 'บริษัท น้ำตาลมิตรลาว จำกัด', currency: 'LAK', yearCurrent: Y_CUR, yearPrevious: Y_PREV },
+    meta: { schemaVersion: 8, seededAt: null, appName: 'Annual Budget Planner', company: 'บริษัท น้ำตาลมิตรลาว จำกัด', currency: 'LAK', yearCurrent: Y_CUR, yearPrevious: Y_PREV },
     users, departments, glAccounts, cctMaster, departmentRows, departmentGL,
     budgetPeriods, budgets, glNotes, deptStatus, cellDetails,
+    budgetSnapshots: [], // งบเดิม (ORIGINAL) ถูก freeze ตอนเปิดรอบ Revise
+    actuals: [],         // ตัวเลขเกิดจริงรายเดือน (บัญชีเป็นผู้ใส่)
     exchangeRates, fuelPrices, auditLogs, notifications,
   };
 })();

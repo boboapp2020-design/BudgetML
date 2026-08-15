@@ -181,6 +181,15 @@ a { color: var(--blue); }
 }
 .budget-card.show-prev .prev-ghost { display: block; }
 .budget-card.show-prev .prev-ghost::before { content: 'ปีก่อน '; color: #b3bfd4; font-size: 9px; }
+.budget-card.revise-mode.show-prev .prev-ghost::before { content: 'งบเดิม '; }
+
+/* ---------- รอบ Revise ---------- */
+.revise-banner { background: #f3effc; border-color: #b7a6ec; color: #4a3492; }
+.cell.cell-actual, .cell.cell-actual:disabled {
+  background: #e8f3ec !important; border-color: #bcd9c6 !important; color: #24593a !important;
+  font-weight: 600; cursor: not-allowed;
+}
+.cell.cell-floor { border-color: #e0b25c !important; box-shadow: inset 2px 0 0 #eda100; }
 .prev-chip {
   position: fixed; z-index: 95; display: none; pointer-events: none;
   background: #0d366b; color: #cfe0f5; font-size: 12px; font-weight: 600;

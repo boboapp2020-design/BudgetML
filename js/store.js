@@ -158,6 +158,123 @@ const Store = (() => {
     return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
   }
 
+  /* ---------- รอบ Revise: งบเดิม (snapshot) + เกิดจริง ---------- */
+  function revisePhase(year) {
+    const p = period(year);
+    return { on: p?.phase === 'REVISE', thru: p?.actualThru || 0 }; // thru = มีเกิดจริงถึงเดือนที่ N
+  }
+  function snapshotFor(year) {
+    return (db.budgetSnapshots || []).find(s => s.year === Number(year) && s.label === 'ORIGINAL') || null;
+  }
+  function originalMonths(year, deptId, rowKey) {
+    const s = snapshotFor(year);
+    if (!s) return Array(12).fill(null);
+    const [glId, cct] = splitKey(rowKey);
+    const r = s.rows.find(x => x.departmentId === deptId && x.glId === glId && x.cct === cct);
+    return r ? r.months : Array(12).fill(null);
+  }
+  const originalRowTotal = (year, deptId, rowKey) => sum(originalMonths(year, deptId, rowKey));
+  function originalGlTotal(year, deptId, glId) {
+    const s = snapshotFor(year);
+    if (!s) return 0;
+    return s.rows.filter(x => x.departmentId === deptId && x.glId === glId)
+      .reduce((t, r) => t + sum(r.months), 0);
+  }
+  function originalDeptMonthly(year, deptId) {
+    const out = Array(12).fill(0);
+    const s = snapshotFor(year);
+    if (s) s.rows.filter(x => x.departmentId === deptId).forEach(r => r.months.forEach((v, i) => { out[i] += v ?? 0; }));
+    return out;
+  }
+  const originalDeptTotal = (year, deptId) => sum(originalDeptMonthly(year, deptId));
+  function actualMonths(year, deptId, rowKey) {
+    const [glId, cct] = splitKey(rowKey);
+    const r = (db.actuals || []).find(x => x.year === Number(year) && x.departmentId === deptId && x.glId === glId && x.cct === cct);
+    return r ? r.months : Array(12).fill(null);
+  }
+
+  function openRevise(actor, year, actualThru) {
+    assertAccounting(actor);
+    const p = period(year);
+    if (!p) throw new Error('ไม่พบรอบงบประมาณ');
+    if (p.phase === 'REVISE') throw new Error(`ปี ${year} เปิดรอบ Revise อยู่แล้ว`);
+    const n = Number(actualThru);
+    if (!(n >= 1 && n <= 12)) throw new Error('เดือนที่มีเกิดจริงต้องอยู่ระหว่าง 1-12');
+    // 1) snapshot งบเดิมทั้งปี → freeze ถาวร
+    if (!db.budgetSnapshots) db.budgetSnapshots = [];
+    db.budgetSnapshots = db.budgetSnapshots.filter(s => !(s.year === Number(year) && s.label === 'ORIGINAL'));
+    db.budgetSnapshots.push({
+      year: Number(year), label: 'ORIGINAL', takenAt: new Date().toISOString(), takenBy: actor.name,
+      rows: db.budgets.filter(b => b.year === Number(year)).map(b => ({
+        departmentId: b.departmentId, glId: b.glId, cct: b.cct,
+        months: b.months.slice(), mtp1: b.mtp1, mtp2: b.mtp2,
+      })),
+    });
+    // 2) เปิดรอบแก้ไข
+    p.status = 'OPEN'; p.phase = 'REVISE'; p.actualThru = n;
+    p.reviseOpenedAt = new Date().toISOString(); p.reviseOpenedBy = actor.name;
+    activeDepartments().forEach(d => {
+      setStatusInternal(year, d.id, 'IN_PROGRESS', { submittedAt: null, revisionNote: null });
+      notify({ deptId: d.id }, `เปิดรอบ Revise งบประมาณปี ${year} — เดือน 1-${n - 1} เป็นเกิดจริง (ล็อก) · เดือน ${n} กรอกได้ไม่ต่ำกว่าเกิดจริง · ปรับคาดการณ์เดือนที่เหลือแล้วส่งอีกครั้ง`);
+    });
+    audit(actor, 'เปิดรอบ Revise', { newValue: `ปี ${year} เกิดจริงถึงเดือน ${n}` });
+    save();
+  }
+
+  function setActual(actor, year, deptId, rowKey, monthIdx, value) {
+    assertAccounting(actor); // เกิดจริงเป็นข้อมูลของฝ่ายบัญชี
+    const rv = revisePhase(year);
+    if (!rv.on) throw new Error('ต้องเปิดรอบ Revise ก่อนจึงจะใส่เกิดจริงได้');
+    if (monthIdx >= rv.thru) throw new Error(`ใส่เกิดจริงได้เฉพาะเดือน 1-${rv.thru}`);
+    if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
+    if (!db.actuals) db.actuals = [];
+    const [glId, cct] = splitKey(rowKey);
+    let a = db.actuals.find(x => x.year === Number(year) && x.departmentId === deptId && x.glId === glId && x.cct === cct);
+    if (!a) { a = { year: Number(year), departmentId: deptId, glId, cct, months: Array(12).fill(null), updatedAt: null, updatedBy: null }; db.actuals.push(a); }
+    const old = a.months[monthIdx];
+    a.months[monthIdx] = value;
+    a.updatedAt = new Date().toISOString(); a.updatedBy = actor.name;
+    // sync เข้างบ Revise: เดือนล็อกสนิท = เกิดจริง · เดือนสุดท้าย (พื้น) = ยกขึ้นถ้างบต่ำกว่าจริง
+    const row = ensureRow(year, deptId, rowKey);
+    if (monthIdx < rv.thru - 1) {
+      row.months[monthIdx] = value;
+    } else if (monthIdx === rv.thru - 1 && value !== null) {
+      if (row.months[monthIdx] === null || row.months[monthIdx] < value) row.months[monthIdx] = value;
+    }
+    if (old !== value) audit(actor, 'บันทึกเกิดจริง', { deptId, glCode: auditRowRef(rowKey).glCode, month: monthIdx + 1, oldValue: old, newValue: value });
+    save();
+  }
+
+  function pasteActuals(actor, year, text) {
+    // วางจาก Excel: [code a][เดือน1..N] หรือ [CCT][GL][เดือน1..N]
+    assertAccounting(actor);
+    const rv = revisePhase(year);
+    if (!rv.on) throw new Error('ต้องเปิดรอบ Revise ก่อน');
+    const num = s => { s = String(s).replace(/[,\s]/g, ''); if (s === '') return null; const v = Number(s); return isFinite(v) ? v : null; };
+    let matched = 0; const unmatched = [];
+    text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+      const cols = line.split('\t').map(s2 => s2.trim());
+      let rowRef = null, vals = [];
+      const c0 = cols[0].replace(/\s/g, '');
+      const byCodeA = (db.departmentRows || []).find(x => x.codeA && x.codeA === c0);
+      if (byCodeA) { rowRef = byCodeA; vals = cols.slice(1); }
+      else if (cols.length >= 2) {
+        const byPair = (db.departmentRows || []).find(x => x.cct === c0 && (gl(x.glId)?.code === cols[1]));
+        if (byPair) { rowRef = byPair; vals = cols.slice(2); }
+      }
+      if (!rowRef) { if (/\d{6}/.test(c0)) unmatched.push(c0.slice(0, 20)); return; }
+      const key = rowRef.glId + '@' + rowRef.cct;
+      for (let mi = 0; mi < Math.min(rv.thru, vals.length); mi++) {
+        const v = num(vals[mi]);
+        if (v !== null) setActual(actor, year, rowRef.departmentId, key, mi, v);
+      }
+      matched++;
+    });
+    audit(actor, 'วางเกิดจริงจาก Excel', { newValue: `ปี ${year}: ${matched} แถว` });
+    save();
+    return { matched, unmatched };
+  }
+
   /* ---------- เปรียบเทียบ + Anomaly (rule-based) ---------- */
   function compare(cur, prev) {
     const diff = cur - prev;
@@ -207,6 +324,23 @@ const Store = (() => {
         if (!note(year, deptId, g.id).reason.trim()) warnings.push(`GL ${g.code} มีการเปลี่ยนแปลงผิดปกติ แต่ยังไม่ได้ระบุสาเหตุเพิ่ม/ลด`);
       }
     });
+    // กติการอบ Revise: แถวที่ยอดต่างจากงบเดิม ต้องมีเหตุผลการ revise + ห้ามต่ำกว่าเกิดจริง
+    const rv = revisePhase(year);
+    if (rv.on && snapshotFor(year)) {
+      deptRows(deptId).forEach(r => {
+        const label = `GL ${r.gl.code}${r.multiCct ? ` (${r.cctName})` : ''}`;
+        const cur = rowTotal(year, deptId, r.key);
+        const orig = originalRowTotal(year, deptId, r.key);
+        if (Math.abs(cur - orig) > 0.005 && !note(year, deptId, r.key).reason.trim()) {
+          errors.push(`${label} — ยอด Revise ต่างจากงบเดิม (${(cur - orig >= 0 ? '+' : '') + Math.round(cur - orig).toLocaleString()} กีบ) ต้องระบุเหตุผลการ revise`);
+        }
+        const floorAct = actualMonths(year, deptId, r.key)[rv.thru - 1];
+        const m = rowMonths(year, deptId, r.key);
+        if (floorAct !== null && m[rv.thru - 1] !== null && m[rv.thru - 1] < floorAct) {
+          errors.push(`${label} — เดือน ${rv.thru} ต่ำกว่าเกิดจริง (${Math.round(floorAct).toLocaleString()} กีบ)`);
+        }
+      });
+    }
     return { errors, warnings, ok: errors.length === 0 };
   }
 
@@ -245,6 +379,17 @@ const Store = (() => {
   function setCell(actor, year, deptId, rowKey, monthIdx, value) {
     assertUserCanEdit(actor, year, deptId);
     if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
+    // กติการอบ Revise: เดือนที่มีเกิดจริงถูกล็อก · เดือนสุดท้ายของเกิดจริงเป็น "พื้น" (เพิ่มได้ ลดไม่ได้)
+    const rv = revisePhase(year);
+    if (rv.on) {
+      if (monthIdx < rv.thru - 1) throw new Error(`เดือน ${monthIdx + 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) แก้ไขไม่ได้`);
+      if (monthIdx === rv.thru - 1) {
+        const act = actualMonths(year, deptId, rowKey)[monthIdx];
+        if (act !== null && (value === null || value < act)) {
+          throw new Error(`เดือน ${monthIdx + 1} มีเกิดจริง ${Math.round(act).toLocaleString()} กีบแล้ว — กรอกต่ำกว่านั้นไม่ได้ (เพิ่มได้เท่านั้น)`);
+        }
+      }
+    }
     const row = ensureRow(year, deptId, rowKey);
     if (row.notUsed) throw new Error('แถวนี้ถูกทำเครื่องหมาย "ไม่ได้ใช้" — กดปุ่ม ↩ เพื่อกลับมากรอกก่อน');
     const old = row.months[monthIdx];
@@ -326,6 +471,7 @@ const Store = (() => {
   }
   function setGlNotUsed(actor, year, deptId, rowKey, flag) {
     assertUserCanEdit(actor, year, deptId);
+    if (revisePhase(year).on && flag) throw new Error('ช่วงรอบ Revise ไม่สามารถทำเครื่องหมาย "ไม่ได้ใช้" ได้ (มีตัวเลขเกิดจริงล็อกอยู่)');
     const row = ensureRow(year, deptId, rowKey);
     if (!!row.notUsed === !!flag) return;
     let n = db.glNotes.find(x => x.year === Number(year) && x.departmentId === deptId && x.rowKey === rowKey);
@@ -380,6 +526,7 @@ const Store = (() => {
   function clearDeptYear(actor, year, deptId) {
     // ล้างข้อมูลที่กรอกทั้งปีของหน่วยงานตนเอง (เดือน + MTP + เหตุผล + รายละเอียด) → ฟอร์มเปล่า
     assertUserCanEdit(actor, year, deptId);
+    if (revisePhase(year).on) throw new Error('ช่วงรอบ Revise ไม่สามารถล้างข้อมูลทั้งปีได้ (มีตัวเลขเกิดจริงล็อกอยู่)');
     const y = Number(year);
     db.budgets.filter(b => b.year === y && b.departmentId === deptId).forEach(row => {
       row.months = Array(12).fill(null);
@@ -547,8 +694,11 @@ const Store = (() => {
   const MONTH_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   function exportDetail(year) {
     // ระดับแถว CCT×GL พร้อมรหัสครบ (code a / IO / CCT) — พร้อมคีย์เข้า SAP
+    const rv = revisePhase(year);
+    const hasSnap = !!snapshotFor(year);
+    const reviseCols = hasSnap ? ['งบเดิมทั้งปี', 'เพิ่ม-ลดระหว่างปี', `เกิดจริงสะสม (ถึง ด.${rv.thru})`] : [];
     const rows = [['หน่วยงาน','code a','IO','CCT','ชื่อหน่วยงานย่อย','รหัส GL','ชื่อบัญชี',
-      ...MONTH_S.map(m => `${m} ${year}`), `รวมปี ${year}`, `รวมปี ${year - 1}`, 'ผลต่าง', '% เปลี่ยนแปลง',
+      ...MONTH_S.map(m => `${m} ${year}`), `รวมปี ${year}`, ...reviseCols, `รวมปี ${year - 1}`, 'ผลต่าง', '% เปลี่ยนแปลง',
       `ปี ${year + 1} (MTP)`, `ปี ${year + 2} (MTP)`, 'ไม่ได้ใช้', 'สมมติฐาน', 'สาเหตุเพิ่ม/ลด']];
     activeDepartments().forEach(d => deptRows(d.id).forEach(r => {
       const m = rowMonths(year, d.id, r.key);
@@ -556,8 +706,13 @@ const Store = (() => {
       const n = note(year, d.id, r.key);
       const t = mtp(year, d.id, r.key);
       const b = rowByKey(year, d.id, r.key);
+      const reviseVals = hasSnap ? (() => {
+        const orig = originalRowTotal(year, d.id, r.key);
+        const actSum = sum(actualMonths(year, d.id, r.key).slice(0, rv.thru));
+        return [orig, cur - orig, actSum];
+      })() : [];
       rows.push([d.name, r.codeA, r.io || '—', r.cct, r.cctName, r.gl.code, r.gl.name,
-        ...m.map(v => v ?? ''), cur, prev, cur - prev,
+        ...m.map(v => v ?? ''), cur, ...reviseVals, prev, cur - prev,
         prev !== 0 ? ((cur - prev) / Math.abs(prev) * 100).toFixed(1) + '%' : (cur ? 'ใหม่' : '0%'),
         t.mtp1 ?? '', t.mtp2 ?? '', b?.notUsed ? 'YES' : '', n.assumption, n.reason]);
     }));
@@ -583,6 +738,8 @@ const Store = (() => {
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,
     months, glTotal, deptTotal, companyTotal, deptMonthly, companyMonthly,
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,
+    revisePhase, snapshotFor, originalMonths, originalRowTotal, originalGlTotal,
+    originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear,
     needRevision, lockPeriod, unlockPeriod, openPeriod,

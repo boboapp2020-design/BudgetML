@@ -42,6 +42,7 @@ const PagesUser = (() => {
       state: Store.deptState(year, deptId),
       comp: Store.completion(year, deptId),
       editable: Store.canEdit(user, year, deptId),
+      revise: Store.revisePhase(year),      // {on, thru} — รอบ Revise + เดือนที่มีเกิดจริง
     };
   }
 
@@ -131,16 +132,22 @@ const PagesUser = (() => {
   /* ============ Budget Input (GL = แถว, เดือน = คอลัมน์) ============ */
   function budget(user) {
     const c = ctx(user);
-    const cur = Store.deptTotal(c.year, c.deptId), prev = Store.deptTotal(c.prevYear, c.deptId);
+    const rvOn = c.revise.on, thru = c.revise.thru;
+    // baseline: ปกติเทียบปีก่อน · รอบ Revise เทียบ "งบเดิม" ที่ถูก snapshot ไว้
+    const baseLabel = rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`;
+    const basePrev = rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId);
+    const cur = Store.deptTotal(c.year, c.deptId), prev = basePrev;
     const cmp = Store.compare(cur, prev);
+    const reviseMsg = rvOn
+      ? `<div class="lock-banner revise-banner">🔁 <b>รอบ Revise กลางปี</b> — เดือน 1–${thru - 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) · เดือน ${thru} เพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือน ${thru + 1}–12 ปรับคาดการณ์ได้ · แถวที่ยอดต่างจากงบเดิมต้องระบุเหตุผลก่อนส่ง</div>` : '';
     const lockMsg = !c.editable
       ? `<div class="lock-banner">🔒 ${['SUBMITTED'].includes(c.state.status) ? 'ส่งข้อมูลแล้ว — แก้ไขได้เมื่อถูกตีกลับ (Need Revision)' : 'รอบงบประมาณนี้ถูกปิด/Lock แล้ว — อ่านได้อย่างเดียว'}</div>` : '';
 
     const head = `<tr>
       <th class="sticky-col th-gl">GL / บัญชี</th>
-      ${Store.MONTH_S.map((m, i) => `<th class="num th-m">${m}<div class="th-yr">${c.year}</div></th>`).join('')}
-      <th class="num th-total">รวมปี ${c.year}</th>
-      <th class="num th-prev">ปี ${c.prevYear}</th>
+      ${Store.MONTH_S.map((m, i) => `<th class="num th-m">${m}<div class="th-yr">${rvOn && i < thru ? (i < thru - 1 ? '🔒 เกิดจริง' : '⚠ พื้นจริง') : c.year}</div></th>`).join('')}
+      <th class="num th-total">${rvOn ? 'รวม Revise' : 'รวมปี'} ${c.year}</th>
+      <th class="num th-prev">${baseLabel}</th>
       <th class="th-delta">%Δ</th>
       <th class="num th-mtp">ปี ${c.year + 1}<div class="th-yr">MTP</div></th>
       <th class="num th-mtp">ปี ${c.year + 2}<div class="th-yr">MTP</div></th>
@@ -152,23 +159,29 @@ const PagesUser = (() => {
       const m = Store.rowMonths(c.year, c.deptId, r.key);
       const t = Store.mtp(c.year, c.deptId, r.key);
       const notUsed = Store.glNotUsed(c.year, c.deptId, r.key);
-      const prevT = Store.rowTotal(c.prevYear, c.deptId, r.key);
+      const prevT = rvOn ? Store.originalRowTotal(c.year, c.deptId, r.key) : Store.rowTotal(c.prevYear, c.deptId, r.key);
       const curT = m.reduce((s, v) => s + (v ?? 0), 0);
       const gcmp = Store.compare(curT, prevT);
       const an = Store.glAnomaly(gcmp);
       const n = Store.note(c.year, c.deptId, r.key);
       const hasNote = n.reason.trim() || n.assumption.trim();
       const dis = (!c.editable || notUsed) ? 'disabled' : '';
-      const pm = Store.rowMonths(c.prevYear, c.deptId, r.key);
+      const pm = rvOn ? Store.originalMonths(c.year, c.deptId, r.key) : Store.rowMonths(c.prevYear, c.deptId, r.key);
+      const am = rvOn ? Store.actualMonths(c.year, c.deptId, r.key) : null;
       const rowTip = `CCT ${r.cct} ${esc(r.cctName)} · IO ${r.io || '—'}`;
       const cells = m.map((v, i) => {
         const hasDetail = !!Store.cellDetail(c.year, c.deptId, r.key, i);
+        const isActual = rvOn && i < thru - 1;
+        const isFloor = rvOn && i === thru - 1;
+        const cellCls = isActual ? ' cell-actual' : (isFloor ? ' cell-floor' : '');
+        const cellTip = isActual ? 'ตัวเลขเกิดจริง — ล็อกโดยแผนกบัญชี'
+          : (isFloor ? `เกิดจริงแล้ว ${fmt(am?.[i] ?? 0)} กีบ — เพิ่มได้ ลดต่ำกว่านี้ไม่ได้` : '');
         return `<td class="num cell-td"><div class="cell-wrap">
-          <input class="cell" data-row="${r.key}" data-m="${i}" inputmode="decimal"
-            value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis}>
+          <input class="cell${cellCls}" data-row="${r.key}" data-m="${i}" inputmode="decimal"
+            value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis || isActual ? 'disabled' : ''} ${cellTip ? `title="${cellTip}"` : ''}>
           <button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${r.key}|${i}" tabindex="-1"
             title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>
-        </div><span class="prev-ghost" title="ปีก่อน ${Store.MONTH_S[i]} ${c.prevYear}">${fmt(pm[i] ?? 0)}</span></td>`;
+        </div><span class="prev-ghost" title="${rvOn ? 'งบเดิม' : 'ปีก่อน'} ${Store.MONTH_S[i]}">${fmt(pm[i] ?? 0)}</span></td>`;
       }).join('');
       return `<tr data-gl-row="${r.key}" class="${notUsed ? 'tr-notused' : ''}">
         <td class="sticky-col td-gl" title="${rowTip}"><div class="gl-name-wrap">
@@ -192,14 +205,14 @@ const PagesUser = (() => {
 
     const foot = (() => {
       const mm = Store.deptMonthly(c.year, c.deptId);
-      const pm = Store.deptMonthly(c.prevYear, c.deptId);
+      const pm = rvOn ? Store.originalDeptMonthly(c.year, c.deptId) : Store.deptMonthly(c.prevYear, c.deptId);
       return `<tr class="tr-sum"><td class="sticky-col td-gl"><b>รวมทั้งหน่วยงาน</b></td>
         ${mm.map(v => `<td class="num" data-msum>${fmt(v)}</td>`).join('')}
         <td class="num td-total" data-gsum><b>${fmt(cur)}</b></td>
         <td class="num td-prev">${fmt(prev)}</td>
         <td class="td-delta">${deltaBadge(cmp.diff, cmp.pct)}</td>
         <td></td><td></td><td></td></tr>
-        <tr class="tr-pct"><td class="sticky-col td-gl muted">เทียบกับปีก่อน (รายเดือน)</td>
+        <tr class="tr-pct"><td class="sticky-col td-gl muted">เทียบกับ${rvOn ? 'งบเดิม' : 'ปีก่อน'} (รายเดือน)</td>
         ${mm.map((v, i) => { const cp = Store.compare(v, pm[i]); return `<td class="num" data-mpct="${i}">${deltaBadge(cp.diff, cp.pct)}</td>`; }).join('')}
         <td class="num" data-gpct>${deltaBadge(cmp.diff, cmp.pct)}</td>
         <td></td><td></td><td></td><td></td><td></td></tr>`;
@@ -210,11 +223,12 @@ const PagesUser = (() => {
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
          <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>`)
       + `<div class="kpi-grid kpi-grid-4">
-          ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', 'ยอดรวมปี ' + c.year, `<span data-kpi-total>${fmt(cur)}</span> <small>กีบ</small>`, 'คำนวณอัตโนมัติ real-time')}
-          ${kpiC('📅', '#e6f7f0', 'kpi-tint-teal', 'ปีก่อน ' + c.prevYear, fmt(prev) + ' <small>กีบ</small>', 'baseline เปรียบเทียบ')}
-          ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', 'เพิ่ม/ลด', `<span data-kpi-delta>${deltaBadge(cmp.diff, cmp.pct)}</span>`, 'เทียบงบปี ' + c.prevYear)}
+          ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', (rvOn ? 'ยอด Revise ปี ' : 'ยอดรวมปี ') + c.year, `<span data-kpi-total>${fmt(cur)}</span> <small>กีบ</small>`, rvOn ? `เกิดจริง 1-${thru} + คาดการณ์ ${thru + 1}-12` : 'คำนวณอัตโนมัติ real-time')}
+          ${kpiC(rvOn ? '🧊' : '📅', '#e6f7f0', 'kpi-tint-teal', baseLabel, fmt(prev) + ' <small>กีบ</small>', rvOn ? 'งบที่อนุมัติตอนต้นปี (freeze)' : 'baseline เปรียบเทียบ')}
+          ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', rvOn ? 'เพิ่ม/ลดระหว่างปี' : 'เพิ่ม/ลด', `<span data-kpi-delta>${deltaBadge(cmp.diff, cmp.pct)}</span>`, 'เทียบ' + baseLabel)}
           ${gaugeKpi('ความครบถ้วน', c.comp.pct, 'เป้าหมาย 100% ก่อน Submit', 'data-kpi-comp')}
         </div>`
+      + reviseMsg
       + lockMsg
       + card('', `<div class="grid-hint">💡 Tab/Enter เลื่อนช่อง · วาง (Ctrl+V) จาก Excel ได้หลายช่องพร้อมกัน · ช่องว่าง = ยังไม่กรอก (ใส่ 0 หากไม่มีงบ) · 🧾 ที่มุมช่อง = รายละเอียดหลายรายการ
           <span class="hint-actions">
@@ -222,7 +236,7 @@ const PagesUser = (() => {
             <button id="gridClearBtn" class="ghost-btn small btn-clear" title="ล้างข้อมูลที่กรอกทั้งปีนี้" ${c.editable ? '' : 'disabled'}>🗑 ล้างข้อมูล</button>
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
           </span></div>
-        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' });
+        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') });
   }
 
   function budgetBind(user) {
@@ -234,23 +248,28 @@ const PagesUser = (() => {
       return isFinite(v) ? v : NaN;
     };
 
+    const rvOn = c.revise.on;
+    // baseline ตอนแก้ไข: รอบปกติ = ปีก่อน · รอบ Revise = งบเดิม (snapshot)
+    const baseRowTotal = key => rvOn ? Store.originalRowTotal(c.year, c.deptId, key) : Store.rowTotal(c.prevYear, c.deptId, key);
+    const baseDeptMonthly = () => rvOn ? Store.originalDeptMonthly(c.year, c.deptId) : Store.deptMonthly(c.prevYear, c.deptId);
+    const baseDeptTotal = () => rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId);
     function refreshRow(key) {
       const m = Store.rowMonths(c.year, c.deptId, key);
       const t = m.reduce((s, v) => s + (v ?? 0), 0);
-      const prevT = Store.rowTotal(c.prevYear, c.deptId, key);
+      const prevT = baseRowTotal(key);
       const cmp = Store.compare(t, prevT);
       document.querySelector(`[data-total="${key}"]`).textContent = fmt(t);
       document.querySelector(`[data-delta="${key}"]`).innerHTML = deltaBadge(cmp.diff, cmp.pct);
-      // footer + KPI + แถวเทียบปีก่อน
+      // footer + KPI + แถวเทียบ baseline
       const mm = Store.deptMonthly(c.year, c.deptId);
-      const pm = Store.deptMonthly(c.prevYear, c.deptId);
+      const pm = baseDeptMonthly();
       document.querySelectorAll('[data-msum]').forEach((td, i) => { td.textContent = fmt(mm[i]); });
       document.querySelectorAll('[data-mpct]').forEach(td => {
         const i = Number(td.dataset.mpct);
         const cp = Store.compare(mm[i], pm[i]);
         td.innerHTML = deltaBadge(cp.diff, cp.pct);
       });
-      const cur = Store.deptTotal(c.year, c.deptId), prev = Store.deptTotal(c.prevYear, c.deptId);
+      const cur = Store.deptTotal(c.year, c.deptId), prev = baseDeptTotal();
       const dcmp = Store.compare(cur, prev);
       document.querySelector('[data-gsum] b').textContent = fmt(cur);
       const gp = document.querySelector('[data-gpct]');
@@ -341,8 +360,10 @@ const PagesUser = (() => {
       if (!inp.classList?.contains('cell') || inp.dataset.m === undefined) return;
       if (bCard.classList.contains('show-prev')) return; // มี ghost อยู่แล้ว ไม่ต้องซ้ำ
       const mi = Number(inp.dataset.m);
-      const pv = Store.rowMonths(c.prevYear, c.deptId, inp.dataset.row)[mi] ?? 0;
-      chip.textContent = `ปีก่อน ${Store.MONTH_S[mi]} ${c.prevYear}: ${fmt(pv)} กีบ`;
+      const pv = (rvOn ? Store.originalMonths(c.year, c.deptId, inp.dataset.row) : Store.rowMonths(c.prevYear, c.deptId, inp.dataset.row))[mi] ?? 0;
+      chip.textContent = rvOn
+        ? `งบเดิม ${Store.MONTH_S[mi]}: ${fmt(pv)} กีบ`
+        : `ปีก่อน ${Store.MONTH_S[mi]} ${c.prevYear}: ${fmt(pv)} กีบ`;
       chip.style.display = 'block';
       const r2 = inp.getBoundingClientRect();
       chip.style.left = Math.max(8, Math.min(r2.left, innerWidth - chip.offsetWidth - 8)) + 'px';
