@@ -168,8 +168,8 @@ const PagesAcc = (() => {
         <td><div class="comp-bar"><div class="comp-fill ${comp.pct === 100 ? 'full' : ''}" style="width:${comp.pct}%"></div></div>${comp.pct}%</td>
         <td>${UI.statusBadge(st.status)}</td>
         <td class="td-actions">
-          <a class="link" href="#/acc/departments?d=${d.id}">Drill-down →</a>
-          ${['SUBMITTED'].includes(st.status) ? `<button class="ghost-btn small" data-revise="${d.id}">ตีกลับ</button>` : ''}
+          <a class="link" href="#/acc/departments?d=${d.id}" title="Drill-down">ดู →</a>
+          ${['SUBMITTED'].includes(st.status) ? `<button class="ghost-btn small" data-revise="${d.id}" title="ตีกลับให้แก้ไข (Need Revision)">↩ ตีกลับ</button>` : ''}
         </td></tr>`;
     }).join('');
 
