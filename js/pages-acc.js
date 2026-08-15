@@ -6,48 +6,107 @@
 const PagesAcc = (() => {
   const { fmt, fmtPct, deltaBadge, esc, kpi, card, pageHead, asOf, toast } = UI;
 
+  // การ์ด KPI แบบมีไอคอนสี (สไตล์เดียวกับหน้ากรอกงบ)
+  function kpiC(icon, iconBg, tint, label, valueHtml, sub) {
+    return `<div class="kpi kpi-c ${tint}"><div class="kpi-ic" style="background:${iconBg}">${icon}</div>
+      <div class="kpi-body"><div class="kpi-label">${label}</div>
+      <div class="kpi-value">${valueHtml}</div><div class="kpi-sub">${sub}</div></div></div>`;
+  }
+
+  const ST_META = {
+    SUBMITTED:     { label: 'ส่งแล้ว รอตรวจ', color: '#256abf' },
+    LOCKED:        { label: 'ปิดรอบแล้ว',     color: '#52514e' },
+    COMPLETED:     { label: 'ครบ รอส่ง',      color: '#0ca30c' },
+    IN_PROGRESS:   { label: 'กำลังกรอก',      color: '#eda100' },
+    NEED_REVISION: { label: 'ตีกลับแก้ไข',    color: '#d03b3b' },
+    DRAFT:         { label: 'ยังไม่เริ่ม',    color: '#c3c2b7' },
+  };
+
   /* ============ Executive Dashboard ============ */
   function dashboard(user) {
     const year = UI.year(), prevYear = year - 1;
     const depts = Store.activeDepartments();
     const cur = Store.companyTotal(year), prev = Store.companyTotal(prevYear);
     const cmp = Store.compare(cur, prev);
-    const states = depts.map(d => Store.deptState(year, d.id).status);
-    const submitted = states.filter(s => ['SUBMITTED', 'LOCKED'].includes(s)).length;
-    const locked = states.filter(s => s === 'LOCKED').length;
+    const states = depts.map(d => ({ d, st: Store.deptState(year, d.id).status }));
+    const cnt = {};
+    states.forEach(x => { cnt[x.st] = (cnt[x.st] || 0) + 1; });
+    const submitted = (cnt.SUBMITTED || 0) + (cnt.LOCKED || 0);
     const anomalies = depts.flatMap(d => Store.deptAnomalies(year, d.id));
 
-    return pageHead(`Executive Dashboard — งบประมาณปี ${year}`,
-        `${esc(Store.db.meta.company)} · เทียบงบปี ${prevYear} · ${asOf()}`,
+    // แถบสถานะการส่ง (segmented bar)
+    const stOrder = ['SUBMITTED', 'LOCKED', 'COMPLETED', 'IN_PROGRESS', 'NEED_REVISION', 'DRAFT'];
+    const segs = stOrder.filter(s => cnt[s]).map(s =>
+      `<div class="status-seg" style="flex:${cnt[s]};background:${ST_META[s].color}" title="${ST_META[s].label}: ${cnt[s]} หน่วยงาน"></div>`).join('');
+    const legends = stOrder.filter(s => cnt[s]).map(s =>
+      `<span class="st-legend"><span class="dl-dot" style="background:${ST_META[s].color}"></span>${ST_META[s].label} <b>${cnt[s]}</b></span>`).join('');
+    const waiting = states.filter(x => !['SUBMITTED', 'LOCKED'].includes(x.st));
+    const waitingNames = waiting.map(x => esc(x.d.name.replace('แผนก', ''))).join(' · ');
+
+    // Top 5 เพิ่ม/ลด พร้อมเหตุผล
+    const movers = depts.flatMap(d => Store.deptGLs(d.id).map(g => ({
+      d, g, cmp: Store.compare(Store.glTotal(year, d.id, g.id), Store.glTotal(prevYear, d.id, g.id)),
+    })));
+    const moverRow = x => {
+      const reason = (Store.note(year, x.d.id, x.g.id).reason || '').trim();
+      return `<a class="mover-row" href="#/acc/departments?d=${x.d.id}&gl=${x.g.id}">
+        <span class="mv-main"><b><span class="gl-code">${x.g.code}</span> ${esc(x.g.name)}</b>
+          <small>${esc(x.d.name)}${reason ? ' · 💬 ' + esc(reason.slice(0, 55)) + (reason.length > 55 ? '…' : '') : ''}</small></span>
+        <span class="mv-val"><span class="num">${(x.cmp.diff >= 0 ? '+' : '') + UI.fmtShort(x.cmp.diff)}</span>${deltaBadge(x.cmp.diff, x.cmp.pct)}</span></a>`;
+    };
+    const topInc = movers.filter(x => x.cmp.diff > 0).sort((a, b) => b.cmp.diff - a.cmp.diff).slice(0, 5).map(moverRow).join('');
+    const topDec = movers.filter(x => x.cmp.diff < 0).sort((a, b) => a.cmp.diff - b.cmp.diff).slice(0, 5).map(moverRow).join('');
+
+    return pageHead(`Executive Dashboard 📊`,
+        `งบประมาณปี ${year} เทียบปี ${prevYear} · ${esc(Store.db.meta.company)} · ${asOf()}`,
         `<button class="ghost-btn" onclick="Store.exportDeptSummary(${year})">⬇ Export สรุปหน่วยงาน</button>
+         <button class="ghost-btn" onclick="Store.exportDetail(${year})">⬇ Export รายละเอียด</button>
          <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
+
       + `<div class="kpi-grid">
-        ${kpi(`Total Budget ${year}`, UI.fmtShort(cur) + ' <small>กีบ</small>', fmt(cur) + ' กีบ')}
-        ${kpi(`Previous Year ${prevYear}`, UI.fmtShort(prev) + ' <small>กีบ</small>', fmt(prev) + ' กีบ')}
-        ${kpi('Change เทียบปีก่อน', deltaBadge(cmp.diff, cmp.pct), (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
-        ${kpi('Departments', depts.length, 'หน่วยงานในรอบนี้')}
-        ${kpi('Submitted', `${submitted} / ${depts.length}`, 'ส่งข้อมูลแล้ว', submitted === depts.length ? 'kpi-good' : 'kpi-warn')}
-        ${kpi('Locked', `${locked} / ${depts.length}`, 'ปิดรอบแล้ว')}
+        ${kpiC('💰', '#e6f0fb', 'kpi-tint-blue', `งบประมาณรวมปี ${year}`,
+            `${UI.fmtShort(cur)} <small>กีบ</small>`, fmt(cur) + ' กีบ · ' + depts.length + ' หน่วยงาน')}
+        ${kpiC('🗓️', '#e6f7f0', 'kpi-tint-teal', `ปีก่อน ${prevYear} (baseline)`,
+            `${UI.fmtShort(prev)} <small>กีบ</small>`, fmt(prev) + ' กีบ')}
+        ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', 'เพิ่ม/ลด เทียบปีก่อน',
+            deltaBadge(cmp.diff, cmp.pct), (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
+        ${kpiC('📤', submitted === depts.length ? '#eaf6ea' : '#fff7e6', 'kpi-tint-amber', 'ส่งงบประมาณแล้ว',
+            `${submitted} <small>/ ${depts.length} หน่วยงาน</small>`, submitted === depts.length ? 'ครบทุกหน่วยงาน ✓' : `รออีก ${depts.length - submitted} หน่วยงาน`)}
+        ${kpiC('⚠️', anomalies.length ? '#fdecec' : '#eaf6ea', anomalies.length ? 'kpi-tint-red' : 'kpi-tint-green', 'รายการผิดปกติ',
+            `${anomalies.length} <small>รายการ</small>`, anomalies.length ? '<a class="link" href="#dashExceptions">ตรวจสอบด้านล่าง ↓</a>' : 'ไม่พบความผิดปกติ')}
       </div>`
+
+      + card(`📮 สถานะการส่งงบประมาณ — ${submitted}/${depts.length} หน่วยงานส่งแล้ว`, `
+          <div class="exec-status-bar">${segs}</div>
+          <div class="st-legends">${legends}</div>
+          ${waiting.length ? `<div class="st-waiting">⏳ ยังไม่ส่ง: ${waitingNames} — <a class="link" href="#/acc/departments">ติดตาม →</a></div>` : ''}`)
+
       + `<div class="grid-2">`
-      + card(`งบรายเดือน ปี ${year} เทียบปี ${prevYear} — ทุกหน่วยงาน (กีบ)`, `<div id="chAccMonthly"></div>`)
-      + card(`งบประมาณตามหน่วยงาน ปี ${prevYear} (กีบ) — เรียงจากมากไปน้อย · คลิกเพื่อ drill-down`, `<div id="chAccDept"></div>`)
+      + card(`📈 งบรายเดือน ปี ${year} เทียบปี ${prevYear} (กีบ)`, `<div id="chAccMonthly"></div>`)
+      + card(`🍩 สัดส่วนงบตามกลุ่มบัญชี ปี ${year}`, `<div id="chAccGroup"></div>`)
       + `</div>`
       + `<div class="grid-2">`
-      + card(`Top GL งบประมาณสูงสุด ปี ${year} (กีบ) — คลิกเพื่อ drill-down`, `<div id="chAccTopGL"></div>`)
-      + card(`สัดส่วนงบตามกลุ่มบัญชี ปี ${year}`, `<div id="chAccGroup"></div>`)
+      + card(`🏢 งบประมาณตามหน่วยงาน (กีบ) — คลิกเพื่อ drill-down`, `<div id="chAccDept"></div>`)
+      + card(`🏆 Top GL งบประมาณสูงสุด ปี ${year} (กีบ) — คลิกเพื่อ drill-down`, `<div id="chAccTopGL"></div>`)
       + `</div>`
-      + card(`⚠ Exceptions — การเปลี่ยนแปลงผิดปกติ (${anomalies.length})`,
+
+      + `<div class="grid-2">`
+      + card(`📈 Top 5 เพิ่มขึ้นสูงสุด (พร้อมเหตุผลจากหน่วยงาน)`, topInc ? `<div class="mover-list">${topInc}</div>` : '<p class="muted">ไม่มีรายการ</p>')
+      + card(`📉 Top 5 ลดลงมากสุด`, topDec ? `<div class="mover-list">${topDec}</div>` : '<p class="muted">ไม่มีรายการ</p>')
+      + `</div>`
+
+      + `<div id="dashExceptions"></div>`
+      + card(`⚠️ Exceptions — การเปลี่ยนแปลงผิดปกติที่ควรตรวจสอบ (${anomalies.length})`,
           anomalies.length ? `<div class="table-scroll"><table class="data-table"><thead>
             <tr><th>หน่วยงาน</th><th>GL</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th><th>%</th><th>ประเภท</th><th></th></tr></thead><tbody>
-            ${anomalies.map(a => `<tr>
+            ${anomalies.map(a => `<tr class="exc-${a.level}">
               <td>${esc(Store.dept(a.deptId).name)}</td>
               <td><span class="gl-code">${a.gl.code}</span> ${esc(a.gl.name)}</td>
               <td class="num">${fmt(a.cmp.prev)}</td><td class="num">${fmt(a.cmp.cur)}</td>
               <td>${deltaBadge(a.cmp.diff, a.cmp.pct)}</td>
               <td><span class="anomaly ${a.level}">⚠ ${a.tag}</span></td>
               <td><a class="link" href="#/acc/departments?d=${a.deptId}&gl=${a.gl.id}">ดูรายละเอียด →</a></td></tr>`).join('')}
-          </tbody></table></div>` : '<p class="muted">ไม่พบการเปลี่ยนแปลงผิดปกติ</p>');
+          </tbody></table></div>` : '<p class="muted">ไม่พบการเปลี่ยนแปลงผิดปกติ ✓</p>');
   }
   function dashboardBind(user) {
     const year = UI.year(), prevYear = year - 1;
