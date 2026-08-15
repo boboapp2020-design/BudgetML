@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap — งบประมาณประจำปี (Annual Budget)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='24' cy='24' r='22' fill='white'/><circle cx='24' cy='24' r='22' fill='none' stroke='%232a78d6' stroke-width='3.1'/><text x='24' y='31' text-anchor='middle' font-size='20'>✅</text></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Leelawadee UI", "Noto Sans Thai", system-ui, sans-serif;
+    background: #f9f9f7; color: #0b0b0b; font-size: 14.5px; line-height: 1.55; padding: 26px 16px 80px;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  header.hero {
+    background: linear-gradient(135deg, #1c3faa, #0d366b); color: #fff; border-radius: 16px;
+    padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(13,54,107,.25);
+  }
+  .hero h1 { font-size: 22px; margin-bottom: 4px; }
+  .hero .sub { color: #9ec5f4; font-size: 13px; }
+  .progress-row { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+  .pbar { flex: 1; height: 12px; background: rgba(255,255,255,.2); border-radius: 999px; overflow: hidden; }
+  .pfill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #34d399, #86e79b); transition: width .4s ease; }
+  .ptext { font-weight: 800; font-size: 17px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  section.card {
+    background: #fcfcfb; border: 1px solid #e1e0d9; border-radius: 14px; margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(13,54,107,.05), 0 4px 16px rgba(13,54,107,.07); overflow: hidden;
+  }
+  .sec-head { padding: 13px 18px; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e1e0d9; }
+  .sec-head .cnt { margin-left: auto; font-size: 12px; font-weight: 700; color: #52514e; background: #f0efec; border-radius: 999px; padding: 3px 10px; }
+  .sec-critical .sec-head { background: #fdf2f2; }
+  .sec-should  .sec-head { background: #fffaf0; }
+  .sec-future  .sec-head { background: #f2f8f2; }
+  .sec-qol     .sec-head { background: #f3f0fc; }
+  .sec-done    .sec-head { background: #eef6ee; }
+  ul.items { list-style: none; padding: 6px 10px; }
+  li.item {
+    display: flex; gap: 12px; align-items: flex-start; padding: 10px 8px;
+    border-bottom: 1px dashed #e1e0d9; border-radius: 8px; transition: background .12s;
+  }
+  li.item:last-child { border-bottom: none; }
+  li.item:hover { background: #f4f7fb; }
+  .chk {
+    appearance: none; width: 21px; height: 21px; border: 2px solid #c3c2b7; border-radius: 6px;
+    cursor: pointer; flex-shrink: 0; margin-top: 2px; position: relative; background: #fff; transition: all .15s;
+  }
+  .chk:hover { border-color: #256abf; }
+  .chk:checked { background: #0ca30c; border-color: #0ca30c; }
+  .chk:checked::after {
+    content: ''; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px;
+    border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+  }
+  .item-tx { flex: 1; min-width: 0; }
+  .item-tx b { display: block; font-size: 14px; }
+  .item-tx small { color: #898781; font-size: 12px; }
+  li.done .item-tx b { text-decoration: line-through; color: #898781; }
+  li.done .item-tx small { text-decoration: line-through; }
+  .del {
+    border: none; background: none; color: #c3c2b7; cursor: pointer; font-size: 14px; padding: 2px 6px;
+    border-radius: 6px; flex-shrink: 0;
+  }
+  .del:hover { color: #d03b3b; background: #fdecec; }
+  .addrow { display: flex; gap: 8px; padding: 10px 18px 14px; }
+  .addrow input {
+    flex: 1; font: inherit; font-size: 13.5px; padding: 9px 12px; border: 1px solid #c3c2b7;
+    border-radius: 9px; background: #fff;
+  }
+  .addrow input:focus { outline: none; border-color: #256abf; box-shadow: 0 0 0 2px rgba(37,106,191,.18); }
+  .addrow button {
+    font: inherit; font-size: 13px; font-weight: 700; padding: 9px 16px; border: none;
+    border-radius: 9px; background: #256abf; color: #fff; cursor: pointer;
+  }
+  .addrow button:hover { background: #104281; }
+  footer { text-align: center; color: #898781; font-size: 12px; margin-top: 20px; }
+  footer a { color: #256abf; }
+  .tag { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; vertical-align: 2px; margin-left: 6px; }
+  .tag-user { background: #e6f0fb; color: #256abf; }
+  .tag-new  { background: #f3effc; color: #6d28d9; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <h1>✅ Roadmap ระบบงบประมาณประจำปี</h1>
+    <div class="sub">บริษัท น้ำตาลมิตรลาว จำกัด · ติ๊กเมื่อทำเสร็จ · เพิ่มรายการใหม่ได้ทุกหมวด · บันทึกอัตโนมัติในเครื่องนี้</div>
+    <div class="progress-row"><div class="pbar"><div class="pfill" id="pfill"></div></div><div class="ptext" id="ptext">0%</div></div>
+  </header>
+  <div id="sections"></div>
+  <footer>
+    Annual Budget Planner · <a href="index.html">← กลับเข้าแอป</a> ·
+    สถานะ checklist เก็บในเบราว์เซอร์เครื่องนี้ (localStorage)
+  </footer>
+</div>
+
+<script>
+/* =============================================================
+ * Roadmap Checklist — รายการตั้งต้น + เพิ่ม/ลบ/ติ๊กได้ เก็บใน localStorage
+ * ============================================================= */
+const KEY = 'abp_roadmap_v1';
+
+const SECTIONS = [
+  { id: 'critical', icon: '🔴', title: 'ต้องทำก่อนใช้งานจริง', cls: 'sec-critical', items: [
+    { id: 'c1', t: 'แก้ปัญหาข้อมูลชนกันเมื่อหลายหน่วยงานกรอกพร้อมกัน', s: 'ทางเลือก: ย้ายไป Supabase (แนะนำ) หรือปรับ Apps Script ให้บันทึกราย-หน่วยงาน' },
+    { id: 'c2', t: 'เปิดใช้ระบบ PIN / สิทธิ์เข้าใช้งานจริง', s: 'โครงบัญชีรายแผนกพร้อมแล้ว — เหลือหน้าตั้ง PIN + บังคับตรวจตอน login (ถ้าใช้ Supabase จะได้ Auth จริงเลย)' },
+    { id: 'c3', t: 'ล้างข้อมูล mock ปี 2026 → เปิดรอบกรอกจริง', s: 'สลับโหมดสาธิต ↔ ใช้จริง ก่อนแจกให้หน่วยงานกรอก' },
+    { id: 'c4', t: 'ระบบสำรองข้อมูลอัตโนมัติ (Backup)', s: 'snapshot รายวัน + ปุ่ม backup ทันที' },
+  ]},
+  { id: 'should', icon: '🟡', title: 'ควรมี (ช่วยงานจริง)', cls: 'sec-should', items: [
+    { id: 's1', t: 'Export Excel จริง (.xlsx) พร้อมจัดรูปแบบ', s: 'Department Summary / GL Summary / เทียบปีก่อน สำหรับเสนอผู้บริหาร' },
+    { id: 's2', t: 'หน้า Print / PDF layout สวยสำหรับผู้บริหาร', s: '1 หน่วยงานต่อหน้า + สรุปรวมบริษัท' },
+    { id: 's3', t: 'ปุ่ม "อนุมัติผ่าน" รายหน่วยงาน + คิวรอตรวจของฝ่ายบัญชี', s: 'ให้ flow ตรวจครบวงจร: รอตรวจ → ผ่าน/ตีกลับ' },
+    { id: 's4', t: 'ทดสอบ flow เปิดรอบปีถัดไป (2027)', s: 'ปี 2026 กลายเป็น baseline อัตโนมัติ' },
+    { id: 's5', t: 'ปรับการใช้งานบนมือถือ/แท็บเล็ต', s: 'ตารางกรอกบนจอเล็ก: sticky คอลัมน์ + bottom action bar' },
+  ]},
+  { id: 'future', icon: '🟢', title: 'อนาคต (Phase ถัดไป)', cls: 'sec-future', items: [
+    { id: 'f1', t: 'Waterfall chart + วิเคราะห์เชิงลึกเพิ่มเติม', s: 'By Category · Largest GL · หน้า Analysis' },
+    { id: 'f2', t: 'AI Executive Summary + ตรวจสมมติฐานอัตโนมัติ', s: 'Phase 4 — โครงข้อมูล Number+Reason+Assumption พร้อมแล้ว' },
+    { id: 'f3', t: 'Reference Rate ผูกช่องกรอกโดยตรง', s: 'กรอกเป็น THB/USD แล้วระบบแปลงเป็นกีบให้' },
+    { id: 'f4', t: 'ประวัติการคำนวณในเครื่องมือคำนวณ', s: 'ย้อนดูรายการที่เคยคำนวณ' },
+    { id: 'f5', t: 'แจ้งเตือน deadline อัตโนมัติ', s: 'เตือนล่วงหน้าก่อนถึงกำหนดส่ง 23 ก.ย.' },
+  ]},
+  { id: 'qol', icon: '💡', title: 'เพิ่มคุณภาพชีวิต User (ไอเดีย)', cls: 'sec-qol', items: [
+    { id: 'q1', t: 'ปุ่ม "คัดลอกงบปีก่อนมาเป็นร่าง"', s: 'กดครั้งเดียว ดึงตัวเลขปี 2025 มาใส่เป็นจุดเริ่ม แล้วแก้เฉพาะที่เปลี่ยน — ประหยัดเวลามหาศาล' },
+    { id: 'q2', t: 'ช่องค้นหา/กรอง GL ในตารางกรอก', s: 'หน่วยงานที่มี GL เยอะ (บัญชีฯ 47 ตัว) หาเจอไว' },
+    { id: 'q3', t: 'Undo แก้ไขล่าสุด (Ctrl+Z)', s: 'พิมพ์พลาดกดคืนได้ทันที' },
+    { id: 'q4', t: 'ไฮไลต์แถว/คอลัมน์ที่เคอร์เซอร์อยู่', s: 'กรอกตารางกว้างๆ ไม่หลงแถว' },
+    { id: 'q5', t: 'สรุปสิ่งที่แก้ไขก่อนกด Submit', s: 'โชว์ว่าเปลี่ยนช่องไหนไปบ้างเทียบครั้งก่อน' },
+    { id: 'q6', t: 'จำตำแหน่งเลื่อนตาราง + ช่องล่าสุดที่กรอก', s: 'กลับเข้ามาแล้วทำงานต่อได้เลย' },
+  ]},
+  { id: 'done', icon: '✅', title: 'ทำเสร็จแล้ว', cls: 'sec-done', done: true, items: [
+    { id: 'd1',  t: 'ระบบครบวงจร: กรอกงบ GL×เดือน + MTP → ตรวจ → Submit → ตีกลับ/Lock', s: 'พร้อม validation, anomaly detection, Audit Log' },
+    { id: 'd2',  t: 'ข้อมูลจริง 17 หน่วยงาน · 106 GL · งบปี 2025 (checksum 100%)', s: 'จากไฟล์ 4.ML_Form งบค่าใช้จ่ายต้นปี 2026.xlsx' },
+    { id: 'd3',  t: 'ซิงค์ Google Sheet "บัญชี" อัตโนมัติ (Apps Script)', s: 'ไฟสถานะ 🟢 + สร้างแท็บอ่านง่าย 1 แผนก 1 sheet' },
+    { id: 'd4',  t: 'ขึ้นเว็บจริง GitHub Pages + push อัตโนมัติ', s: 'boboapp2020-design.github.io/BudgetML' },
+    { id: 'd5',  t: 'Executive Dashboard ผู้บริหาร', s: 'KPI + สถานะการส่ง + Top เพิ่ม/ลดพร้อมเหตุผล + Exceptions' },
+    { id: 'd6',  t: '🧾 รายละเอียดค่าใช้จ่ายรายช่อง (หลายรายการ/เดือน เก็บถาวร)', s: 'ฝ่ายบัญชีตรวจย้อนหลังได้แม้ Lock แล้ว' },
+    { id: 'd7',  t: 'เครื่องคิดเลข + เครื่องมือคำนวณ (ดีไซน์ตาม mock)', s: 'อัตราแลกเปลี่ยนธงชาติจริง / น้ำมัน / Qty×Price×Freq' },
+    { id: 'd8',  t: 'ปุ่มไม่ได้ใช้ GL · ล้างข้อมูล · ขยายตารางเต็มจอ · เกจโมเดิร์น', s: 'คุณภาพชีวิตหน้ากรอกงบ' },
+    { id: 'd9',  t: 'หน้า Login แบบ dropdown + ช่อง PIN (โครง) + ทางเข้าแอดมินแยก', s: '' },
+    { id: 'd10', t: 'ธีมสีสันทั้งเว็บ + โลโก้ iDash + แสงเงาโมเดิร์น', s: 'sidebar gradient, hover ยกตัว, หัวตาราง navy' },
+    { id: 'd11', t: 'แอดมินแก้ Budget Rate + ราคาน้ำมัน + เปิด/ปิดหน่วยงาน', s: 'Budget Control' },
+  ]},
+];
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
+}
+function save(st) { localStorage.setItem(KEY, JSON.stringify(st)); }
+
+function render() {
+  const st = load();               // { checked: {id:true}, removedDefaults: [id], custom: {secId: [{id,t}]} }
+  st.checked = st.checked || {};
+  st.custom = st.custom || {};
+  st.removed = st.removed || [];
+
+  let total = 0, doneN = 0;
+  const host = document.getElementById('sections');
+  host.innerHTML = '';
+
+  SECTIONS.forEach(sec => {
+    const defaults = sec.items.filter(it => !st.removed.includes(it.id));
+    const customs = (st.custom[sec.id] || []);
+    const all = defaults.map(it => ({ ...it, custom: false })).concat(customs.map(it => ({ ...it, custom: true, s: it.s || 'รายการที่เพิ่มเอง' })));
+    const isDone = id => sec.done ? (st.checked[id] !== false) : !!st.checked[id]; // หมวด "ทำแล้ว" ติ๊กไว้ตั้งแต่ต้น
+    const secDone = all.filter(it => isDone(it.id)).length;
+    total += all.length; doneN += secDone;
+
+    const lis = all.map(it => `
+      <li class="item ${isDone(it.id) ? 'done' : ''}" data-id="${it.id}">
+        <input type="checkbox" class="chk" ${isDone(it.id) ? 'checked' : ''} data-sec="${sec.id}">
+        <div class="item-tx"><b>${it.t}${it.custom ? ' <span class="tag tag-new">เพิ่มเอง</span>' : ''}</b>
+          ${it.s ? `<small>${it.s}</small>` : ''}</div>
+        ${it.custom ? '<button class="del" title="ลบรายการนี้">✕</button>' : ''}
+      </li>`).join('');
+
+    host.insertAdjacentHTML('beforeend', `
+      <section class="card ${sec.cls}">
+        <div class="sec-head">${sec.icon} ${sec.title}<span class="cnt">${secDone}/${all.length}</span></div>
+        <ul class="items">${lis}</ul>
+        <div class="addrow">
+          <input placeholder="＋ เพิ่มรายการใหม่ในหมวดนี้… (กด Enter)" data-add="${sec.id}">
+          <button data-addbtn="${sec.id}">เพิ่ม</button>
+        </div>
+      </section>`);
+  });
+
+  const pct = total ? Math.round(doneN / total * 100) : 0;
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('ptext').textContent = `${doneN}/${total} · ${pct}%`;
+
+  // events
+  host.querySelectorAll('.chk').forEach(chk => chk.addEventListener('change', () => {
+    const id = chk.closest('.item').dataset.id;
+    const st2 = load(); st2.checked = st2.checked || {};
+    st2.checked[id] = chk.checked;
+    save(st2); render();
+  }));
+  host.querySelectorAll('.del').forEach(btn => btn.addEventListener('click', () => {
+    const li = btn.closest('.item'); const id = li.dataset.id;
+    const st2 = load(); st2.custom = st2.custom || {};
+    Object.keys(st2.custom).forEach(k => { st2.custom[k] = st2.custom[k].filter(x => x.id !== id); });
+    save(st2); render();
+  }));
+  const addItem = secId => {
+    const inp = host.querySelector(`[data-add="${secId}"]`);
+    const t = inp.value.trim(); if (!t) return;
+    const st2 = load(); st2.custom = st2.custom || {};
+    (st2.custom[secId] = st2.custom[secId] || []).push({ id: 'u' + Date.now(), t });
+    save(st2); render();
+    host.querySelector(`[data-add="${secId}"]`)?.focus();
+  };
+  host.querySelectorAll('[data-addbtn]').forEach(b => b.addEventListener('click', () => addItem(b.dataset.addbtn)));
+  host.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addItem(i.dataset.add); }));
+}
+render();
+</script>
+</body>
+</html>
