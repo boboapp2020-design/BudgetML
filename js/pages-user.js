@@ -156,6 +156,7 @@ const PagesUser = (() => {
       const n = Store.note(c.year, c.deptId, g.id);
       const hasNote = n.reason.trim() || n.assumption.trim();
       const dis = (!c.editable || notUsed) ? 'disabled' : '';
+      const pm = Store.months(c.prevYear, c.deptId, g.id);
       const cells = m.map((v, i) => {
         const hasDetail = !!Store.cellDetail(c.year, c.deptId, g.id, i);
         return `<td class="num cell-td"><div class="cell-wrap">
@@ -163,7 +164,7 @@ const PagesUser = (() => {
             value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis}>
           <button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${g.id}|${i}" tabindex="-1"
             title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>
-        </div></td>`;
+        </div><span class="prev-ghost" title="ปีก่อน ${Store.MONTH_S[i]} ${c.prevYear}">${fmt(pm[i] ?? 0)}</span></td>`;
       }).join('');
       return `<tr data-gl-row="${g.id}" class="${notUsed ? 'tr-notused' : ''}">
         <td class="sticky-col td-gl"><div class="gl-name-wrap">
@@ -212,6 +213,7 @@ const PagesUser = (() => {
       + lockMsg
       + card('', `<div class="grid-hint">💡 Tab/Enter เลื่อนช่อง · วาง (Ctrl+V) จาก Excel ได้หลายช่องพร้อมกัน · ช่องว่าง = ยังไม่กรอก (ใส่ 0 หากไม่มีงบ) · 🧾 ที่มุมช่อง = รายละเอียดหลายรายการ
           <span class="hint-actions">
+            <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขปีก่อนใต้ทุกช่อง (เทียบเดือนต่อเดือน)">🔀 ปีก่อน</button>
             <button id="gridClearBtn" class="ghost-btn small btn-clear" title="ล้างข้อมูลที่กรอกทั้งปีนี้" ${c.editable ? '' : 'disabled'}>🗑 ล้างข้อมูล</button>
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
           </span></div>
@@ -307,6 +309,42 @@ const PagesUser = (() => {
       const next = document.querySelector(`.cell[data-gl="${glOrder[gi]}"][data-m="${mi}"]`);
       next?.focus();
     }
+
+    /* --- เทียบปีก่อนเดือนต่อเดือน: โหมด ghost ทุกช่อง + ป้ายลอยตอน focus --- */
+    const SHOW_PREV_KEY = 'abp_show_prev';
+    const bCard = document.querySelector('.budget-card');
+    const pBtn = document.getElementById('prevToggleBtn');
+    const applyPrevMode = on => {
+      bCard.classList.toggle('show-prev', on);
+      pBtn.classList.toggle('btn-purple', on);
+      pBtn.textContent = on ? '🔀 ปีก่อน: เปิด' : '🔀 ปีก่อน';
+    };
+    applyPrevMode(localStorage.getItem(SHOW_PREV_KEY) === '1');
+    pBtn?.addEventListener('click', () => {
+      const on = !(localStorage.getItem(SHOW_PREV_KEY) === '1');
+      localStorage.setItem(SHOW_PREV_KEY, on ? '1' : '0');
+      applyPrevMode(on);
+    });
+
+    // ป้ายลอย "ปีก่อน" เหนือช่องที่กำลังกรอก (เฉพาะตอนโหมด ghost ปิด)
+    let chip = document.getElementById('prevChip');
+    if (!chip) { chip = document.createElement('div'); chip.id = 'prevChip'; chip.className = 'prev-chip'; document.body.appendChild(chip); }
+    const hideChip = () => { chip.style.display = 'none'; };
+    const tableEl = document.querySelector('.budget-table');
+    tableEl?.addEventListener('focusin', e => {
+      const inp = e.target;
+      if (!inp.classList?.contains('cell') || inp.dataset.m === undefined) return;
+      if (bCard.classList.contains('show-prev')) return; // มี ghost อยู่แล้ว ไม่ต้องซ้ำ
+      const mi = Number(inp.dataset.m);
+      const pv = Store.months(c.prevYear, c.deptId, inp.dataset.gl)[mi] ?? 0;
+      chip.textContent = `ปีก่อน ${Store.MONTH_S[mi]} ${c.prevYear}: ${fmt(pv)} กีบ`;
+      chip.style.display = 'block';
+      const r2 = inp.getBoundingClientRect();
+      chip.style.left = Math.max(8, Math.min(r2.left, innerWidth - chip.offsetWidth - 8)) + 'px';
+      chip.style.top = (r2.top > 60 ? r2.top - chip.offsetHeight - 7 : r2.bottom + 7) + 'px';
+    });
+    tableEl?.addEventListener('focusout', hideChip);
+    document.querySelector('.budget-scroll')?.addEventListener('scroll', hideChip);
 
     /* --- ขยายตารางเกือบเต็มจอ / ย่อกลับ (ปุ่มเดียว มุมขวาของแถบเหนือตาราง) --- */
     const fsCard = document.querySelector('.budget-card');
