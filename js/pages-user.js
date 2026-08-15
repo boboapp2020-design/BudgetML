@@ -485,13 +485,17 @@ const PagesUser = (() => {
   }
 
   /* ============ Calculators (ดีไซน์ตาม mock: 3 คอลัมน์ + ธง + การ์ดผลลัพธ์สี) ============ */
-  const FLAGS = { THB: '🇹🇭', USD: '🇺🇸', CNY: '🇨🇳', EUR: '🇪🇺', LAK: '🇱🇦' };
+  // ธงชาติจากไฟล์ภาพในโฟลเดอร์ Flags (emoji ธงไม่แสดงบน Windows)
+  const FLAG_IMG = { THB: 'Thai.png', USD: 'USA.png', CNY: 'China.png', EUR: 'EROU.png' };
+  const flagImg = cur => FLAG_IMG[cur]
+    ? `<img class="flag-img" src="Flags/${FLAG_IMG[cur]}" alt="${cur}">`
+    : '<span class="flag">💱</span>';
   function calcCards(user) {
     const year = UI.year();
     const rates = Store.db.exchangeRates.filter(r => r.year === year);
     const fuels = Store.db.fuelPrices.filter(f => f.year === year);
     const rateRows = rates.map(r => `<tr>
-      <td><span class="flag">${FLAGS[r.currency] || '💱'}</span> <b>${r.currency}</b></td>
+      <td class="flag-cell">${flagImg(r.currency)} <b>${r.currency}</b></td>
       <td class="num"><b>${fmt(r.rateToLAK)}.00</b></td>
       <td class="muted small">ต่อ 1 ${r.currency}</td></tr>`).join('');
 
@@ -508,7 +512,7 @@ const PagesUser = (() => {
         </div>
         <div class="ft-divider"><span>คำนวณเอง</span></div>
         <div class="two-up">
-          <label class="fld"><span>เลือกสกุลเงิน</span><select id="fxCur">${rates.map(r => `<option value="${r.currency}">${FLAGS[r.currency] || ''} ${r.currency}</option>`).join('')}</select></label>
+          <label class="fld"><span>เลือกสกุลเงิน</span><select id="fxCur">${rates.map(r => `<option value="${r.currency}">${r.currency}</option>`).join('')}</select></label>
           <label class="fld"><span>จำนวนเงิน</span><input id="fxAmt" inputmode="decimal" value="1,000"></label>
         </div>
         <div class="fx-ratebox"><div class="fxr-label">อัตราแลกเปลี่ยน (แก้ไขได้)</div>
