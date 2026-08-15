@@ -329,6 +329,26 @@ const Store = (() => {
     save();
   }
 
+  function clearDeptYear(actor, year, deptId) {
+    // ล้างข้อมูลที่กรอกทั้งปีของหน่วยงานตนเอง (เดือน + MTP + เหตุผล + รายละเอียด) → ฟอร์มเปล่า
+    assertUserCanEdit(actor, year, deptId);
+    const y = Number(year);
+    deptGLs(deptId).forEach(g => {
+      const row = budgetRow(y, deptId, g.id);
+      if (row) {
+        row.months = Array(12).fill(null);
+        row.mtp1 = null; row.mtp2 = null;
+        row.notUsed = false; delete row.stash;
+        row.updatedAt = new Date().toISOString(); row.updatedBy = actor.name;
+      }
+    });
+    db.glNotes = db.glNotes.filter(n => !(n.year === y && n.departmentId === deptId));
+    db.cellDetails = (db.cellDetails || []).filter(x => !(x.year === y && x.departmentId === deptId));
+    setStatusInternal(y, deptId, 'DRAFT', { submittedAt: null, revisionNote: null });
+    audit(actor, 'ล้างข้อมูลงบประมาณทั้งปี', { deptId, newValue: `ปี ${y}` });
+    save();
+  }
+
   /* ---------- mutations: ACCOUNTING ---------- */
   function needRevision(actor, year, deptId, noteMsg) {
     assertAccounting(actor);
@@ -473,7 +493,7 @@ const Store = (() => {
     months, glTotal, deptTotal, companyTotal, deptMonthly, companyMonthly,
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
-    cellDetail, setCellDetail,
+    cellDetail, setCellDetail, clearDeptYear,
     needRevision, lockPeriod, unlockPeriod, openPeriod,
     addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate,
     myNotifications, markNotificationsRead, notify,

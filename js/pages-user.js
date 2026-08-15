@@ -195,7 +195,10 @@ const PagesUser = (() => {
         </div>`
       + lockMsg
       + card('', `<div class="grid-hint">💡 Tab/Enter เลื่อนช่อง · วาง (Ctrl+V) จาก Excel ได้หลายช่องพร้อมกัน · ช่องว่าง = ยังไม่กรอก (ใส่ 0 หากไม่มีงบ) · 🧾 ที่มุมช่อง = รายละเอียดหลายรายการ
-          <button id="gridFsBtn" class="ghost-btn small" style="float:right" title="ขยาย/ย่อตาราง (Esc เพื่อย่อกลับ)">⛶ ขยายตาราง</button></div>
+          <span class="hint-actions">
+            <button id="gridClearBtn" class="ghost-btn small btn-clear" title="ล้างข้อมูลที่กรอกทั้งปีนี้" ${c.editable ? '' : 'disabled'}>🗑 ล้างข้อมูล</button>
+            <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
+          </span></div>
         <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' });
   }
 
@@ -295,10 +298,22 @@ const PagesUser = (() => {
     const setFs = on => {
       fsCard.classList.toggle('fullscreen', on);
       document.body.classList.toggle('no-scroll', on);
-      fsBtn.textContent = on ? '✕ ย่อกลับ (Esc)' : '⛶ ขยายตาราง';
+      fsBtn.textContent = on ? '✕' : '⛶';
+      fsBtn.title = on ? 'ย่อกลับ (Esc)' : 'ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)';
     };
     const fsToggle = () => setFs(!fsCard.classList.contains('fullscreen'));
     fsBtn?.addEventListener('click', fsToggle);
+
+    /* --- ล้างข้อมูลทั้งปี --- */
+    document.getElementById('gridClearBtn')?.addEventListener('click', () => {
+      UI.confirm2(`ล้างข้อมูลงบประมาณปี ${c.year} ทั้งหมด?`,
+        `ตัวเลขทุกเดือน, MTP, เหตุผล/สมมติฐาน และรายละเอียดค่าใช้จ่ายของ ${esc(c.dept.name)} จะถูกล้างเป็นฟอร์มเปล่า`,
+        'การกระทำนี้ย้อนกลับไม่ได้ (ข้อมูลปีอื่นไม่ถูกแตะ)',
+        () => {
+          try { Store.clearDeptYear(user, c.year, c.deptId); toast('ล้างข้อมูลปี ' + c.year + ' แล้ว — เริ่มกรอกใหม่ได้เลย'); App.render(); }
+          catch (e) { toast(e.message, 'err'); }
+        });
+    });
     document.addEventListener('keydown', function escFs(e) {
       if (e.key === 'Escape' && fsCard?.classList.contains('fullscreen')) setFs(false);
       if (!document.body.contains(fsCard)) document.removeEventListener('keydown', escFs);
