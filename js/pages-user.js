@@ -406,13 +406,15 @@ const PagesUser = (() => {
     }));
 
     document.getElementById('calcOpenBtn')?.addEventListener('click', () => {
-      const back = UI.modal('🧮 เครื่องมือคำนวณ', calcCards(user), [{ label: 'ปิด', cls: 'ghost-btn' }]);
+      const back = UI.modal(`<span class="mt-ic mt-rainbow">🧮</span><span class="mt-tx">เครื่องมือคำนวณ<small>Financial Tools &amp; Calculators</small></span>`,
+        calcCards(user), [{ label: 'ปิด', cls: 'ghost-btn' }]);
       back.querySelector('.modal').classList.add('modal-wide');
       calculatorsBind(user);
     });
     document.getElementById('calcuOpenBtn')?.addEventListener('click', () => {
-      const back = UI.modal('🖩 เครื่องคิดเลข', calcuHtml(), [{ label: 'ปิด', cls: 'ghost-btn' }]);
-      back.querySelector('.modal').classList.add('modal-narrow');
+      const back = UI.modal(`<span class="mt-ic mt-teal">🖩</span><span class="mt-tx">เครื่องคิดเลข<small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></span>`,
+        calcuHtml(), [{ label: 'ปิด', cls: 'ghost-btn' }]);
+      back.querySelector('.modal').classList.add('modal-calcu');
       calcuBind();
     });
 
@@ -482,62 +484,106 @@ const PagesUser = (() => {
     });
   }
 
-  /* ============ Calculators ============ */
+  /* ============ Calculators (ดีไซน์ตาม mock: 3 คอลัมน์ + ธง + การ์ดผลลัพธ์สี) ============ */
+  const FLAGS = { THB: '🇹🇭', USD: '🇺🇸', CNY: '🇨🇳', EUR: '🇪🇺', LAK: '🇱🇦' };
   function calcCards(user) {
     const year = UI.year();
     const rates = Store.db.exchangeRates.filter(r => r.year === year);
     const fuels = Store.db.fuelPrices.filter(f => f.year === year);
-    const rateRows = rates.map(r => `<tr><td>${r.currency}</td><td class="num">${fmt(r.rateToLAK)}</td><td>กีบ / 1 ${r.currency}</td></tr>`).join('');
+    const rateRows = rates.map(r => `<tr>
+      <td><span class="flag">${FLAGS[r.currency] || '💱'}</span> <b>${r.currency}</b></td>
+      <td class="num"><b>${fmt(r.rateToLAK)}.00</b></td>
+      <td class="muted small">ต่อ 1 ${r.currency}</td></tr>`).join('');
 
-    return `<div class="grid-3">`
-      + card('💱 อัตราแลกเปลี่ยน', `
-          <table class="data-table small"><thead><tr><th>สกุลเงิน</th><th class="num">Budget Rate ${year}</th><th></th></tr></thead><tbody>${rateRows}</tbody></table>
-          <div class="calc-form">
-            <label class="fld"><span>สกุลเงิน</span><select id="fxCur">${rates.map(r => `<option value="${r.currency}">${r.currency}</option>`).join('')}</select></label>
-            <label class="fld"><span>จำนวนเงิน</span><input id="fxAmt" inputmode="decimal" placeholder="1,000"></label>
-            <label class="fld"><span>อัตราแลกเปลี่ยน (แก้ไขได้)</span><input id="fxRate" inputmode="decimal" value="${rates[0] ? fmt(rates[0].rateToLAK) : ''}"></label>
-            <div class="calc-result">= <b id="fxOut">—</b> กีบ</div>
-            <button class="ghost-btn" id="fxUse">คัดลอกผลลัพธ์</button>
-          </div>`)
-      + card('⛽ ราคาน้ำมัน', `
-          <table class="data-table small"><thead><tr><th>ชนิด</th><th class="num">ราคากลาง ${year}</th></tr></thead>
-          <tbody>${fuels.map(f => `<tr><td>${esc(f.fuelType)}</td><td class="num">${fmt(f.pricePerLiter)} กีบ/ลิตร</td></tr>`).join('')}</tbody></table>
-          <div class="calc-form">
-            <label class="fld"><span>ชนิดน้ำมัน</span><select id="fuType">${fuels.map(f => `<option value="${f.pricePerLiter}">${esc(f.fuelType)}</option>`).join('')}</select></label>
-            <label class="fld"><span>ราคาปัจจุบัน (กีบ/ลิตร)</span><input id="fuPrice" inputmode="decimal" value="${fuels[0] ? fmt(fuels[0].pricePerLiter) : ''}"></label>
-            <label class="fld"><span>คาดว่าเพิ่มขึ้น %</span><input id="fuInc" inputmode="decimal" value="0"></label>
-            <label class="fld"><span>ปริมาณใช้ (ลิตร/เดือน)</span><input id="fuCons" inputmode="decimal" placeholder="1,000"></label>
-            <div class="calc-result">ราคาคาดการณ์ <b id="fuExp">—</b> กีบ/ลิตร<br>ต่อเดือน <b id="fuMon">—</b> กีบ<br>ต่อปี <b id="fuYear">—</b> กีบ</div>
-          </div>`)
-      + card('🧮 Budget Assumption (Qty × Price × Freq)', `
-          <div class="calc-form">
-            <label class="fld"><span>จำนวน (เช่น พนักงาน 25 คน)</span><input id="qQty" inputmode="decimal" placeholder="25"></label>
-            <label class="fld"><span>ราคาต่อหน่วย (กีบ)</span><input id="qPrice" inputmode="decimal" placeholder="1,700,000"></label>
-            <label class="fld"><span>ความถี่ (ครั้ง/ปี)</span><input id="qFreq" inputmode="decimal" value="1"></label>
-            <div class="calc-result">งบประมาณ = <b id="qOut">—</b> กีบ/ปี</div>
-            <div class="fld"><span>สร้างข้อความ Assumption อัตโนมัติ</span><div id="qText" class="assume-text muted">—</div></div>
-            <button class="ghost-btn" id="qCopy">คัดลอกข้อความ + ตัวเลข</button>
-          </div>`)
-      + `</div>`;
+    return `<div class="ft-grid">
+
+      <section class="ft-col">
+        <div class="ft-head"><span class="ft-ic" style="background:#e6f0fb">💱</span>
+          <div><b>อัตราแลกเปลี่ยน</b><small>Exchange Rate</small></div></div>
+        <div class="ft-ratebox">
+          <div class="ft-ratebox-head"><b>Budget Rate ${year}</b>
+            <span class="pill-green">อัปเดตล่าสุด 15 ส.ค. ${year}</span></div>
+          <table class="ft-table"><thead><tr><th>สกุลเงิน</th><th class="num">อัตราแลกเปลี่ยน</th><th>ต่อ 1 หน่วย</th></tr></thead>
+          <tbody>${rateRows}</tbody></table>
+        </div>
+        <div class="ft-divider"><span>คำนวณเอง</span></div>
+        <div class="two-up">
+          <label class="fld"><span>เลือกสกุลเงิน</span><select id="fxCur">${rates.map(r => `<option value="${r.currency}">${FLAGS[r.currency] || ''} ${r.currency}</option>`).join('')}</select></label>
+          <label class="fld"><span>จำนวนเงิน</span><input id="fxAmt" inputmode="decimal" value="1,000"></label>
+        </div>
+        <div class="fx-ratebox"><div class="fxr-label">อัตราแลกเปลี่ยน (แก้ไขได้)</div>
+          <div class="fxr-row"><input id="fxRate" inputmode="decimal" value="${rates[0] ? fmt(rates[0].rateToLAK) : ''}">
+          <span class="muted small">ต่อ 1 <span id="fxCurLabel">${rates[0]?.currency || ''}</span></span></div></div>
+        <button class="fx-result" id="fxCopyBar" title="คลิกเพื่อคัดลอกผลลัพธ์">
+          <span class="fxr-sub">💰 เท่ากับ</span>
+          <span class="fxr-val"><b id="fxOut">680,000</b> กีบ</span></button>
+      </section>
+
+      <section class="ft-col">
+        <div class="ft-head"><span class="ft-ic" style="background:#fdecec">⛽</span>
+          <div><b>ราคาน้ำมัน</b><small>Fuel Price</small></div>
+          <span class="pill-green" style="margin-left:auto">ข้อมูลล่าสุด</span></div>
+        <div class="fuel-info"><div class="ft-ratebox-head"><b>🛢 ราคากลาง ${year}</b></div>
+          ${fuels.map(f => `<div class="fuel-row"><span>${esc(f.fuelType)}</span><b>${fmt(f.pricePerLiter)}.00 กีบ/ลิตร</b></div>`).join('')}
+        </div>
+        <label class="fld"><span>ชนิดน้ำมัน</span><select id="fuType">${fuels.map(f => `<option value="${f.pricePerLiter}">⛽ ${esc(f.fuelType)}</option>`).join('')}</select></label>
+        <label class="fld"><span>ราคาปัจจุบัน (กีบ/ลิตร)</span><input id="fuPrice" inputmode="decimal" value="${fuels[0] ? fmt(fuels[0].pricePerLiter) : ''}"></label>
+        <div class="two-up">
+          <label class="fld"><span>คาดว่าเพิ่มขึ้น %</span><div class="suffix-wrap"><input id="fuInc" inputmode="decimal" value="0"><span class="suffix">%</span></div></label>
+          <label class="fld"><span>ปริมาณใช้ (ลิตร/เดือน)</span><input id="fuCons" inputmode="decimal" value="1,000"></label>
+        </div>
+        <div class="green-card"><span class="gc-label">📈 ราคาคาดการณ์</span>
+          <span class="gc-val"><b id="fuExp">—</b> กีบ/ลิตร</span></div>
+        <div class="green-card"><span class="gc-label">🧮 ประมาณการค่าใช้จ่าย</span>
+          <span class="gc-val"><b id="fuMon">—</b> กีบ/เดือน</span>
+          <span class="gc-sub">ต่อปี <b id="fuYear">—</b> กีบ</span></div>
+      </section>
+
+      <section class="ft-col">
+        <div class="ft-head"><span class="ft-ic" style="background:#f3effc">🧮</span>
+          <div><b>Budget Assumption</b><small>Qty × Price × Freq</small></div></div>
+        <label class="fld"><span>จำนวน (เช่น พนักงาน 25 คน)</span>
+          <div class="suffix-wrap"><input id="qQty" inputmode="decimal" value="25"><span class="suffix">คน</span></div></label>
+        <label class="fld"><span>ราคาต่อหน่วย (กีบ)</span>
+          <div class="suffix-wrap"><input id="qPrice" inputmode="decimal" value="1,700,000"><span class="suffix">กีบ</span></div></label>
+        <label class="fld"><span>ความถี่ (ครั้ง/ปี)</span>
+          <div class="suffix-wrap"><input id="qFreq" inputmode="decimal" value="1"><span class="suffix">ครั้ง</span></div></label>
+        <div class="purple-card"><span class="gc-label">💰 งบประมาณต่อปี</span>
+          <span class="pc-val"><b id="qOut">—</b> กีบ</span></div>
+        <div class="fld"><span class="muted small">สร้างข้อความ Assumption อัตโนมัติ</span>
+          <div id="qText" class="assume-text">—</div></div>
+        <button class="ghost-btn" id="qCopy" style="width:100%">📋 คัดลอกข้อความ + ตัวเลข</button>
+      </section>
+
+    </div>
+    <div class="ft-foot muted small">ℹ️ หมายเหตุ: อัตราแลกเปลี่ยนและราคาน้ำมันเป็นราคากลางอ้างอิงสำหรับการจัดทำงบประมาณปี ${year} (กำหนดโดยแผนกบัญชี)</div>`;
   }
 
-  /* ============ เครื่องคิดเลข (ป๊อปอัพแยกของตัวเอง) ============ */
+  /* ============ เครื่องคิดเลข (ธีมเขียวมิ้นต์ตาม mock) ============ */
   function calcuHtml() {
-    return `<div class="calcu">
-      <input id="calcuDisplay" class="calcu-display" inputmode="decimal" placeholder="0" autocomplete="off">
-      <div class="calcu-grid">
-        <button data-ck="C" class="calcu-btn fn">C</button><button data-ck="⌫" class="calcu-btn fn">⌫</button>
-        <button data-ck="%" class="calcu-btn fn">%</button><button data-ck="/" class="calcu-btn op">÷</button>
-        <button data-ck="7" class="calcu-btn">7</button><button data-ck="8" class="calcu-btn">8</button>
-        <button data-ck="9" class="calcu-btn">9</button><button data-ck="*" class="calcu-btn op">×</button>
-        <button data-ck="4" class="calcu-btn">4</button><button data-ck="5" class="calcu-btn">5</button>
-        <button data-ck="6" class="calcu-btn">6</button><button data-ck="-" class="calcu-btn op">−</button>
-        <button data-ck="1" class="calcu-btn">1</button><button data-ck="2" class="calcu-btn">2</button>
-        <button data-ck="3" class="calcu-btn">3</button><button data-ck="+" class="calcu-btn op">+</button>
-        <button data-ck="0" class="calcu-btn">0</button><button data-ck="000" class="calcu-btn">000</button>
-        <button data-ck="." class="calcu-btn">.</button><button data-ck="=" class="calcu-btn eq">=</button>
+    const fnBtn = (k, sym, lb) => `<button data-ck="${k}" class="cbtn fn"><b>${sym}</b><small>${lb}</small></button>`;
+    const opBtn = (k, sym, lb) => `<button data-ck="${k}" class="cbtn op"><b>${sym}</b><small>${lb}</small></button>`;
+    const nBtn = k => `<button data-ck="${k}" class="cbtn">${k}</button>`;
+    return `<div class="calcu2">
+      <div class="calcu2-display"><span class="cd-label">ผลลัพธ์</span>
+        <input id="calcuDisplay" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+      <div class="calcu2-fnrow">
+        ${fnBtn('C', 'C', 'ล้างทั้งหมด')}${fnBtn('CE', 'CE', 'ล้างล่าสุด')}${fnBtn('⌫', '⌫', 'ลบตัวสุดท้าย')}
+        ${fnBtn('%', '%', 'เปอร์เซ็นต์')}${opBtn('/', '÷', 'หาร')}
       </div>
-      <button class="ghost-btn" id="calcuCopy" style="width:100%">คัดลอกผลลัพธ์ → นำไปวางในช่องงบ</button>
+      <div class="calcu2-grid">
+        ${nBtn('7')}${nBtn('8')}${nBtn('9')}${opBtn('*', '×', 'คูณ')}
+        ${nBtn('4')}${nBtn('5')}${nBtn('6')}${opBtn('-', '−', 'ลบ')}
+        ${nBtn('1')}${nBtn('2')}${nBtn('3')}${opBtn('+', '+', 'บวก')}
+        ${nBtn('0')}${nBtn('00')}
+        <button data-ck="." class="cbtn"><b>·</b><small>จุดทศนิยม</small></button>
+        <button data-ck="=" class="cbtn eq"><b>=</b><small>เท่ากับ</small></button>
+      </div>
+      <button class="calcu2-copy" id="calcuCopy">
+        <span class="cc-ic">📋</span>
+        <span><b>คัดลอกผลลัพธ์ → วางในช่องงบประมาณ</b><br>
+        <small>พิมพ์สูตรในช่องผลลัพธ์ได้เลย แล้วกด Enter เพื่อคำนวณ</small></span>
+      </button>
     </div>`;
   }
   function calcuBind() {
@@ -558,6 +604,7 @@ const PagesUser = (() => {
       const k = b.dataset.ck;
       disp.classList.remove('calcu-err');
       if (k === 'C') disp.value = '';
+      else if (k === 'CE') disp.value = disp.value.replace(/[\d.,]+\s*$/, ''); // ล้างตัวเลขล่าสุด
       else if (k === '⌫') disp.value = disp.value.slice(0, -1);
       else if (k === '=') evaluate();
       else disp.value += k;
@@ -588,12 +635,14 @@ const PagesUser = (() => {
     document.getElementById('fxCur')?.addEventListener('change', e => {
       const r = rates.find(x => x.currency === e.target.value);
       if (r) document.getElementById('fxRate').value = fmt(r.rateToLAK);
+      const lb = document.getElementById('fxCurLabel');
+      if (lb) lb.textContent = e.target.value;
       fx();
     });
     ['fxAmt', 'fxRate'].forEach(id => document.getElementById(id)?.addEventListener('input', fx));
-    document.getElementById('fxUse')?.addEventListener('click', () => {
-      navigator.clipboard?.writeText(document.getElementById('fxOut').textContent);
-      toast('คัดลอกแล้ว — นำไปวางในช่องงบประมาณได้เลย');
+    document.getElementById('fxCopyBar')?.addEventListener('click', () => {
+      navigator.clipboard?.writeText(document.getElementById('fxOut').textContent.replace(/,/g, ''));
+      toast('คัดลอก ' + document.getElementById('fxOut').textContent + ' กีบ แล้ว — วางในช่องงบได้เลย');
     });
     const fu = () => {
       const exp = num('fuPrice') * (1 + num('fuInc') / 100);
@@ -615,7 +664,7 @@ const PagesUser = (() => {
       navigator.clipboard?.writeText(document.getElementById('qText').textContent);
       toast('คัดลอกแล้ว — นำไปวางในช่อง Assumption ได้เลย');
     });
-
+    fx(); fu(); q(); // คำนวณค่าเริ่มต้นทันทีที่เปิด
   }
 
   return { dashboard, dashboardBind, budget, budgetBind, review, reviewBind, calculators, calculatorsBind };

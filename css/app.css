@@ -451,6 +451,107 @@ body.no-scroll { overflow: hidden; }
 .calcu-btn.eq { background: var(--blue); color: #fff; border-color: var(--blue); }
 .calcu-btn.eq:hover { background: var(--navy-2); }
 
+/* ---------- เครื่องมือคำนวณ (Financial Tools — ตาม mock) ---------- */
+.mt-ic {
+  width: 38px; height: 38px; border-radius: 11px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: 19px; margin-right: 10px; vertical-align: middle;
+}
+.mt-rainbow { background: linear-gradient(135deg, #fde68a, #f9a8d4 45%, #93c5fd); }
+.mt-teal { background: linear-gradient(135deg, #34d399, #0ea5b7); }
+.mt-tx { display: inline-flex; flex-direction: column; vertical-align: middle; line-height: 1.3; }
+.mt-tx small { font-size: 11px; color: var(--muted); font-weight: 400; }
+.ft-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 1000px) { .ft-grid { grid-template-columns: 1fr; } }
+.ft-col {
+  background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px;
+  box-shadow: var(--shadow);
+}
+.ft-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ft-ic { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+.ft-head b { font-size: 15px; display: block; }
+.ft-head small { color: var(--muted); font-size: 11px; }
+.pill-green { font-size: 10.5px; font-weight: 700; color: #059669; background: #d1fae5; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.ft-ratebox { background: #f8fafc; border: 1px solid var(--border); border-radius: 11px; padding: 10px 12px; margin-bottom: 12px; }
+.ft-ratebox-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
+.ft-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ft-table th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 600; padding: 4px 4px; border-bottom: 1px solid var(--border); }
+.ft-table td { padding: 6px 4px; border-bottom: 1px dashed var(--border); font-variant-numeric: tabular-nums; }
+.ft-table tr:last-child td { border-bottom: none; }
+.ft-table .num { text-align: right; }
+.flag { font-size: 14px; }
+.ft-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; margin: 12px 0 10px; }
+.ft-divider::before, .ft-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.fx-ratebox { background: #eef4fc; border: 1px solid #cfe0f5; border-radius: 11px; padding: 10px 12px; margin: 4px 0 10px; }
+.fxr-label { font-size: 11.5px; font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+.fxr-row { display: flex; align-items: baseline; gap: 10px; }
+.fxr-row input {
+  font-size: 24px !important; font-weight: 800; color: var(--navy); border: none !important;
+  background: transparent !important; padding: 0 !important; width: 60% !important; font-variant-numeric: tabular-nums;
+}
+.fxr-row input:focus { outline: none; border-bottom: 2px solid var(--blue) !important; border-radius: 0 !important; }
+.fx-result {
+  width: 100%; font: inherit; cursor: pointer; border: none; border-radius: 12px; padding: 12px 16px;
+  background: linear-gradient(100deg, #2563eb, #3b82f6); color: #fff; text-align: left;
+  display: flex; flex-direction: column; gap: 2px; box-shadow: 0 6px 18px rgba(37,99,235,.35);
+  transition: transform .13s, box-shadow .18s;
+}
+.fx-result:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(37,99,235,.45); }
+.fxr-sub { font-size: 11.5px; opacity: .85; }
+.fxr-val { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.fuel-info { background: #eef4fc; border: 1px solid #cfe0f5; border-radius: 11px; padding: 10px 12px; margin-bottom: 12px; }
+.fuel-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px dashed #cfe0f5; }
+.fuel-row:last-child { border-bottom: none; }
+.suffix-wrap { position: relative; }
+.suffix-wrap input { width: 100%; padding-right: 44px !important; }
+.suffix {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  font-size: 11px; font-weight: 700; color: var(--ink-2); background: #f0efec; border-radius: 6px; padding: 3px 8px;
+}
+.green-card, .purple-card { border-radius: 11px; padding: 10px 14px; margin-bottom: 9px; display: flex; flex-direction: column; gap: 1px; }
+.green-card { background: #ecfdf5; border: 1px solid #a7f3d0; }
+.purple-card { background: #f5f3ff; border: 1px solid #ddd6fe; text-align: center; padding: 14px; }
+.gc-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+.gc-val { font-size: 17px; font-weight: 800; color: #047857; font-variant-numeric: tabular-nums; }
+.gc-sub { font-size: 11.5px; color: var(--muted); }
+.pc-val { font-size: 22px; font-weight: 800; color: #6d28d9; font-variant-numeric: tabular-nums; }
+.ft-foot { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+/* ---------- เครื่องคิดเลข (ธีมเขียวมิ้นต์ — ตาม mock) ---------- */
+.modal.modal-calcu { width: 460px; }
+.calcu2-display {
+  background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 13px; padding: 10px 16px 12px; margin-bottom: 12px;
+}
+.cd-label { font-size: 11.5px; color: #059669; font-weight: 700; display: block; }
+.calcu2-display input {
+  width: 100%; border: none; background: transparent; font: inherit; font-size: 30px; font-weight: 800;
+  text-align: right; color: #064e3b; outline: none; font-variant-numeric: tabular-nums;
+}
+.calcu2-display input.calcu-err { color: var(--up); }
+.calcu2-fnrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
+.calcu2-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.cbtn {
+  font: inherit; font-size: 19px; font-weight: 700; color: var(--ink); padding: 10px 0 8px;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 0; line-height: 1.15;
+  box-shadow: 0 1px 3px rgba(13,54,107,.06); transition: transform .1s, box-shadow .15s, background .12s;
+}
+.cbtn small { font-size: 9px; font-weight: 500; color: var(--muted); }
+.cbtn:hover { background: #f8fafc; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(13,54,107,.12); }
+.cbtn:active { transform: scale(.96); }
+.cbtn.fn { background: #ecfdf5; border-color: #a7f3d0; color: #047857; font-size: 16px; }
+.cbtn.fn small, .cbtn.op small, .cbtn.eq small { color: inherit; opacity: .75; }
+.cbtn.op { background: #ecfdf5; border-color: #a7f3d0; color: #0d9488; }
+.cbtn.eq { background: linear-gradient(135deg, #34d399, #2563eb); border: none; color: #fff; box-shadow: 0 4px 14px rgba(13,148,136,.35); }
+.calcu2-copy {
+  width: 100%; font: inherit; text-align: left; display: flex; gap: 10px; align-items: center;
+  background: #f0fdf9; border: 1px solid #a7f3d0; border-radius: 11px; padding: 10px 12px; cursor: pointer;
+  font-size: 12.5px; transition: background .12s;
+}
+.calcu2-copy:hover { background: #dcfce7; }
+.calcu2-copy small { color: var(--muted); font-size: 11px; }
+.cc-ic { width: 34px; height: 34px; border-radius: 50%; background: #d1fae5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
 /* ---------- toast & modal ---------- */
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
