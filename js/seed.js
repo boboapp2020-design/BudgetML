@@ -18,7 +18,9 @@ const SEED = (() => {
   }));
 
   const glAccounts = SEED_DATA.glMaster.map(g => ({
-    id: 'g' + g.code, code: g.code, name: g.name, glGroup: g.group || 'อื่นๆ', active: true,
+    id: 'g' + g.code, code: g.code, name: g.name, glGroup: g.group || 'อื่นๆ',
+    ioGroup: g.ioGroup || 'ไม่คุม', // รหัสกลุ่ม IO 2 หลัก หรือ 'ไม่คุม' (จากชีท ML&SF_รหัสควบคุมงบ)
+    active: true,
   }));
 
   // หน่วยงานย่อย (Cost Center) 48 รายการ
@@ -153,7 +155,7 @@ const SEED = (() => {
   ];
 
   return {
-    meta: { schemaVersion: 6, seededAt: null, appName: 'Annual Budget Planner', company: 'บริษัท น้ำตาลมิตรลาว จำกัด', currency: 'LAK', yearCurrent: Y_CUR, yearPrevious: Y_PREV },
+    meta: { schemaVersion: 7, seededAt: null, appName: 'Annual Budget Planner', company: 'บริษัท น้ำตาลมิตรลาว จำกัด', currency: 'LAK', yearCurrent: Y_CUR, yearPrevious: Y_PREV },
     users, departments, glAccounts, cctMaster, departmentRows, departmentGL,
     budgetPeriods, budgets, glNotes, deptStatus, cellDetails,
     exchangeRates, fuelPrices, auditLogs, notifications,

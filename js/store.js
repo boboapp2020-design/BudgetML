@@ -493,8 +493,12 @@ const Store = (() => {
     (db.departmentRows || []).filter(x => x.departmentId === deptId).forEach(x => { cnt[x.cct] = (cnt[x.cct] || 0) + 1; });
     const mainCct = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0]
       || (db.cctMaster || []).find(c => c.departmentId === deptId)?.code || '0000000000';
-    const code = gl(glId)?.code || '';
-    db.departmentRows.push({ departmentId: deptId, cct: mainCct, glId, io: '', codeA: mainCct + code + 'a' });
+    const g2 = gl(glId);
+    const code = g2?.code || '';
+    // ประกอบ IO ตามสูตรบริษัท: comp(3) + '55' + CCT หลัก 4-8 + รหัสกลุ่ม GL — ถ้า GL ไม่คุม ให้ระบุ 'ไม่คุม'
+    const grp = g2?.ioGroup || 'ไม่คุม';
+    const io = /^\d{2}$/.test(grp) ? mainCct.slice(0, 3) + '55' + mainCct.slice(3, 8) + grp : 'ไม่คุม';
+    db.departmentRows.push({ departmentId: deptId, cct: mainCct, glId, io, codeA: mainCct + code + 'a' });
     db.departmentGL.push({ departmentId: deptId, glId });
     audit(actor, 'มอบหมาย GL ให้หน่วยงาน', { deptId, glCode: code, newValue: 'CCT ' + mainCct });
     save();
