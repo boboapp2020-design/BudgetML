@@ -39,7 +39,7 @@ a { color: var(--blue); }
 .brand-link:hover .brand-name { text-decoration: underline; text-underline-offset: 3px; }
 .app-logo svg { width: 40px; height: 40px; display: block; }
 .topbar-left { display: flex; align-items: center; gap: 14px; }
-.topbar-idash { height: 52px; display: block; }
+.topbar-idash { height: 64px; display: block; }
 .login-applogo svg { width: 72px; height: 72px; margin: 0 auto 10px; display: block; }
 .login-powered { text-align: center; margin-top: 16px; }
 .login-powered img { height: 40px; opacity: .9; border-radius: 8px; }
