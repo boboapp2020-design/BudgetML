@@ -202,26 +202,43 @@ const Charts = (() => {
     container.appendChild(lg);
   }
 
-  /* ---------- Gauge: % ความคืบหน้า (สีเปลี่ยนตามระดับ, 100% = เขียวสด) ---------- */
-  function gaugeColor(pct) {
-    if (pct >= 100) return '#0ca30c';
-    if (pct >= 70)  return '#eda100';
-    if (pct >= 40)  return '#eb6834';
-    return '#d03b3b';
+  /* ---------- Gauge: วงแหวน 270° สไตล์โมเดิร์น (gradient + animation, 100% = เขียวสด) ---------- */
+  function gaugeTheme(pct) {
+    if (pct >= 100) return ['#34d399', '#059669']; // เขียวสด
+    if (pct >= 70)  return ['#fcd34d', '#d97706']; // เหลืองทอง
+    if (pct >= 40)  return ['#fdba74', '#ea580c']; // ส้ม
+    return ['#fca5a5', '#dc2626'];                 // แดง
   }
+  function gaugeColor(pct) { return gaugeTheme(pct)[1]; }
+  let gaugeId = 0;
   function gauge(pct, opts = {}) {
     pct = Math.max(0, Math.min(100, Math.round(pct)));
-    const W = opts.width || 150, H = W * 0.62;
-    const cx = W / 2, cy = H * 0.92, r = W * 0.38, sw = W * 0.105;
-    const color = gaugeColor(pct);
-    const a = Math.PI * (1 - pct / 100); // 180° → 0°
-    const x2 = cx + r * Math.cos(a), y2 = cy - r * Math.sin(a);
-    const large = pct > 50 ? 1 : 0;
-    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" style="display:block" role="img" aria-label="ความคืบหน้า ${pct}%">
-      <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="#e1e0d9" stroke-width="${sw}" stroke-linecap="round"/>
-      ${pct > 0 ? `<path d="M ${cx - r} ${cy} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"/>` : ''}
-      <text x="${cx}" y="${cy - r * 0.12}" text-anchor="middle" font-size="${W * 0.17}" font-weight="800" fill="${color}" font-family="inherit">${pct}%</text>
-      ${pct >= 100 ? `<text x="${cx}" y="${cy - r * 0.62}" text-anchor="middle" font-size="${W * 0.1}">✓</text>` : ''}
+    const S = opts.width || 118;
+    const sw = S * 0.085;                       // ความหนาเส้น (บาง ทันสมัย)
+    const c = S / 2, r = (S - sw) / 2 - 1;
+    const [c1, c2] = gaugeTheme(pct);
+    const id = 'gg' + (++gaugeId);
+    // วงแหวน 270° เริ่มมุมล่างซ้าย (135°) กวาดตามเข็มไปมุมล่างขวา (45°)
+    const rad = d => d * Math.PI / 180;
+    const P = d => `${(c + r * Math.cos(rad(d))).toFixed(2)} ${(c + r * Math.sin(rad(d))).toFixed(2)}`;
+    const arc = `M ${P(135)} A ${r} ${r} 0 1 1 ${P(45)}`;
+    const L = 2 * Math.PI * r * 0.75;           // ความยาวเส้นโค้ง 270°
+    const off = L * (1 - pct / 100);
+    return `<svg viewBox="0 0 ${S} ${S}" width="${S}" style="display:block" role="img" aria-label="ความคืบหน้า ${pct}%">
+      <defs><linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+      <path d="${arc}" fill="none" stroke="#eeede8" stroke-width="${sw}" stroke-linecap="round"/>
+      ${pct > 0 ? `<path d="${arc}" fill="none" stroke="url(#${id})" stroke-width="${sw}" stroke-linecap="round"
+        stroke-dasharray="${L.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}">
+        <animate attributeName="stroke-dashoffset" from="${L.toFixed(1)}" to="${off.toFixed(1)}"
+          dur="0.8s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.22 1 0.36 1"/>
+      </path>` : ''}
+      <text x="${c}" y="${c + S * 0.07}" text-anchor="middle" font-family="inherit"
+        font-size="${S * 0.24}" font-weight="800" fill="${c2}" style="font-variant-numeric:tabular-nums">${pct}<tspan font-size="${S * 0.12}" font-weight="700" dx="1">%</tspan></text>
+      ${pct >= 100
+        ? `<circle cx="${c}" cy="${c + S * 0.36}" r="${S * 0.075}" fill="#059669"/>
+           <path d="M ${c - S * 0.035} ${c + S * 0.36} l ${S * 0.025} ${S * 0.028} l ${S * 0.05} -${S * 0.058}" fill="none" stroke="#fff" stroke-width="${S * 0.022}" stroke-linecap="round" stroke-linejoin="round"/>`
+        : `<text x="${c}" y="${c + S * 0.38}" text-anchor="middle" font-size="${S * 0.085}" fill="#898781" font-family="inherit">ความคืบหน้า</text>`}
     </svg>`;
   }
 
