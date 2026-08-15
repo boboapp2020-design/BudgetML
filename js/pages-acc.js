@@ -346,17 +346,19 @@ const PagesAcc = (() => {
           <div class="inline-form"><input id="newDeptCode" placeholder="รหัส เช่น 1133" style="width:110px">
           <input id="newDeptName" placeholder="ชื่อหน่วยงาน เช่น แผนกวิเคราะห์คุณภาพ" style="width:280px">
           <button class="primary-btn" id="addDeptBtn">＋ เพิ่มหน่วยงาน</button></div>`)
-      + card(`GL Master (${Store.db.glAccounts.length} รายการ)`, `
-          <div class="table-scroll" style="max-height:260px"><table class="data-table small"><thead><tr><th>รหัส</th><th>ชื่อบัญชี</th><th>กลุ่ม</th></tr></thead><tbody>${glRows}</tbody></table></div>
-          <div class="inline-form"><input id="newGlCode" placeholder="รหัส เช่น 636900" style="width:110px">
-          <input id="newGlName" placeholder="ชื่อบัญชี" style="width:250px">
-          <input id="newGlGroup" placeholder="กลุ่มบัญชี" style="width:180px">
-          <button class="primary-btn" id="addGlBtn">＋ เพิ่ม GL</button></div>`)
+      + card(`GL Master (${Store.db.glAccounts.length} รายการ) — อ้างอิงจากไฟล์ ML_Form`, `
+          <div class="table-scroll" style="max-height:260px"><table class="data-table small"><thead><tr><th>รหัส</th><th>ชื่อบัญชี</th><th>กลุ่ม</th></tr></thead><tbody>${glRows}</tbody></table></div>`)
       + card(`Budget Exchange Rate ปี ${year} (Reference Rate ทางการ)`, `
           <div class="table-scroll"><table class="data-table small"><thead><tr><th>สกุลเงิน</th><th class="num">กีบ / 1 หน่วย</th><th></th></tr></thead><tbody>
           ${rates.map(r => `<tr><td>${r.currency}</td><td class="num">${fmt(r.rateToLAK)}</td>
             <td><button class="ghost-btn small" data-editrate="${r.currency}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>`)
+      + card(`⛽ ราคากลางน้ำมัน ปี ${year}`, `
+          <div class="table-scroll"><table class="data-table small"><thead><tr><th>ชนิดน้ำมัน</th><th class="num">กีบ / ลิตร</th><th></th></tr></thead><tbody>
+          ${Store.db.fuelPrices.filter(f => f.year === year).map(f => `<tr><td>${esc(f.fuelType)}</td><td class="num">${fmt(f.pricePerLiter)}</td>
+            <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
+          </tbody></table></div>
+          <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
       + card('ข้อมูลสาธิต (Demo)', `<button class="ghost-btn" id="resetDemoBtn">↺ รีเซ็ตข้อมูลกลับค่าเริ่มต้น</button>
           <span class="muted small"> ล้างการแก้ไขทั้งหมด กลับเป็นข้อมูลตั้งต้นจากไฟล์ Excel</span>`);
   }
@@ -421,11 +423,6 @@ const PagesAcc = (() => {
       if (!code || !name) { toast('กรอกรหัสและชื่อหน่วยงาน', 'err'); return; }
       try { Store.addDepartment(user, code, name); toast('เพิ่มหน่วยงานแล้ว'); App.render(); } catch (e) { toast(e.message, 'err'); }
     });
-    document.getElementById('addGlBtn')?.addEventListener('click', () => {
-      const code = document.getElementById('newGlCode').value.trim(), name = document.getElementById('newGlName').value.trim(), grp = document.getElementById('newGlGroup').value.trim();
-      if (!code || !name) { toast('กรอกรหัสและชื่อบัญชี', 'err'); return; }
-      try { Store.addGL(user, code, name, grp); toast('เพิ่ม GL แล้ว'); App.render(); } catch (e) { toast(e.message, 'err'); }
-    });
     document.querySelectorAll('[data-assign]').forEach(b => b.addEventListener('click', () => {
       const deptId = b.dataset.assign;
       const assigned = new Set(Store.deptGLs(deptId).map(g => g.id));
@@ -470,6 +467,19 @@ const PagesAcc = (() => {
             const v = Number(String(document.getElementById('rateVal').value).replace(/,/g, ''));
             if (!isFinite(v) || v <= 0) { toast('ค่าไม่ถูกต้อง', 'err'); return; }
             try { Store.setRate(user, UI.year(), cur, v); toast('บันทึก Rate แล้ว'); close(); App.render(); } catch (e) { toast(e.message, 'err'); }
+          } },
+      ]);
+    }));
+    document.querySelectorAll('[data-editfuel]').forEach(b => b.addEventListener('click', () => {
+      const ft = b.dataset.editfuel;
+      const f = Store.db.fuelPrices.find(x => x.year === UI.year() && x.fuelType === ft);
+      UI.modal(`แก้ไขราคากลางน้ำมัน — ${esc(ft)} ปี ${UI.year()}`,
+        `<label class="fld"><span>กีบ / ลิตร</span><input id="fuelVal" inputmode="decimal" value="${f.pricePerLiter}"></label>`, [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: 'บันทึก', cls: 'primary-btn', onClick: close => {
+            const v = Number(String(document.getElementById('fuelVal').value).replace(/,/g, ''));
+            if (!isFinite(v) || v <= 0) { toast('ค่าไม่ถูกต้อง', 'err'); return; }
+            try { Store.setFuelPrice(user, UI.year(), ft, v); toast('บันทึกราคาน้ำมันแล้ว'); close(); App.render(); } catch (e) { toast(e.message, 'err'); }
           } },
       ]);
     }));

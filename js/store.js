@@ -443,6 +443,14 @@ const Store = (() => {
     audit(actor, 'กำหนด Budget Exchange Rate', { newValue: `${year} ${currency} = ${rate} LAK` });
     save();
   }
+  function setFuelPrice(actor, year, fuelType, price) {
+    assertAccounting(actor);
+    let f = db.fuelPrices.find(x => x.year === Number(year) && x.fuelType === fuelType);
+    if (!f) { f = { year: Number(year), fuelType, pricePerLiter: price }; db.fuelPrices.push(f); }
+    else f.pricePerLiter = price;
+    audit(actor, 'กำหนดราคากลางน้ำมัน', { newValue: `${year} ${fuelType} = ${price} กีบ/ลิตร` });
+    save();
+  }
 
   /* ---------- export ---------- */
   function csv(rows) { // rows: array of arrays → CSV string (Excel-ready, BOM UTF-8)
@@ -495,7 +503,7 @@ const Store = (() => {
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear,
     needRevision, lockPeriod, unlockPeriod, openPeriod,
-    addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate,
+    addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary,
     MONTH_TH, MONTH_S,
