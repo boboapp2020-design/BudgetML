@@ -1,0 +1,8 @@
+# ไฟล์ข้อมูลภายใน — ไม่ push ขึ้น public repo
+*.xlsx
+~$*
+
+# ไฟล์เฉพาะเครื่อง
+.claude/
+Thumbs.db
+desktop.ini
