@@ -184,7 +184,7 @@ const PagesUser = (() => {
     })();
 
     return pageHead(`กรอกงบประมาณปี ${c.year} 👋`, `${esc(c.dept.name)} · GL เป็นแถว เดือนเป็นคอลัมน์ · หน่วย: กีบ (LAK) · บันทึกอัตโนมัติ`,
-        `<button id="calcuOpenBtn" class="ghost-btn btn-purple"><img class="btn-ic" src="img/calc-icon.png" alt=""> เครื่องคิดเลข</button>
+        `<button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
          <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>`)
       + `<div class="kpi-grid kpi-grid-4">
@@ -427,7 +427,7 @@ const PagesUser = (() => {
       calculatorsBind(user);
     });
     document.getElementById('calcuOpenBtn')?.addEventListener('click', () => {
-      const back = UI.modal(`<img class="mt-img" src="img/calc-icon.png" alt=""><span class="mt-tx">เครื่องคิดเลข<small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></span>`,
+      const back = UI.modal(`<span class="mt-svg">${calcIcon(38)}</span><span class="mt-tx">เครื่องคิดเลข<small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></span>`,
         calcuHtml(), [{ label: 'ปิด', cls: 'ghost-btn' }]);
       back.querySelector('.modal').classList.add('modal-calcu');
       calcuBind();
@@ -576,6 +576,26 @@ const PagesUser = (() => {
 
     </div>
     <div class="ft-foot muted small">ℹ️ หมายเหตุ: อัตราแลกเปลี่ยนและราคาน้ำมันเป็นราคากลางอ้างอิงสำหรับการจัดทำงบประมาณปี ${year} (กำหนดโดยแผนกบัญชี)</div>`;
+  }
+
+  /* ---------- ไอคอนเครื่องคิดเลข (วาดเป็น SVG — คมชัดทุกขนาด ดูเป็นเครื่องมือจริง) ---------- */
+  function calcIcon(size = 38) {
+    const key = (x, y, fill, w = 5.6, h = 5.2) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${fill}"/>`;
+    const N = '#38506e', ops = ['#0ea5b7', '#3b82f6', '#2f6fe0', '#1d4ed8'];
+    let keys = '';
+    const xs = [11.2, 17.8, 24.4], ys = [20.6, 26.8, 33];
+    ys.forEach((y, r) => { xs.forEach(x => { keys += key(x, y, N); }); keys += key(31, y, ops[r]); });
+    keys += key(11.2, 39.2, N, 12.2, 5.2) + key(24.4, 39.2, N) + key(31, 39.2, ops[3]);
+    return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" style="display:block" aria-hidden="true">
+      <defs><linearGradient id="cig${size}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs>
+      <rect width="48" height="48" rx="11" fill="url(#cig${size})"/>
+      <rect x="7.5" y="6" width="33" height="41" rx="4.5" fill="#ffffff"/>
+      <rect x="7.5" y="6" width="33" height="41" rx="4.5" fill="none" stroke="rgba(11,40,80,.08)"/>
+      <rect x="11.2" y="9.6" width="25.4" height="8" rx="2" fill="#1e2a3d"/>
+      <rect x="29.8" y="11.4" width="4.6" height="4.4" rx="0.8" fill="none" stroke="#cfe0f5" stroke-width="1.1"/>
+      ${keys}
+    </svg>`;
   }
 
   /* ============ เครื่องคิดเลข (ธีมเขียวมิ้นต์ตาม mock) ============ */
