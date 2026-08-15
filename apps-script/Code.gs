@@ -136,8 +136,11 @@ function rebuildViews_(db) {
   writeView_(ss, 'MASTER_FuelPrices', [['ปีงบ', 'ชนิดน้ำมัน', 'ราคา (กีบ/ลิตร)']].concat(
     db.fuelPrices.map(function (f) { return [f.year, f.fuelType, f.pricePerLiter]; })));
 
-  writeView_(ss, 'MASTER_Periods', [['ปีงบ', 'สถานะ', 'Lock เมื่อ', 'Lock โดย']].concat(
-    db.budgetPeriods.map(function (p) { return [p.year, p.status, p.lockedAt || '', p.lockedBy || '']; })));
+  writeView_(ss, 'MASTER_Periods', [['ปีงบ', 'สถานะ', 'Phase', 'เกิดจริงถึงเดือน', 'Lock เมื่อ', 'Lock โดย']].concat(
+    db.budgetPeriods.map(function (p) {
+      return [p.year, p.status, p.phase === 'REVISE' ? 'REVISE' : 'ORIGINAL',
+              p.actualThru || '', p.lockedAt || '', p.lockedBy || ''];
+    })));
 
   // 1 แผนก (ที่เปิดใช้งาน) = 1 sheet — ระดับแถว CCT × GL พร้อม IO/code a
   var years = db.budgetPeriods.map(function (p) { return p.year; }).sort();
@@ -150,9 +153,12 @@ function rebuildViews_(db) {
         return ga < gb ? -1 : (ga > gb ? 1 : (a.cct < b.cct ? -1 : 1));
       });
     var rows = [['ปีงบ', 'code a', 'IO', 'CCT', 'หน่วยงานย่อย', 'รหัส GL', 'ชื่อบัญชี'].concat(MONTHS)
-      .concat(['รวมทั้งปี', 'MTP ปี+1', 'MTP ปี+2', 'ไม่ได้ใช้', 'สมมติฐาน', 'สาเหตุเพิ่ม/ลด', 'สถานะแผนก'])];
+      .concat(['รวมทั้งปี', 'งบเดิมทั้งปี', 'เพิ่ม-ลดระหว่างปี', 'เกิดจริงสะสม',
+               'MTP ปี+1', 'MTP ปี+2', 'ไม่ได้ใช้', 'สมมติฐาน', 'สาเหตุเพิ่ม/ลด', 'สถานะแผนก'])];
     years.forEach(function (y) {
       var st = (db.deptStatus.filter(function (s) { return s.year === y && s.departmentId === d.id; })[0] || {}).status || 'DRAFT';
+      // ข้อมูลรอบ Revise ของปีนั้น (ถ้ามี): งบเดิม (snapshot) + เกิดจริง
+      var snap = ((db.budgetSnapshots || []).filter(function (s3) { return s3.year === y && s3.label === 'ORIGINAL'; })[0]) || null;
       asg.forEach(function (a) {
         var g = glById[a.glId]; if (!g) return;
         var rowKey = a.glId + '@' + a.cct;
@@ -160,9 +166,18 @@ function rebuildViews_(db) {
         var m = row ? row.months : [null, null, null, null, null, null, null, null, null, null, null, null];
         var note = (db.glNotes.filter(function (n2) { return n2.year === y && n2.departmentId === d.id && n2.rowKey === rowKey; })[0]) || {};
         var total = m.reduce(function (s2, v) { return s2 + (v || 0); }, 0);
+        var origTotal = '', delta = '', actSum = '';
+        if (snap) {
+          var sr = (snap.rows.filter(function (x) { return x.departmentId === d.id && x.glId === a.glId && x.cct === a.cct; })[0]) || null;
+          origTotal = sr ? sr.months.reduce(function (s4, v) { return s4 + (v || 0); }, 0) : 0;
+          delta = total - origTotal;
+          var ar = ((db.actuals || []).filter(function (x) { return x.year === y && x.departmentId === d.id && x.glId === a.glId && x.cct === a.cct; })[0]) || null;
+          actSum = ar ? ar.months.reduce(function (s5, v) { return s5 + (v || 0); }, 0) : 0;
+        }
         rows.push([y, a.codeA || '', a.io || '', a.cct, cctById[a.cct] || '', g.code, g.name]
           .concat(m.map(function (v) { return v === null || v === undefined ? '' : v; }))
-          .concat([total, row && row.mtp1 !== null && row.mtp1 !== undefined ? row.mtp1 : '',
+          .concat([total, origTotal, delta, actSum,
+                   row && row.mtp1 !== null && row.mtp1 !== undefined ? row.mtp1 : '',
                    row && row.mtp2 !== null && row.mtp2 !== undefined ? row.mtp2 : '',
                    row && row.notUsed ? 'YES' : '', note.assumption || '', note.reason || '', st]));
       });
