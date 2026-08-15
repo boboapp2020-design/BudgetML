@@ -83,14 +83,40 @@ const Store = (() => {
       .map(x => gl(x.glId)).filter(g => g && g.active)
       .sort((a, b) => a.code.localeCompare(b.code));
   }
-  function budgetRow(year, deptId, glId) {
-    return db.budgets.find(b => b.year === Number(year) && b.departmentId === deptId && b.glId === glId) || null;
+
+  /* ---------- ระดับแถว CCT × GL (หน่วยกรอกจริง — rowKey = glId + '@' + cct) ---------- */
+  const cctName = code => (db.cctMaster || []).find(c => c.code === code)?.name || code;
+  function deptRows(deptId) {
+    const list = (db.departmentRows || []).filter(x => x.departmentId === deptId)
+      .map(x => ({ key: x.glId + '@' + x.cct, glId: x.glId, gl: gl(x.glId), cct: x.cct, cctName: cctName(x.cct), io: x.io || '', codeA: x.codeA || '' }))
+      .filter(r => r.gl && r.gl.active)
+      .sort((a, b) => a.gl.code.localeCompare(b.gl.code) || a.cct.localeCompare(b.cct));
+    // นับจำนวน CCT ต่อ GL เพื่อให้ UI รู้ว่า GL ไหนแตกหลายหน่วยงานย่อย
+    const cnt = {};
+    list.forEach(r => { cnt[r.glId] = (cnt[r.glId] || 0) + 1; });
+    list.forEach(r => { r.multiCct = cnt[r.glId] > 1; });
+    return list;
   }
-  function months(year, deptId, glId) {
-    const r = budgetRow(year, deptId, glId);
+  const splitKey = key => { const i = String(key).indexOf('@'); return [key.slice(0, i), key.slice(i + 1)]; };
+  function rowByKey(year, deptId, key) {
+    const [glId, cct] = splitKey(key);
+    return db.budgets.find(b => b.year === Number(year) && b.departmentId === deptId && b.glId === glId && b.cct === cct) || null;
+  }
+  function rowMonths(year, deptId, key) {
+    const r = rowByKey(year, deptId, key);
     return r ? r.months : Array(12).fill(null);
   }
   const sum = arr => arr.reduce((s, v) => s + (v ?? 0), 0);
+  const rowTotal = (year, deptId, key) => sum(rowMonths(year, deptId, key));
+
+  /* ---------- ระดับ GL (roll-up รวมทุก CCT) — ใช้กับ dashboard/วิเคราะห์ ---------- */
+  function months(year, deptId, glId) {
+    const rows = db.budgets.filter(b => b.year === Number(year) && b.departmentId === deptId && b.glId === glId);
+    if (!rows.length) return Array(12).fill(null);
+    const out = Array(12).fill(0);
+    rows.forEach(r => r.months.forEach((v, i) => { out[i] += v ?? 0; }));
+    return out;
+  }
   const glTotal = (year, deptId, glId) => sum(months(year, deptId, glId));
   function deptTotal(year, deptId) {
     return deptGLs(deptId).reduce((s, g) => s + glTotal(year, deptId, g.id), 0);
@@ -108,19 +134,27 @@ const Store = (() => {
     activeDepartments().forEach(d => deptMonthly(year, d.id).forEach((v, i) => { out[i] += v; }));
     return out;
   }
-  function note(year, deptId, glId) {
-    return db.glNotes.find(n => n.year === Number(year) && n.departmentId === deptId && n.glId === glId)
-      || { year: Number(year), departmentId: deptId, glId, reason: '', assumption: '' };
+  // note: รับได้ทั้ง rowKey (มี '@') = เหตุผลรายแถว หรือ glId = รวมเหตุผลทุก CCT ของ GL นั้น
+  function note(year, deptId, keyOrGl) {
+    const k = String(keyOrGl);
+    if (k.includes('@')) {
+      return db.glNotes.find(n => n.year === Number(year) && n.departmentId === deptId && n.rowKey === k)
+        || { year: Number(year), departmentId: deptId, rowKey: k, reason: '', assumption: '' };
+    }
+    const parts = db.glNotes.filter(n => n.year === Number(year) && n.departmentId === deptId && (n.rowKey || '').startsWith(k + '@'));
+    const join = f => [...new Set(parts.map(p => (p[f] || '').trim()).filter(Boolean))].join(' / ');
+    return { reason: join('reason'), assumption: join('assumption') };
   }
   function deptState(year, deptId) {
     return db.deptStatus.find(s => s.year === Number(year) && s.departmentId === deptId)
       || { year: Number(year), departmentId: deptId, status: 'DRAFT', submittedAt: null, revisionNote: null };
   }
   function completion(year, deptId) {
-    const gls = deptGLs(deptId);
-    if (!gls.length) return { filled: 0, total: 0, pct: 0 };
-    let filled = 0, total = gls.length * 12;
-    gls.forEach(g => months(year, deptId, g.id).forEach(v => { if (v !== null && v !== undefined) filled++; }));
+    const rows = deptRows(deptId);
+    if (!rows.length) return { filled: 0, total: 0, pct: 0 };
+    let filled = 0;
+    const total = rows.length * 12;
+    rows.forEach(r => rowMonths(year, deptId, r.key).forEach(v => { if (v !== null && v !== undefined) filled++; }));
     return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
   }
 
@@ -153,21 +187,24 @@ const Store = (() => {
   const MONTH_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   function validate(year, deptId) {
     const errors = [], warnings = [];
-    deptGLs(deptId).forEach(g => {
-      const m = months(year, deptId, g.id);
+    deptRows(deptId).forEach(r => {
+      const label = `GL ${r.gl.code}${r.multiCct ? ` (${r.cctName})` : ''}`;
+      const m = rowMonths(year, deptId, r.key);
       m.forEach((v, i) => {
-        if (v === null || v === undefined) errors.push(`GL ${g.code} — ${MONTH_TH[i]} ยังไม่ได้กรอก`);
-        else if (v < 0) errors.push(`GL ${g.code} — ${MONTH_TH[i]} เป็นตัวเลขติดลบ (${v})`);
+        if (v === null || v === undefined) errors.push(`${label} — ${MONTH_TH[i]} ยังไม่ได้กรอก`);
+        else if (v < 0) errors.push(`${label} — ${MONTH_TH[i]} เป็นตัวเลขติดลบ (${v})`);
       });
-      const row = budgetRow(year, deptId, g.id);
-      if (!row || row.mtp1 === null || row.mtp1 === undefined) errors.push(`GL ${g.code} — งบปี ${Number(year) + 1} (MTP) ยังไม่ได้กรอก`);
-      if (!row || row.mtp2 === null || row.mtp2 === undefined) errors.push(`GL ${g.code} — งบปี ${Number(year) + 2} (MTP) ยังไม่ได้กรอก`);
-      const n = note(year, deptId, g.id);
-      const cmp = compare(sum(m), glTotal(Number(year) - 1, deptId, g.id));
+      const row = rowByKey(year, deptId, r.key);
+      if (!row || row.mtp1 === null || row.mtp1 === undefined) errors.push(`${label} — งบปี ${Number(year) + 1} (MTP) ยังไม่ได้กรอก`);
+      if (!row || row.mtp2 === null || row.mtp2 === undefined) errors.push(`${label} — งบปี ${Number(year) + 2} (MTP) ยังไม่ได้กรอก`);
+    });
+    // ตรวจผิดปกติระดับ GL (roll-up) + เหตุผล
+    deptGLs(deptId).forEach(g => {
+      const cmp = compare(glTotal(year, deptId, g.id), glTotal(Number(year) - 1, deptId, g.id));
       const an = glAnomaly(cmp);
       if (an) {
         warnings.push(`GL ${g.code} ${g.name}: ${an.msg}`);
-        if (!n.reason.trim()) warnings.push(`GL ${g.code} มีการเปลี่ยนแปลงผิดปกติ แต่ยังไม่ได้ระบุสาเหตุเพิ่ม/ลด`);
+        if (!note(year, deptId, g.id).reason.trim()) warnings.push(`GL ${g.code} มีการเปลี่ยนแปลงผิดปกติ แต่ยังไม่ได้ระบุสาเหตุเพิ่ม/ลด`);
       }
     });
     return { errors, warnings, ok: errors.length === 0 };
@@ -191,104 +228,115 @@ const Store = (() => {
     try { assertUserCanEdit(actor, year, deptId); return true; } catch (e) { return false; }
   }
 
-  /* ---------- mutations: USER ---------- */
-  function setCell(actor, year, deptId, glId, monthIdx, value) {
-    assertUserCanEdit(actor, year, deptId);
-    if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
-    let row = budgetRow(year, deptId, glId);
+  /* ---------- mutations: USER (ระดับแถว CCT×GL — พารามิเตอร์ rowKey) ---------- */
+  function ensureRow(year, deptId, rowKey) {
+    let row = rowByKey(year, deptId, rowKey);
     if (!row) {
-      row = { year: Number(year), departmentId: deptId, glId, months: Array(12).fill(null), updatedAt: null, updatedBy: null };
+      const [glId, cct] = splitKey(rowKey);
+      row = { year: Number(year), departmentId: deptId, glId, cct, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: null };
       db.budgets.push(row);
     }
-    if (row.notUsed) throw new Error('GL นี้ถูกทำเครื่องหมาย "ไม่ได้ใช้" — กดปุ่ม ↩ เพื่อกลับมากรอกก่อน');
+    return row;
+  }
+  const auditRowRef = rowKey => {
+    const [glId, cct] = splitKey(rowKey);
+    return { glCode: gl(glId)?.code || glId, cctTail: cct.slice(-4) };
+  };
+  function setCell(actor, year, deptId, rowKey, monthIdx, value) {
+    assertUserCanEdit(actor, year, deptId);
+    if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
+    const row = ensureRow(year, deptId, rowKey);
+    if (row.notUsed) throw new Error('แถวนี้ถูกทำเครื่องหมาย "ไม่ได้ใช้" — กดปุ่ม ↩ เพื่อกลับมากรอกก่อน');
     const old = row.months[monthIdx];
     if (old === value) return false;
     row.months[monthIdx] = value;
     row.updatedAt = new Date().toISOString();
     row.updatedBy = actor.name;
-    audit(actor, 'แก้ไขงบประมาณ', { deptId, glCode: gl(glId)?.code, month: monthIdx + 1, oldValue: old, newValue: value });
+    audit(actor, 'แก้ไขงบประมาณ', { deptId, glCode: auditRowRef(rowKey).glCode, month: monthIdx + 1, oldValue: old, newValue: value });
     const st = deptState(year, deptId);
     if (st.status === 'DRAFT') setStatusInternal(year, deptId, 'IN_PROGRESS');
     save();
     return true;
   }
-  function setMtp(actor, year, deptId, glId, which, value) { // which: 1 | 2
+  function setMtp(actor, year, deptId, rowKey, which, value) { // which: 1 | 2
     assertUserCanEdit(actor, year, deptId);
     if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
-    let row = budgetRow(year, deptId, glId);
-    if (!row) {
-      row = { year: Number(year), departmentId: deptId, glId, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: null };
-      db.budgets.push(row);
-    }
-    if (row.notUsed) throw new Error('GL นี้ถูกทำเครื่องหมาย "ไม่ได้ใช้" — กดปุ่ม ↩ เพื่อกลับมากรอกก่อน');
+    const row = ensureRow(year, deptId, rowKey);
+    if (row.notUsed) throw new Error('แถวนี้ถูกทำเครื่องหมาย "ไม่ได้ใช้" — กดปุ่ม ↩ เพื่อกลับมากรอกก่อน');
     const key = which === 1 ? 'mtp1' : 'mtp2';
     const old = row[key];
     if (old === value) return false;
     row[key] = value;
     row.updatedAt = new Date().toISOString();
     row.updatedBy = actor.name;
-    audit(actor, `แก้ไขงบ MTP ปี ${Number(year) + which}`, { deptId, glCode: gl(glId)?.code, oldValue: old, newValue: value });
+    audit(actor, `แก้ไขงบ MTP ปี ${Number(year) + which}`, { deptId, glCode: auditRowRef(rowKey).glCode, oldValue: old, newValue: value });
     save();
     return true;
   }
-  function mtp(year, deptId, glId) {
-    const r = budgetRow(year, deptId, glId);
-    return { mtp1: r?.mtp1 ?? null, mtp2: r?.mtp2 ?? null };
+  // mtp: รับ rowKey (มี '@') = ของแถว หรือ glId = รวมทุก CCT (null ถ้ายังไม่กรอกครบทุกแถว)
+  function mtp(year, deptId, keyOrGl) {
+    const k = String(keyOrGl);
+    if (k.includes('@')) {
+      const r = rowByKey(year, deptId, k);
+      return { mtp1: r?.mtp1 ?? null, mtp2: r?.mtp2 ?? null };
+    }
+    const rows = db.budgets.filter(b => b.year === Number(year) && b.departmentId === deptId && b.glId === k);
+    if (!rows.length) return { mtp1: null, mtp2: null };
+    const agg = which => rows.some(r => r[which] === null || r[which] === undefined)
+      ? null : rows.reduce((s, r) => s + r[which], 0);
+    return { mtp1: agg('mtp1'), mtp2: agg('mtp2') };
   }
   /* ---------- รายละเอียดค่าใช้จ่ายรายช่อง (breakdown ต่อ GL×เดือน) ----------
    * เก็บถาวรใน db.cellDetails — ตรวจย้อนหลังได้แม้งบถูก Lock แล้ว */
-  function cellDetail(year, deptId, glId, monthIdx) {
+  function cellDetail(year, deptId, rowKey, monthIdx) {
     return (db.cellDetails || []).find(x =>
-      x.year === Number(year) && x.departmentId === deptId && x.glId === glId && x.month === monthIdx) || null;
+      x.year === Number(year) && x.departmentId === deptId && x.rowKey === rowKey && x.month === monthIdx) || null;
   }
-  function setCellDetail(actor, year, deptId, glId, monthIdx, items) {
+  function setCellDetail(actor, year, deptId, rowKey, monthIdx, items) {
     assertUserCanEdit(actor, year, deptId);
     if (!db.cellDetails) db.cellDetails = [];
     const clean = (items || [])
       .map(it => ({ desc: String(it.desc || '').trim(), amount: it.amount }))
       .filter(it => typeof it.amount === 'number' && isFinite(it.amount));
     const idx = db.cellDetails.findIndex(x =>
-      x.year === Number(year) && x.departmentId === deptId && x.glId === glId && x.month === monthIdx);
+      x.year === Number(year) && x.departmentId === deptId && x.rowKey === rowKey && x.month === monthIdx);
     if (!clean.length) {
       // ไม่มีรายการ = ลบรายละเอียดทิ้ง (ตัวเลขในช่องคงเดิม)
       if (idx >= 0) {
         db.cellDetails.splice(idx, 1);
-        audit(actor, 'ลบรายละเอียดค่าใช้จ่าย', { deptId, glCode: gl(glId)?.code, month: monthIdx + 1 });
+        audit(actor, 'ลบรายละเอียดค่าใช้จ่าย', { deptId, glCode: auditRowRef(rowKey).glCode, month: monthIdx + 1 });
         save();
       }
       return { cleared: true };
     }
     const sum = clean.reduce((s, it) => s + it.amount, 0);
-    setCell(actor, year, deptId, glId, monthIdx, sum); // ลงยอดรวมในช่องหลัก (audit + สถานะ อัตโนมัติ)
-    const rec = { year: Number(year), departmentId: deptId, glId, month: monthIdx,
+    setCell(actor, year, deptId, rowKey, monthIdx, sum); // ลงยอดรวมในช่องหลัก (audit + สถานะ อัตโนมัติ)
+    const rec = { year: Number(year), departmentId: deptId, rowKey, month: monthIdx,
                   items: clean, updatedAt: new Date().toISOString(), updatedBy: actor.name };
     if (idx >= 0) db.cellDetails[idx] = rec; else db.cellDetails.push(rec);
-    audit(actor, 'บันทึกรายละเอียดค่าใช้จ่าย', { deptId, glCode: gl(glId)?.code, month: monthIdx + 1,
+    audit(actor, 'บันทึกรายละเอียดค่าใช้จ่าย', { deptId, glCode: auditRowRef(rowKey).glCode, month: monthIdx + 1,
       newValue: clean.length + ' รายการ รวม ' + Math.round(sum).toLocaleString() + ' กีบ' });
     save();
     return { sum, count: clean.length };
   }
 
   const NOT_USED_REASON = 'ไม่ได้ใช้ GL นี้ในปีงบประมาณนี้';
-  function glNotUsed(year, deptId, glId) {
-    return !!budgetRow(year, deptId, glId)?.notUsed;
+  function glNotUsed(year, deptId, rowKey) {
+    return !!rowByKey(year, deptId, rowKey)?.notUsed;
   }
-  function setGlNotUsed(actor, year, deptId, glId, flag) {
+  function setGlNotUsed(actor, year, deptId, rowKey, flag) {
     assertUserCanEdit(actor, year, deptId);
-    let row = budgetRow(year, deptId, glId);
-    if (!row) {
-      row = { year: Number(year), departmentId: deptId, glId, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: null };
-      db.budgets.push(row);
-    }
+    const row = ensureRow(year, deptId, rowKey);
     if (!!row.notUsed === !!flag) return;
-    let n = db.glNotes.find(x => x.year === Number(year) && x.departmentId === deptId && x.glId === glId);
+    let n = db.glNotes.find(x => x.year === Number(year) && x.departmentId === deptId && x.rowKey === rowKey);
+    const ref = auditRowRef(rowKey);
     if (flag) {
       row.stash = { months: row.months.slice(), mtp1: row.mtp1, mtp2: row.mtp2 };
       row.months = Array(12).fill(0);
       row.mtp1 = 0; row.mtp2 = 0; row.notUsed = true;
-      if (!n) { n = { year: Number(year), departmentId: deptId, glId, reason: '', assumption: '' }; db.glNotes.push(n); }
+      if (!n) { n = { year: Number(year), departmentId: deptId, rowKey, reason: '', assumption: '' }; db.glNotes.push(n); }
       if (!n.reason.trim()) n.reason = NOT_USED_REASON;
-      audit(actor, 'ทำเครื่องหมาย "ไม่ได้ใช้ GL นี้"', { deptId, glCode: gl(glId)?.code });
+      audit(actor, 'ทำเครื่องหมาย "ไม่ได้ใช้ GL นี้"', { deptId, glCode: ref.glCode });
     } else {
       row.notUsed = false;
       if (row.stash) {
@@ -296,20 +344,20 @@ const Store = (() => {
         delete row.stash;
       }
       if (n && n.reason === NOT_USED_REASON) n.reason = '';
-      audit(actor, 'ยกเลิก "ไม่ได้ใช้ GL นี้" กลับมากรอก', { deptId, glCode: gl(glId)?.code });
+      audit(actor, 'ยกเลิก "ไม่ได้ใช้ GL นี้" กลับมากรอก', { deptId, glCode: ref.glCode });
     }
     row.updatedAt = new Date().toISOString();
     row.updatedBy = actor.name;
     if (deptState(year, deptId).status === 'DRAFT') setStatusInternal(year, deptId, 'IN_PROGRESS');
     save();
   }
-  function setNote(actor, year, deptId, glId, reason, assumption) {
+  function setNote(actor, year, deptId, rowKey, reason, assumption) {
     assertUserCanEdit(actor, year, deptId);
-    let n = db.glNotes.find(x => x.year === Number(year) && x.departmentId === deptId && x.glId === glId);
-    if (!n) { n = { year: Number(year), departmentId: deptId, glId, reason: '', assumption: '' }; db.glNotes.push(n); }
+    let n = db.glNotes.find(x => x.year === Number(year) && x.departmentId === deptId && x.rowKey === rowKey);
+    if (!n) { n = { year: Number(year), departmentId: deptId, rowKey, reason: '', assumption: '' }; db.glNotes.push(n); }
     const changed = n.reason !== reason || n.assumption !== assumption;
     n.reason = reason; n.assumption = assumption;
-    if (changed) audit(actor, 'แก้ไขสาเหตุ/สมมติฐาน', { deptId, glCode: gl(glId)?.code, newValue: (reason || assumption || '').slice(0, 120) });
+    if (changed) audit(actor, 'แก้ไขสาเหตุ/สมมติฐาน', { deptId, glCode: auditRowRef(rowKey).glCode, newValue: (reason || assumption || '').slice(0, 120) });
     save();
   }
   function setStatusInternal(year, deptId, status, extra = {}) {
@@ -333,14 +381,11 @@ const Store = (() => {
     // ล้างข้อมูลที่กรอกทั้งปีของหน่วยงานตนเอง (เดือน + MTP + เหตุผล + รายละเอียด) → ฟอร์มเปล่า
     assertUserCanEdit(actor, year, deptId);
     const y = Number(year);
-    deptGLs(deptId).forEach(g => {
-      const row = budgetRow(y, deptId, g.id);
-      if (row) {
-        row.months = Array(12).fill(null);
-        row.mtp1 = null; row.mtp2 = null;
-        row.notUsed = false; delete row.stash;
-        row.updatedAt = new Date().toISOString(); row.updatedBy = actor.name;
-      }
+    db.budgets.filter(b => b.year === y && b.departmentId === deptId).forEach(row => {
+      row.months = Array(12).fill(null);
+      row.mtp1 = null; row.mtp2 = null;
+      row.notUsed = false; delete row.stash;
+      row.updatedAt = new Date().toISOString(); row.updatedBy = actor.name;
     });
     db.glNotes = db.glNotes.filter(n => !(n.year === y && n.departmentId === deptId));
     db.cellDetails = (db.cellDetails || []).filter(x => !(x.year === y && x.departmentId === deptId));
@@ -354,19 +399,14 @@ const Store = (() => {
     assertAccounting(actor);
     const y = Number(year);
     let cleared = 0;
-    db.departments.forEach(d => {
-      deptGLs(d.id).forEach(g => {
-        const row = budgetRow(y, d.id, g.id);
-        if (row) {
-          row.months = Array(12).fill(null);
-          row.mtp1 = null; row.mtp2 = null;
-          row.notUsed = false; delete row.stash;
-          row.updatedAt = new Date().toISOString(); row.updatedBy = actor.name;
-          cleared++;
-        }
-      });
-      setStatusInternal(y, d.id, 'DRAFT', { submittedAt: null, revisionNote: null });
+    db.budgets.filter(b => b.year === y).forEach(row => {
+      row.months = Array(12).fill(null);
+      row.mtp1 = null; row.mtp2 = null;
+      row.notUsed = false; delete row.stash;
+      row.updatedAt = new Date().toISOString(); row.updatedBy = actor.name;
+      cleared++;
     });
+    db.departments.forEach(d => setStatusInternal(y, d.id, 'DRAFT', { submittedAt: null, revisionNote: null }));
     db.glNotes = db.glNotes.filter(n => n.year !== y);
     db.cellDetails = (db.cellDetails || []).filter(x => x.year !== y);
     audit(actor, 'ล้างข้อมูลจำลองทุกหน่วยงาน', { newValue: `ปี ${y} (${cleared} รายการ GL)` });
@@ -448,14 +488,22 @@ const Store = (() => {
   function assignGL(actor, deptId, glId) {
     assertAccounting(actor);
     if (db.departmentGL.some(x => x.departmentId === deptId && x.glId === glId)) return;
+    // เลือก CCT หลักของหน่วยงาน (ตัวที่ใช้บ่อยที่สุด) ให้แถวใหม่ — เปลี่ยน/เพิ่ม CCT ได้ในอนาคต
+    const cnt = {};
+    (db.departmentRows || []).filter(x => x.departmentId === deptId).forEach(x => { cnt[x.cct] = (cnt[x.cct] || 0) + 1; });
+    const mainCct = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0]
+      || (db.cctMaster || []).find(c => c.departmentId === deptId)?.code || '0000000000';
+    const code = gl(glId)?.code || '';
+    db.departmentRows.push({ departmentId: deptId, cct: mainCct, glId, io: '', codeA: mainCct + code + 'a' });
     db.departmentGL.push({ departmentId: deptId, glId });
-    audit(actor, 'มอบหมาย GL ให้หน่วยงาน', { deptId, glCode: gl(glId)?.code });
+    audit(actor, 'มอบหมาย GL ให้หน่วยงาน', { deptId, glCode: code, newValue: 'CCT ' + mainCct });
     save();
   }
   function unassignGL(actor, deptId, glId) {
     assertAccounting(actor);
     const hasData = db.budgets.some(b => b.departmentId === deptId && b.glId === glId && b.months.some(v => v));
     if (hasData) throw new Error('GL นี้มีข้อมูลงบประมาณแล้ว ไม่สามารถถอดออกได้');
+    db.departmentRows = (db.departmentRows || []).filter(x => !(x.departmentId === deptId && x.glId === glId));
     db.departmentGL = db.departmentGL.filter(x => !(x.departmentId === deptId && x.glId === glId));
     audit(actor, 'ถอด GL ออกจากหน่วยงาน', { deptId, glCode: gl(glId)?.code });
     save();
@@ -494,15 +542,20 @@ const Store = (() => {
   }
   const MONTH_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   function exportDetail(year) {
-    const rows = [['หน่วยงาน','รหัส GL','ชื่อบัญชี', ...MONTH_S.map(m => `${m} ${year}`), `รวมปี ${year}`, `รวมปี ${year - 1}`, 'ผลต่าง', '% เปลี่ยนแปลง', `ปี ${year + 1} (MTP)`, `ปี ${year + 2} (MTP)`, 'สมมติฐาน', 'สาเหตุเพิ่ม/ลด']];
-    activeDepartments().forEach(d => deptGLs(d.id).forEach(g => {
-      const m = months(year, d.id, g.id);
-      const cur = sum(m), prev = glTotal(year - 1, d.id, g.id);
-      const n = note(year, d.id, g.id);
-      const t = mtp(year, d.id, g.id);
-      rows.push([d.name, g.code, g.name, ...m.map(v => v ?? ''), cur, prev, cur - prev,
+    // ระดับแถว CCT×GL พร้อมรหัสครบ (code a / IO / CCT) — พร้อมคีย์เข้า SAP
+    const rows = [['หน่วยงาน','code a','IO','CCT','ชื่อหน่วยงานย่อย','รหัส GL','ชื่อบัญชี',
+      ...MONTH_S.map(m => `${m} ${year}`), `รวมปี ${year}`, `รวมปี ${year - 1}`, 'ผลต่าง', '% เปลี่ยนแปลง',
+      `ปี ${year + 1} (MTP)`, `ปี ${year + 2} (MTP)`, 'ไม่ได้ใช้', 'สมมติฐาน', 'สาเหตุเพิ่ม/ลด']];
+    activeDepartments().forEach(d => deptRows(d.id).forEach(r => {
+      const m = rowMonths(year, d.id, r.key);
+      const cur = sum(m), prev = rowTotal(year - 1, d.id, r.key);
+      const n = note(year, d.id, r.key);
+      const t = mtp(year, d.id, r.key);
+      const b = rowByKey(year, d.id, r.key);
+      rows.push([d.name, r.codeA, r.io || '—', r.cct, r.cctName, r.gl.code, r.gl.name,
+        ...m.map(v => v ?? ''), cur, prev, cur - prev,
         prev !== 0 ? ((cur - prev) / Math.abs(prev) * 100).toFixed(1) + '%' : (cur ? 'ใหม่' : '0%'),
-        t.mtp1 ?? '', t.mtp2 ?? '', n.assumption, n.reason]);
+        t.mtp1 ?? '', t.mtp2 ?? '', b?.notUsed ? 'YES' : '', n.assumption, n.reason]);
     }));
     download(`budget_detail_${year}.csv`, csv(rows));
   }
@@ -523,6 +576,7 @@ const Store = (() => {
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
     login, logout, currentUser,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
+    cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,
     months, glTotal, deptTotal, companyTotal, deptMonthly, companyMonthly,
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,

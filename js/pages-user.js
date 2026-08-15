@@ -37,7 +37,8 @@ const PagesUser = (() => {
     return {
       year, deptId, prevYear: year - 1,
       dept: Store.dept(deptId),
-      gls: Store.deptGLs(deptId),
+      gls: Store.deptGLs(deptId),           // ระดับ GL (roll-up) — ใช้กับ dashboard/เปรียบเทียบ
+      rows: Store.deptRows(deptId),         // ระดับแถว CCT×GL — ใช้กับตารางกรอก
       state: Store.deptState(year, deptId),
       comp: Store.completion(year, deptId),
       editable: Store.canEdit(user, year, deptId),
@@ -145,43 +146,47 @@ const PagesUser = (() => {
       <th class="num th-mtp">ปี ${c.year + 2}<div class="th-yr">MTP</div></th>
       <th class="th-note">เหตุผล/สมมติฐาน</th></tr>`;
 
-    const body = c.gls.map(g => {
-      const m = Store.months(c.year, c.deptId, g.id);
-      const t = Store.mtp(c.year, c.deptId, g.id);
-      const notUsed = Store.glNotUsed(c.year, c.deptId, g.id);
-      const prevT = Store.glTotal(c.prevYear, c.deptId, g.id);
+    // แถว = CCT × GL ตามฟอร์มจริง (GL ที่มีหลายหน่วยงานย่อยจะแตกเป็นหลายแถว)
+    const body = c.rows.map(r => {
+      const g = r.gl;
+      const m = Store.rowMonths(c.year, c.deptId, r.key);
+      const t = Store.mtp(c.year, c.deptId, r.key);
+      const notUsed = Store.glNotUsed(c.year, c.deptId, r.key);
+      const prevT = Store.rowTotal(c.prevYear, c.deptId, r.key);
       const curT = m.reduce((s, v) => s + (v ?? 0), 0);
       const gcmp = Store.compare(curT, prevT);
       const an = Store.glAnomaly(gcmp);
-      const n = Store.note(c.year, c.deptId, g.id);
+      const n = Store.note(c.year, c.deptId, r.key);
       const hasNote = n.reason.trim() || n.assumption.trim();
       const dis = (!c.editable || notUsed) ? 'disabled' : '';
-      const pm = Store.months(c.prevYear, c.deptId, g.id);
+      const pm = Store.rowMonths(c.prevYear, c.deptId, r.key);
+      const rowTip = `CCT ${r.cct} ${esc(r.cctName)} · IO ${r.io || '—'}`;
       const cells = m.map((v, i) => {
-        const hasDetail = !!Store.cellDetail(c.year, c.deptId, g.id, i);
+        const hasDetail = !!Store.cellDetail(c.year, c.deptId, r.key, i);
         return `<td class="num cell-td"><div class="cell-wrap">
-          <input class="cell" data-gl="${g.id}" data-m="${i}" inputmode="decimal"
+          <input class="cell" data-row="${r.key}" data-m="${i}" inputmode="decimal"
             value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis}>
-          <button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${g.id}|${i}" tabindex="-1"
+          <button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${r.key}|${i}" tabindex="-1"
             title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>
         </div><span class="prev-ghost" title="ปีก่อน ${Store.MONTH_S[i]} ${c.prevYear}">${fmt(pm[i] ?? 0)}</span></td>`;
       }).join('');
-      return `<tr data-gl-row="${g.id}" class="${notUsed ? 'tr-notused' : ''}">
-        <td class="sticky-col td-gl"><div class="gl-name-wrap">
+      return `<tr data-gl-row="${r.key}" class="${notUsed ? 'tr-notused' : ''}">
+        <td class="sticky-col td-gl" title="${rowTip}"><div class="gl-name-wrap">
             ${glIcon(g)}
             <span class="gl-code">${g.code}</span><span class="gl-nm" title="${esc(g.name)}">${esc(g.name)}</span>
             ${notUsed ? '<span class="nu-chip">ไม่ได้ใช้</span>' : ''}
-            ${an && !notUsed ? `<span class="anomaly-ic ${an.level}" title="${an.tag}: ${an.msg}">⚠</span>` : ''}</div></td>
+            ${an && !notUsed ? `<span class="anomaly-ic ${an.level}" title="${an.tag}: ${an.msg}">⚠</span>` : ''}</div>
+            ${r.multiCct ? `<div class="cct-tag">↳ ${esc(r.cctName)}</div>` : ''}</td>
         ${cells}
-        <td class="num td-total" data-total="${g.id}">${fmt(curT)}</td>
+        <td class="num td-total" data-total="${r.key}">${fmt(curT)}</td>
         <td class="num td-prev">${fmt(prevT)}</td>
-        <td class="td-delta" data-delta="${g.id}">${deltaBadge(gcmp.diff, gcmp.pct)}</td>
-        <td class="num cell-td"><input class="cell cell-mtp" data-gl="${g.id}" data-mtp="1" inputmode="decimal" placeholder="กรอก" value="${t.mtp1 === null ? '' : fmt(t.mtp1)}" ${dis}></td>
-        <td class="num cell-td"><input class="cell cell-mtp" data-gl="${g.id}" data-mtp="2" inputmode="decimal" placeholder="กรอก" value="${t.mtp2 === null ? '' : fmt(t.mtp2)}" ${dis}></td>
+        <td class="td-delta" data-delta="${r.key}">${deltaBadge(gcmp.diff, gcmp.pct)}</td>
+        <td class="num cell-td"><input class="cell cell-mtp" data-row="${r.key}" data-mtp="1" inputmode="decimal" placeholder="กรอก" value="${t.mtp1 === null ? '' : fmt(t.mtp1)}" ${dis}></td>
+        <td class="num cell-td"><input class="cell cell-mtp" data-row="${r.key}" data-mtp="2" inputmode="decimal" placeholder="กรอก" value="${t.mtp2 === null ? '' : fmt(t.mtp2)}" ${dis}></td>
         <td class="td-note">
-          <button class="nu-btn ${notUsed ? 'active' : ''}" data-nu="${g.id}" ${c.editable ? '' : 'disabled'}
-            title="${notUsed ? 'กลับมากรอก GL นี้' : 'ไม่ได้ใช้ GL นี้ (ตั้งเป็น 0 ทั้งแถว)'}">${notUsed ? '↩' : '🚫'}</button>
-          <button class="note-btn ${hasNote ? 'has-note' : ''}" data-note="${g.id}">${hasNote ? '📝 มีข้อมูล' : '＋ เพิ่ม'}</button></td>
+          <button class="nu-btn ${notUsed ? 'active' : ''}" data-nu="${r.key}" ${c.editable ? '' : 'disabled'}
+            title="${notUsed ? 'กลับมากรอกแถวนี้' : 'ไม่ได้ใช้แถวนี้ (ตั้งเป็น 0 ทั้งแถว)'}">${notUsed ? '↩' : '🚫'}</button>
+          <button class="note-btn ${hasNote ? 'has-note' : ''}" data-note="${r.key}">${hasNote ? '📝 มีข้อมูล' : '＋ เพิ่ม'}</button></td>
       </tr>`;
     }).join('');
 
@@ -229,13 +234,13 @@ const PagesUser = (() => {
       return isFinite(v) ? v : NaN;
     };
 
-    function refreshRow(glId) {
-      const m = Store.months(c.year, c.deptId, glId);
+    function refreshRow(key) {
+      const m = Store.rowMonths(c.year, c.deptId, key);
       const t = m.reduce((s, v) => s + (v ?? 0), 0);
-      const prevT = Store.glTotal(c.prevYear, c.deptId, glId);
+      const prevT = Store.rowTotal(c.prevYear, c.deptId, key);
       const cmp = Store.compare(t, prevT);
-      document.querySelector(`[data-total="${glId}"]`).textContent = fmt(t);
-      document.querySelector(`[data-delta="${glId}"]`).innerHTML = deltaBadge(cmp.diff, cmp.pct);
+      document.querySelector(`[data-total="${key}"]`).textContent = fmt(t);
+      document.querySelector(`[data-delta="${key}"]`).innerHTML = deltaBadge(cmp.diff, cmp.pct);
       // footer + KPI + แถวเทียบปีก่อน
       const mm = Store.deptMonthly(c.year, c.deptId);
       const pm = Store.deptMonthly(c.prevYear, c.deptId);
@@ -256,18 +261,18 @@ const PagesUser = (() => {
     }
 
     function commit(input) {
-      const glId = input.dataset.gl;
+      const key = input.dataset.row;
       const v = parseNum(input.value);
       if (Number.isNaN(v)) { toast('รูปแบบตัวเลขไม่ถูกต้อง', 'err'); input.classList.add('cell-err'); return; }
       input.classList.remove('cell-err');
       try {
         let changed;
-        if (input.dataset.mtp) changed = Store.setMtp(user, c.year, c.deptId, glId, Number(input.dataset.mtp), v);
-        else changed = Store.setCell(user, c.year, c.deptId, glId, Number(input.dataset.m), v);
+        if (input.dataset.mtp) changed = Store.setMtp(user, c.year, c.deptId, key, Number(input.dataset.mtp), v);
+        else changed = Store.setCell(user, c.year, c.deptId, key, Number(input.dataset.m), v);
         if (changed) input.classList.add('cell-changed');
         input.value = v === null ? '' : fmt(v);
         if (v !== null && v < 0) { input.classList.add('cell-err'); toast('ไม่ควรมีตัวเลขติดลบในงบประมาณ', 'err'); }
-        refreshRow(glId);
+        refreshRow(key);
       } catch (e) { toast(e.message, 'err'); input.value = ''; }
     }
 
@@ -283,18 +288,18 @@ const PagesUser = (() => {
         if (!text || (!text.includes('\t') && !text.includes('\n'))) return; // ค่าเดียว ให้ paste ปกติ
         e.preventDefault();
         const rows = text.replace(/\r/g, '').split('\n').filter(r => r.length);
-        const startGl = inp.dataset.gl, startM = Number(inp.dataset.m ?? -1);
+        const startKey = inp.dataset.row, startM = Number(inp.dataset.m ?? -1);
         if (startM < 0) return;
-        const glOrder = c.gls.map(g => g.id);
-        let gi = glOrder.indexOf(startGl);
+        const rowOrder = c.rows.map(r => r.key);
+        let gi = rowOrder.indexOf(startKey);
         rows.forEach((rowText, ri) => {
           const vals = rowText.split('\t');
-          const glId = glOrder[gi + ri];
-          if (!glId) return;
+          const key = rowOrder[gi + ri];
+          if (!key) return;
           vals.forEach((val, ci) => {
             const mi = startM + ci;
             if (mi > 11) return;
-            const target = document.querySelector(`.cell[data-gl="${glId}"][data-m="${mi}"]`);
+            const target = document.querySelector(`.cell[data-row="${key}"][data-m="${mi}"]`);
             if (target && !target.disabled) { target.value = val; commit(target); }
           });
         });
@@ -303,10 +308,10 @@ const PagesUser = (() => {
     });
     function moveFocus(inp, dCol, dRow) {
       if (inp.dataset.m === undefined) return;
-      const glOrder = c.gls.map(g => g.id);
-      const gi = glOrder.indexOf(inp.dataset.gl) + dRow;
+      const rowOrder = c.rows.map(r => r.key);
+      const gi = rowOrder.indexOf(inp.dataset.row) + dRow;
       const mi = Number(inp.dataset.m) + dCol;
-      const next = document.querySelector(`.cell[data-gl="${glOrder[gi]}"][data-m="${mi}"]`);
+      const next = document.querySelector(`.cell[data-row="${rowOrder[gi]}"][data-m="${mi}"]`);
       next?.focus();
     }
 
@@ -336,7 +341,7 @@ const PagesUser = (() => {
       if (!inp.classList?.contains('cell') || inp.dataset.m === undefined) return;
       if (bCard.classList.contains('show-prev')) return; // มี ghost อยู่แล้ว ไม่ต้องซ้ำ
       const mi = Number(inp.dataset.m);
-      const pv = Store.months(c.prevYear, c.deptId, inp.dataset.gl)[mi] ?? 0;
+      const pv = Store.rowMonths(c.prevYear, c.deptId, inp.dataset.row)[mi] ?? 0;
       chip.textContent = `ปีก่อน ${Store.MONTH_S[mi]} ${c.prevYear}: ${fmt(pv)} กีบ`;
       chip.style.display = 'block';
       const r2 = inp.getBoundingClientRect();
@@ -374,11 +379,12 @@ const PagesUser = (() => {
     });
 
     /* --- ป๊อปอัพรายละเอียดค่าใช้จ่ายรายช่อง --- */
-    function openCellDetail(glId, mi) {
-      const g = Store.gl(glId);
-      const notUsed = Store.glNotUsed(c.year, c.deptId, glId);
+    function openCellDetail(key, mi) {
+      const rowInfo = c.rows.find(r => r.key === key);
+      const g = rowInfo?.gl || Store.gl(Store.splitKey(key)[0]);
+      const notUsed = Store.glNotUsed(c.year, c.deptId, key);
       const editable = c.editable && !notUsed;
-      const saved = Store.cellDetail(c.year, c.deptId, glId, mi);
+      const saved = Store.cellDetail(c.year, c.deptId, key, mi);
       let rows = saved ? saved.items.map(it => ({ ...it })) : [{ desc: '', amount: null }];
       if (!rows.length) rows = [{ desc: '', amount: null }];
 
@@ -402,15 +408,15 @@ const PagesUser = (() => {
             if (items.some(it => Number.isNaN(it.amount))) { toast('มีจำนวนเงินที่ไม่ใช่ตัวเลข', 'err'); return; }
             const valid = items.filter(it => typeof it.amount === 'number');
             try {
-              const r = Store.setCellDetail(user, c.year, c.deptId, glId, mi, valid);
+              const r = Store.setCellDetail(user, c.year, c.deptId, key, mi, valid);
               if (r.cleared) toast('ลบรายละเอียดแล้ว (ตัวเลขในช่องคงเดิม)');
               else toast(`บันทึก ${r.count} รายการ รวม ${fmt(r.sum)} กีบ ลงช่อง ${Store.MONTH_S[mi]} แล้ว`);
               // อัปเดตช่องหลัก + ยอดรวมแบบไม่ re-render ทั้งหน้า
-              const inp = document.querySelector(`.cell[data-gl="${glId}"][data-m="${mi}"]`);
+              const inp = document.querySelector(`.cell[data-row="${key}"][data-m="${mi}"]`);
               if (inp && !r.cleared) { inp.value = fmt(r.sum); inp.classList.add('cell-changed'); }
-              const btn = document.querySelector(`[data-dt="${glId}|${mi}"]`);
+              const btn = document.querySelector(`[data-dt="${key}|${mi}"]`);
               if (btn) btn.classList.toggle('has', !r.cleared);
-              refreshRow(glId);
+              refreshRow(key);
               close();
             } catch (e) { toast(e.message, 'err'); }
           } },
@@ -419,6 +425,7 @@ const PagesUser = (() => {
       const back = UI.modal(`🧾 รายละเอียดค่าใช้จ่าย`, `
         <div class="dt-head"><span class="gl-code">${g.code}</span> ${esc(g.name)}
           <span class="dt-month">เดือน ${Store.MONTH_TH[mi]} ${c.year}</span></div>
+        ${rowInfo ? `<div class="muted small" style="margin:-6px 0 10px">🏷 ${esc(rowInfo.cctName)} (CCT ${rowInfo.cct}) · IO ${rowInfo.io || '—'}</div>` : ''}
         ${editable ? '' : '<div class="lock-banner" style="margin:0 0 10px">🔒 อ่านอย่างเดียว — ' + (notUsed ? 'GL นี้ทำเครื่องหมายไม่ได้ใช้' : 'ส่งข้อมูล/ปิดรอบแล้ว') + '</div>'}
         <div id="dtRows">${rows.map(rowHtml).join('')}</div>
         ${editable ? '<button class="ghost-btn" id="dtAdd" style="width:100%">＋ เพิ่มรายการ</button>' : ''}
@@ -459,16 +466,16 @@ const PagesUser = (() => {
     }
     document.querySelectorAll('[data-dt]').forEach(btn => btn.addEventListener('click', e => {
       e.preventDefault();
-      const [glId, mi] = btn.dataset.dt.split('|');
-      openCellDetail(glId, Number(mi));
+      const s = btn.dataset.dt, p = s.lastIndexOf('|');
+      openCellDetail(s.slice(0, p), Number(s.slice(p + 1)));
     }));
 
     document.querySelectorAll('[data-nu]').forEach(btn => btn.addEventListener('click', () => {
-      const glId = btn.dataset.nu;
-      const g = Store.gl(glId);
-      const now = Store.glNotUsed(c.year, c.deptId, glId);
+      const key = btn.dataset.nu;
+      const g = Store.gl(Store.splitKey(key)[0]);
+      const now = Store.glNotUsed(c.year, c.deptId, key);
       try {
-        Store.setGlNotUsed(user, c.year, c.deptId, glId, !now);
+        Store.setGlNotUsed(user, c.year, c.deptId, key, !now);
         toast(!now ? `ทำเครื่องหมาย "ไม่ได้ใช้" GL ${g.code} แล้ว (ตั้งเป็น 0 ทั้งแถว)` : `GL ${g.code} กลับมากรอกได้แล้ว`);
         App.render();
       } catch (e) { toast(e.message, 'err'); }
@@ -488,13 +495,15 @@ const PagesUser = (() => {
     });
 
     document.querySelectorAll('[data-note]').forEach(btn => btn.addEventListener('click', () => {
-      const glId = btn.dataset.note;
-      const g = Store.gl(glId);
-      const n = Store.note(c.year, c.deptId, glId);
-      const prevT = Store.glTotal(c.prevYear, c.deptId, glId);
-      const curT = Store.glTotal(c.year, c.deptId, glId);
+      const key = btn.dataset.note;
+      const r = c.rows.find(x => x.key === key);
+      const g = r?.gl || Store.gl(Store.splitKey(key)[0]);
+      const n = Store.note(c.year, c.deptId, key);
+      const prevT = Store.rowTotal(c.prevYear, c.deptId, key);
+      const curT = Store.rowTotal(c.year, c.deptId, key);
       const cmp = Store.compare(curT, prevT);
       UI.modal(`GL ${g.code} — ${esc(g.name)}`, `
+        ${r ? `<div class="muted small" style="margin-bottom:8px">🏷 ${esc(r.cctName)} (CCT ${r.cct}) · IO ${r.io || '—'} · code a: ${r.codeA || '—'}</div>` : ''}
         <div class="note-cmp">ปี ${c.prevYear}: <b>${fmt(prevT)}</b> กีบ → ปี ${c.year}: <b>${fmt(curT)}</b> กีบ ${deltaBadge(cmp.diff, cmp.pct)}</div>
         <label class="fld"><span>สาเหตุการเพิ่ม / ลด (Reason)</span>
           <textarea id="noteReason" rows="3" ${c.editable ? '' : 'disabled'} placeholder="เช่น ปี ${c.year} เป็นปีที่ทุกระบบต้องได้รับการต่ออายุ จำนวน Manday เพิ่มขึ้น">${esc(n.reason)}</textarea></label>
@@ -504,7 +513,7 @@ const PagesUser = (() => {
           { label: 'ยกเลิก', cls: 'ghost-btn' },
           { label: 'บันทึก', cls: 'primary-btn', onClick: close => {
               try {
-                Store.setNote(user, c.year, c.deptId, glId,
+                Store.setNote(user, c.year, c.deptId, key,
                   document.getElementById('noteReason').value.trim(),
                   document.getElementById('noteAssume').value.trim());
                 toast('บันทึกเหตุผล/สมมติฐานแล้ว'); close(); App.render();

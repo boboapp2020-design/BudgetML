@@ -243,6 +243,27 @@ const PagesAcc = (() => {
         ${kpi('เพิ่ม/ลด', deltaBadge(cmp.diff, cmp.pct), an ? `⚠ ${an.tag}` : '')}
         ${kpi(`MTP ${year + 1} / ${year + 2}`, `${UI.fmtShort(t.mtp1 ?? 0)} / ${UI.fmtShort(t.mtp2 ?? 0)}`, 'กีบ (ยอดรวมรายปี)')}
       </div>`
+      + (() => {
+          // แยกตามหน่วยงานย่อย (CCT) — พร้อม IO สำหรับคีย์ SAP
+          const cctRows = Store.deptRows(deptId).filter(r => r.glId === glId);
+          if (cctRows.length <= 1 && cctRows[0]) {
+            const r = cctRows[0];
+            return card('🏷 รหัสควบคุมงบ (สำหรับคีย์ SAP)', `<div class="table-scroll"><table class="data-table small">
+              <thead><tr><th>หน่วยงานย่อย (CCT)</th><th>รหัส CCT</th><th>IO</th><th>code a</th></tr></thead>
+              <tbody><tr><td>${esc(r.cctName)}</td><td class="gl-code">${r.cct}</td><td class="gl-code">${r.io || '—'}</td><td class="small muted">${r.codeA || '—'}</td></tr></tbody></table></div>`);
+          }
+          if (!cctRows.length) return '';
+          return card(`🏷 แยกตามหน่วยงานย่อย (${cctRows.length} CCT) — พร้อม IO สำหรับคีย์ SAP`, `<div class="table-scroll"><table class="data-table small">
+            <thead><tr><th>หน่วยงานย่อย (CCT)</th><th>IO</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th><th>%Δ</th></tr></thead><tbody>
+            ${cctRows.map(r => {
+              const rc = Store.compare(Store.rowTotal(year, deptId, r.key), Store.rowTotal(prevYear, deptId, r.key));
+              return `<tr><td>${esc(r.cctName)}<div class="muted small">${r.cct}</div></td>
+                <td class="gl-code">${r.io || '—'}</td>
+                <td class="num">${fmt(rc.prev)}</td><td class="num">${fmt(rc.cur)}</td>
+                <td>${deltaBadge(rc.diff, rc.pct)}</td></tr>`;
+            }).join('')}
+          </tbody></table></div>`);
+        })()
       + `<div class="grid-2">`
       + card(`รายเดือน (กีบ)`, `<div id="chGLMonthly"></div>`)
       + card('เหตุผลประกอบงบประมาณ', `

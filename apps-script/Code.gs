@@ -122,10 +122,12 @@ function rebuildViews_(db) {
     db.glAccounts.slice().sort(function (a, b) { return a.code < b.code ? -1 : 1; })
       .map(function (g) { return [g.code, g.name, g.glGroup, g.active ? 'ACTIVE' : 'INACTIVE']; })));
 
-  writeView_(ss, 'MASTER_Assign', [['รหัสหน่วยงาน', 'รหัส GL']].concat(
-    db.departmentGL.map(function (x) {
+  writeView_(ss, 'MASTER_Assign', [['รหัสหน่วยงาน', 'CCT', 'ชื่อหน่วยงานย่อย', 'รหัส GL', 'IO', 'code a']].concat(
+    (db.departmentRows || []).map(function (x) {
+      var cctRec = (db.cctMaster || []).filter(function (c) { return c.code === x.cct; })[0];
       return [deptById[x.departmentId] ? deptById[x.departmentId].code : x.departmentId,
-              glById[x.glId] ? glById[x.glId].code : x.glId];
+              x.cct, cctRec ? cctRec.name : '', glById[x.glId] ? glById[x.glId].code : x.glId,
+              x.io || '', x.codeA || ''];
     })));
 
   writeView_(ss, 'MASTER_Rates', [['ปีงบ', 'สกุลเงิน', 'กีบ / 1 หน่วย']].concat(
@@ -137,23 +139,29 @@ function rebuildViews_(db) {
   writeView_(ss, 'MASTER_Periods', [['ปีงบ', 'สถานะ', 'Lock เมื่อ', 'Lock โดย']].concat(
     db.budgetPeriods.map(function (p) { return [p.year, p.status, p.lockedAt || '', p.lockedBy || '']; })));
 
-  // 1 แผนก (ที่เปิดใช้งาน) = 1 sheet
+  // 1 แผนก (ที่เปิดใช้งาน) = 1 sheet — ระดับแถว CCT × GL พร้อม IO/code a
   var years = db.budgetPeriods.map(function (p) { return p.year; }).sort();
+  var cctById = {};
+  (db.cctMaster || []).forEach(function (c) { cctById[c.code] = c.name; });
   db.departments.filter(function (d) { return d.active; }).forEach(function (d) {
-    var glIds = db.departmentGL.filter(function (x) { return x.departmentId === d.id; })
-      .map(function (x) { return x.glId; })
-      .sort(function (a, b) { return (glById[a] ? glById[a].code : '') < (glById[b] ? glById[b].code : '') ? -1 : 1; });
-    var rows = [['ปีงบ', 'รหัส GL', 'ชื่อบัญชี'].concat(MONTHS)
+    var asg = (db.departmentRows || []).filter(function (x) { return x.departmentId === d.id; })
+      .sort(function (a, b) {
+        var ga = glById[a.glId] ? glById[a.glId].code : '', gb = glById[b.glId] ? glById[b.glId].code : '';
+        return ga < gb ? -1 : (ga > gb ? 1 : (a.cct < b.cct ? -1 : 1));
+      });
+    var rows = [['ปีงบ', 'code a', 'IO', 'CCT', 'หน่วยงานย่อย', 'รหัส GL', 'ชื่อบัญชี'].concat(MONTHS)
       .concat(['รวมทั้งปี', 'MTP ปี+1', 'MTP ปี+2', 'ไม่ได้ใช้', 'สมมติฐาน', 'สาเหตุเพิ่ม/ลด', 'สถานะแผนก'])];
     years.forEach(function (y) {
       var st = (db.deptStatus.filter(function (s) { return s.year === y && s.departmentId === d.id; })[0] || {}).status || 'DRAFT';
-      glIds.forEach(function (glId) {
-        var g = glById[glId]; if (!g) return;
-        var row = (db.budgets.filter(function (b) { return b.year === y && b.departmentId === d.id && b.glId === glId; })[0]) || null;
+      asg.forEach(function (a) {
+        var g = glById[a.glId]; if (!g) return;
+        var rowKey = a.glId + '@' + a.cct;
+        var row = (db.budgets.filter(function (b) { return b.year === y && b.departmentId === d.id && b.glId === a.glId && b.cct === a.cct; })[0]) || null;
         var m = row ? row.months : [null, null, null, null, null, null, null, null, null, null, null, null];
-        var note = (db.glNotes.filter(function (n2) { return n2.year === y && n2.departmentId === d.id && n2.glId === glId; })[0]) || {};
+        var note = (db.glNotes.filter(function (n2) { return n2.year === y && n2.departmentId === d.id && n2.rowKey === rowKey; })[0]) || {};
         var total = m.reduce(function (s2, v) { return s2 + (v || 0); }, 0);
-        rows.push([y, g.code, g.name].concat(m.map(function (v) { return v === null || v === undefined ? '' : v; }))
+        rows.push([y, a.codeA || '', a.io || '', a.cct, cctById[a.cct] || '', g.code, g.name]
+          .concat(m.map(function (v) { return v === null || v === undefined ? '' : v; }))
           .concat([total, row && row.mtp1 !== null && row.mtp1 !== undefined ? row.mtp1 : '',
                    row && row.mtp2 !== null && row.mtp2 !== undefined ? row.mtp2 : '',
                    row && row.notUsed ? 'YES' : '', note.assumption || '', note.reason || '', st]));

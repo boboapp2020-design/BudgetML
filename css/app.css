@@ -241,6 +241,10 @@ body.no-scroll { overflow: hidden; }
 .budget-table th.sticky-col { z-index: 6; background: linear-gradient(180deg, #17469b 0%, #0d366b 100%); }
 .td-gl { padding: 6px 10px !important; min-width: 230px; max-width: 260px; border-right: 2px solid var(--border-strong) !important; }
 .gl-name-wrap { display: flex; align-items: center; gap: 6px; }
+.cct-tag {
+  font-size: 10.5px; color: #6d7f9e; margin: 2px 0 0 30px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px;
+}
 .gl-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell-td { min-width: 92px; padding: 3px 3px !important; }
 .cell {
