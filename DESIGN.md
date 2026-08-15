@@ -115,6 +115,22 @@ Modern Corporate Financial Dashboard — Desktop-first, Sidebar + Header + Conte
 | ดู Audit Log | ✗ | ✓ (read-only) |
 | แก้ตัวเลขงบแทน User | ✗ | **✗ — บังคับที่ Data Layer** |
 
+## 6.1 การรองรับ IO / CCT (ออกแบบไว้ รอเคาะ)
+
+หน่วยกรอกจริงในฟอร์ม ML คือ **CCT × GL** (1 แผนกมีหลาย CCT — เช่น 1132 มี ศูนย์ควบคุมเอกสารISO
+8003303000 + งานบริหารคุณภาพ 8003310100 และ GL 635100 ปรากฏใต้ทั้งสอง CCT คนละ IO):
+
+```
+CCT  = รหัสหน่วยงานย่อย 10 หลัก (cost center)         เช่น 8003310100
+IO   = comp.code(3) + "55" + CCT หลัก 4-8 (5) + กลุ่มGL(2) เช่น 800553310122
+codeA= CCT + GL + "a"                                   เช่น 8003310100635202a
+```
+
+**แผนที่แนะนำ (ทาง B):** ยกโครงสร้าง budgets เป็น (year, dept, **cct**, gl) ตามฟอร์มจริง
+(ทั้งบริษัท 263 → 313 แถว) · เหตุผล/สมมติฐานผูกรายแถว · UI แถว GL แตกย่อยตาม CCT
+พร้อมชื่อหน่วยงานย่อยกำกับ · Dashboard ยัง roll-up ระดับ GL/แผนกเหมือนเดิม ·
+Export มี codeA + IO + CCT ครบ พร้อมคีย์เข้า SAP · ต้องเพิ่ม master: cctMaster, ioMap (schema v6)
+
 ## 7. MVP Development Plan
 
 - **Phase 1 (สร้างครบในรอบนี้):** Login/Role, ตารางกรอกงบ GL×เดือน + auto-total + auto-save,
