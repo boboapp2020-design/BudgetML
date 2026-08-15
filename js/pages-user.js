@@ -184,7 +184,7 @@ const PagesUser = (() => {
     })();
 
     return pageHead(`กรอกงบประมาณปี ${c.year} 👋`, `${esc(c.dept.name)} · GL เป็นแถว เดือนเป็นคอลัมน์ · หน่วย: กีบ (LAK) · บันทึกอัตโนมัติ`,
-        `<button id="calcuOpenBtn" class="ghost-btn btn-purple">🖩 เครื่องคิดเลข</button>
+        `<button id="calcuOpenBtn" class="ghost-btn btn-purple"><img class="btn-ic" src="img/calc-icon.png" alt=""> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
          <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>`)
       + `<div class="kpi-grid kpi-grid-4">
@@ -427,7 +427,7 @@ const PagesUser = (() => {
       calculatorsBind(user);
     });
     document.getElementById('calcuOpenBtn')?.addEventListener('click', () => {
-      const back = UI.modal(`<span class="mt-ic mt-teal">🖩</span><span class="mt-tx">เครื่องคิดเลข<small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></span>`,
+      const back = UI.modal(`<img class="mt-img" src="img/calc-icon.png" alt=""><span class="mt-tx">เครื่องคิดเลข<small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></span>`,
         calcuHtml(), [{ label: 'ปิด', cls: 'ghost-btn' }]);
       back.querySelector('.modal').classList.add('modal-calcu');
       calcuBind();
