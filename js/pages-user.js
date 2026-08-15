@@ -91,24 +91,40 @@ const PagesUser = (() => {
       .filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 6);
     Charts.hbar(document.getElementById('chTopGL'),
       top.map(x => ({ label: `${x.g.code} ${x.g.name}`, value: x.v, color: Charts.CUR_C })));
+    bindZeroToggle();
   }
 
+  const HIDE_ZERO_KEY = 'abp_hide_zero_gl';
   function compareTable(c) {
+    let zeroCount = 0;
     const rows = c.gls.map(g => {
       const cur = Store.glTotal(c.year, c.deptId, g.id), prev = Store.glTotal(c.prevYear, c.deptId, g.id);
       const cmp = Store.compare(cur, prev);
       const an = Store.glAnomaly(cmp);
-      return `<tr>
+      const isZero = cur === 0 && prev === 0;
+      if (isZero) zeroCount++;
+      return `<tr class="${isZero ? 'row-zero' : ''}">
         <td><span class="gl-code">${g.code}</span> ${esc(g.name)}</td>
         <td class="num">${fmt(prev)}</td><td class="num">${fmt(cur)}</td>
         <td class="num ${cmp.diff > 0 ? 'txt-up' : cmp.diff < 0 ? 'txt-down' : ''}">${(cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff)}</td>
         <td>${deltaBadge(cmp.diff, cmp.pct)}</td>
         <td>${an ? `<span class="anomaly ${an.level}">⚠ ${an.tag}</span>` : ''}</td></tr>`;
     }).join('');
-    return `<div class="table-scroll"><table class="data-table">
+    const hide = localStorage.getItem(HIDE_ZERO_KEY) === '1';
+    return `<div class="cmp-wrap ${hide && zeroCount ? 'hide-zero' : ''}">
+      ${zeroCount ? `<div class="cmp-toolbar"><button class="ghost-btn small" data-zerotoggle>
+        ${hide ? `👁 แสดงทั้งหมด (ซ่อนอยู่ ${zeroCount} GL)` : `🙈 ซ่อน GL ที่ไม่มีงบ (${zeroCount})`}</button></div>` : ''}
+      <div class="table-scroll"><table class="data-table">
       <thead><tr><th>GL</th><th class="num">ปี ${c.prevYear} (กีบ)</th><th class="num">ปี ${c.year} (กีบ)</th>
       <th class="num">ผลต่าง (กีบ)</th><th>% เทียบปี ${c.prevYear}</th><th>ตรวจสอบ</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+      <tbody>${rows}</tbody></table></div></div>`;
+  }
+  function bindZeroToggle() {
+    document.querySelectorAll('[data-zerotoggle]').forEach(btn => btn.addEventListener('click', () => {
+      const now = localStorage.getItem(HIDE_ZERO_KEY) === '1';
+      localStorage.setItem(HIDE_ZERO_KEY, now ? '0' : '1');
+      App.render();
+    }));
   }
 
   /* ============ Budget Input (GL = แถว, เดือน = คอลัมน์) ============ */
@@ -487,6 +503,7 @@ const PagesUser = (() => {
           ${!c.editable ? '<p class="muted">— ส่งแล้วหรือรอบถูกปิด —</p>' : (!v.ok ? '<p class="muted">ต้องกรอกครบ 100% ก่อนจึงจะส่งได้</p>' : '')}`);
   }
   function reviewBind(user) {
+    bindZeroToggle();
     document.getElementById('submitBtn')?.addEventListener('click', () => {
       const c = ctx(user);
       UI.confirm2(`ยืนยันการส่งงบประมาณปี ${c.year}`,
