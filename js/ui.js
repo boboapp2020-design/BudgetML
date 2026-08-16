@@ -73,6 +73,28 @@ const UI = (() => {
     <text x="34.6" y="32.7" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="4.4" font-weight="800" fill="#ffffff">₭</text>
   </svg>`;
 
+  /* ---------- ไอคอนประจำแผนก (เลือกจากคำสำคัญในชื่อ — เรียงจากเฉพาะเจาะจงก่อน) ---------- */
+  const DEPT_ICONS = [
+    ['บัญชี|การเงิน', '💰'], ['ทรัพยากรบุคคล', '👥'], ['สารสนเทศ|GIS', '💻'],
+    ['นิติกร|กฎหมาย', '⚖️'], ['การตลาด', '📣'], ['พัสดุ|LOGISTIC', '📦'],
+    ['จัดซื้อ|จัดชื้อ|จัดหาเชื้อเพลิง|จัดหาเชื่อเพลิง', '🛒'], ['ธุรการ', '🗂️'],
+    ['สิ่งแวดล้อม|ความปลอดภัย', '🦺'], ['คุณภาพ', '🔬'], ['บรรจุ', '🧂'],
+    ['เครื่องมือควบคุม', '🎛️'], ['เครื่องมือ', '🔧'], ['เก็บเกี่ยว', '🚜'],
+    ['ชลประทาน|สำรวจ|โยธา', '💧'], ['เลี้ยงวัว', '🐄'], ['พันธุ์อ้อย', '🌱'],
+    ['ใบขาว|อินทรีย์', '🧪'], ['ส่งเสริม', '🌱'], ['บริการไร่', '🛻'],
+    ['ไร่|อ้อย', '🌾'], ['ลูกหีบ', '⚙️'], ['หม้อไอน้ำ', '🔥'],
+    ['หม้อต้ม|หม้อเคี่ยว|หม้อปั่น', '♨️'], ['ไฟฟ้า', '⚡'], ['ซ่อมบำรุง', '🔧'],
+    ['TPM', '🛠️'], ['ผลิต|โรงงาน', '🏭'], ['ประสานงาน|ภาครัฐ', '🤝'],
+    ['กจ\\.|ผอ\\.|ผจก|ผจ\\.|ผู้อำนวยการ|ผู้จัดการ|สำนักงาน', '👔'],
+  ];
+  const SIDE_ICONS = { '1': '🏢', '2': '🌾', '3': '🏭', '4': '🗂️' };
+  function deptIcon(d) {
+    if (!d) return '👤';
+    const name = d.name || '';
+    for (const [re, ic] of DEPT_ICONS) if (new RegExp(re).test(name)) return ic;
+    return SIDE_ICONS[d.side || (d.code || '')[0]] || '🏢';
+  }
+
   let selectedYear = null;
   function year() {
     if (selectedYear) return selectedYear;
@@ -130,7 +152,7 @@ const UI = (() => {
           </div>
           <div class="topbar-right">
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
-            <div class="user-chip"><span class="uc-avatar">${user.role === 'ACCOUNTING' ? 'A' : 'Q'}</span>
+            <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : deptIcon(Store.dept(user.departmentId))}</span>
               <span class="uc-name">${esc(user.name)}</span></div>
             <button id="logoutBtn" class="ghost-btn">ออกจากระบบ</button>
           </div>
@@ -212,6 +234,6 @@ const UI = (() => {
     ]);
   }
 
-  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, STATUS_TH,
+  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, STATUS_TH, deptIcon,
            shell, bindShell, year, setYear, kpi, card, pageHead, asOf, toast, modal, confirm2 };
 })();

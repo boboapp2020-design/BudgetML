@@ -219,7 +219,8 @@ const PagesUser = (() => {
     })();
 
     return pageHead(`กรอกงบประมาณปี ${c.year} 👋`, `${esc(c.dept.name)} · GL เป็นแถว เดือนเป็นคอลัมน์ · หน่วย: กีบ (LAK) · บันทึกอัตโนมัติ`,
-        `<button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
+        `<button id="ioViewBtn" class="ghost-btn">🔎 IO / CCT</button>
+         <button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
          <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>`)
       + `<div class="kpi-grid kpi-grid-4">
@@ -507,6 +508,39 @@ const PagesUser = (() => {
         calcCards(user), [{ label: 'ปิด', cls: 'ghost-btn' }]);
       back.querySelector('.modal').classList.add('modal-wide');
       calculatorsBind(user);
+    });
+    document.getElementById('ioViewBtn')?.addEventListener('click', () => {
+      const d = Store.dept(user.departmentId);
+      const rows = Store.deptRows(user.departmentId);
+      const html = `
+        <input id="ioSearch" class="io-search" placeholder="🔍 ค้นหา GL / CCT / IO / ชื่อบัญชี / หน่วยงานย่อย…">
+        <div class="table-scroll" style="max-height:360px"><table class="data-table small" id="ioTable"><thead>
+          <tr><th>code a</th><th>IO</th><th>CCT</th><th>หน่วยงานย่อย</th><th>GL</th><th>ชื่อบัญชี</th></tr></thead><tbody>
+          ${rows.map(r => `<tr>
+            <td class="mono copyable">${esc(r.codeA || '—')}</td>
+            <td class="mono copyable ${r.io === 'ไม่คุม' ? 'muted' : ''}">${esc(r.io || '—')}</td>
+            <td class="mono copyable">${r.cct}</td>
+            <td class="small">${esc(r.cctName || '')}</td>
+            <td><span class="gl-code">${r.gl.code}</span></td>
+            <td class="small">${esc(r.gl.name)}</td></tr>`).join('')}
+        </tbody></table></div>
+        <p class="muted small" style="margin-top:8px">ทั้งหมด ${rows.length} แถว · คลิกเลขเพื่อคัดลอก — ใช้อ้างอิงตอนออก PR/PO หรือเอกสาร SAP</p>`;
+      const back = UI.modal(`🔎 เลข IO / CCT — ${esc(d.name)}`, html, [{ label: 'ปิด', cls: 'primary-btn' }]);
+      back.querySelector('.modal').classList.add('modal-wide');
+      const inp = back.querySelector('#ioSearch');
+      inp.addEventListener('input', () => {
+        const q = inp.value.trim().toLowerCase();
+        back.querySelectorAll('#ioTable tbody tr').forEach(tr => {
+          tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      });
+      inp.focus();
+      back.querySelectorAll('td.copyable').forEach(td => td.addEventListener('click', () => {
+        const t = td.textContent.trim();
+        if (!t || t === '—' || t === 'ไม่คุม') return;
+        (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject())
+          .then(() => UI.toast(`คัดลอก ${t} แล้ว ✓`)).catch(() => {});
+      }));
     });
     document.getElementById('calcuOpenBtn')?.addEventListener('click', () => {
       const back = UI.modal(`<span class="mt-svg">${calcIcon(38)}</span><span class="mt-tx">เครื่องคิดเลข<small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></span>`,

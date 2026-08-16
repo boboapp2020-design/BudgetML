@@ -26,7 +26,7 @@ const App = (() => {
     depts.forEach(d => { const s = d.side || (d.code || '')[0] || '?'; (bySide[s] = bySide[s] || []).push(d); });
     const deptOpts = Object.keys(bySide).sort().map(s => {
       const opts = bySide[s].sort((a, b) => a.code.localeCompare(b.code))
-        .map(d => `<option value="${d.code}">${UI.esc(d.name)} (${d.code})</option>`).join('');
+        .map(d => `<option value="${d.code}">${UI.deptIcon(d)} ${UI.esc(d.name)} (${d.code})</option>`).join('');
       return `<optgroup label="${UI.esc(sides[s] || 'อื่นๆ')}">${opts}</optgroup>`;
     }).join('');
 
