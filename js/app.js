@@ -109,7 +109,7 @@ const App = (() => {
   function showFatal(msg) {
     const el = document.getElementById('root') || document.body;
     el.innerHTML = `
-      <div style="max-width:560px;margin:60px auto;padding:28px;font-family:'Segoe UI','Leelawadee UI',sans-serif;
+      <div style="max-width:560px;margin:60px auto;padding:28px;font-family:'IBM Plex Sans Thai','Segoe UI','Leelawadee UI',sans-serif;
                   background:#fff;border:1px solid #e0b4b4;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.12)">
         <h2 style="color:#b02f2f;margin-bottom:10px">⚠ ระบบเปิดไม่สำเร็จ</h2>
         <p style="color:#52514e;margin-bottom:8px">ข้อความข้อผิดพลาด (ส่งภาพนี้ให้ผู้พัฒนาได้เลย):</p>
