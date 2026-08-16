@@ -623,10 +623,14 @@ const Store = (() => {
     save();
     return d;
   }
-  function addGL(actor, code, name, glGroup) {
+  function addGL(actor, code, name, glGroup, ioGroup) {
     assertAccounting(actor);
     if (db.glAccounts.some(g => g.code === code)) throw new Error('รหัส GL ซ้ำ');
-    const g = { id: 'g' + code, code, name, glGroup: glGroup || 'อื่นๆ', active: true };
+    const g = {
+      id: 'g' + code, code, name, glGroup: glGroup || 'อื่นๆ',
+      ioGroup: /^\d{2}$/.test(ioGroup || '') ? ioGroup : 'ไม่คุม', // รหัสกลุ่ม IO 2 หลัก หรือ 'ไม่คุม'
+      active: true,
+    };
     db.glAccounts.push(g);
     audit(actor, 'เพิ่ม GL', { glCode: code, newValue: name });
     save();

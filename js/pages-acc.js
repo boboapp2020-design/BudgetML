@@ -426,7 +426,9 @@ const PagesAcc = (() => {
     }).join('');
 
     const glRows = Store.db.glAccounts.slice().sort((a, b) => a.code.localeCompare(b.code)).map(g =>
-      `<tr><td><span class="gl-code">${g.code}</span></td><td>${esc(g.name)}</td><td class="small muted">${esc(g.glGroup)}</td></tr>`).join('');
+      `<tr><td><span class="gl-code">${g.code}</span></td><td>${esc(g.name)}</td><td class="small muted">${esc(g.glGroup)}</td>
+       <td class="small muted">${esc(g.ioGroup || 'ไม่คุม')}</td></tr>`).join('');
+    const glGroups = [...new Set(Store.db.glAccounts.map(g => g.glGroup).filter(Boolean))].sort();
 
     const rates = Store.db.exchangeRates.filter(r => r.year === year);
 
@@ -459,7 +461,16 @@ const PagesAcc = (() => {
           <input id="newDeptName" placeholder="ชื่อหน่วยงาน เช่น แผนกวิเคราะห์คุณภาพ" style="width:280px">
           <button class="primary-btn" id="addDeptBtn">＋ เพิ่มหน่วยงาน</button></div>`)
       + card(`GL Master (${Store.db.glAccounts.length} รายการ) — อ้างอิงจากไฟล์ ML_Form`, `
-          <div class="table-scroll" style="max-height:260px"><table class="data-table small"><thead><tr><th>รหัส</th><th>ชื่อบัญชี</th><th>กลุ่ม</th></tr></thead><tbody>${glRows}</tbody></table></div>`)
+          <div class="table-scroll" style="max-height:260px"><table class="data-table small"><thead><tr><th>รหัส</th><th>ชื่อบัญชี</th><th>กลุ่ม</th><th>กลุ่ม IO</th></tr></thead><tbody>${glRows}</tbody></table></div>
+          <div class="inline-form" style="margin-top:10px">
+            <input id="newGlCode" inputmode="numeric" placeholder="รหัส เช่น 636500" style="width:130px">
+            <input id="newGlName" placeholder="ชื่อบัญชี" style="width:250px">
+            <input id="newGlGroup" list="glGroupList" placeholder="กลุ่มบัญชี" style="width:190px">
+            <datalist id="glGroupList">${glGroups.map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+            <input id="newGlIo" inputmode="numeric" maxlength="2" placeholder="กลุ่ม IO" title="รหัสกลุ่ม IO 2 หลัก (เว้นว่าง = ไม่คุม)" style="width:90px">
+            <button class="primary-btn" id="addGlBtn">＋ เพิ่ม GL</button>
+          </div>
+          <p class="muted small" style="margin-top:6px">กลุ่ม IO = รหัส 2 หลักตามชีท ML&amp;SF (ใช้ประกอบเลข IO อัตโนมัติตอนมอบหมาย GL) · เว้นว่างถ้า GL นี้ไม่คุมงบด้วย IO</p>`)
       + card(`Budget Exchange Rate ปี ${year} (Reference Rate ทางการ)`, `
           <div class="table-scroll"><table class="data-table small"><thead><tr><th>สกุลเงิน</th><th class="num">กีบ / 1 หน่วย</th><th></th></tr></thead><tbody>
           ${rates.map(r => `<tr><td>${r.currency}</td><td class="num">${fmt(r.rateToLAK)}</td>
@@ -540,6 +551,20 @@ const PagesAcc = (() => {
       const code = document.getElementById('newDeptCode').value.trim(), name = document.getElementById('newDeptName').value.trim();
       if (!code || !name) { toast('กรอกรหัสและชื่อหน่วยงาน', 'err'); return; }
       try { Store.addDepartment(user, code, name); toast('เพิ่มหน่วยงานแล้ว'); App.render(); } catch (e) { toast(e.message, 'err'); }
+    });
+    document.getElementById('addGlBtn')?.addEventListener('click', () => {
+      const code = document.getElementById('newGlCode').value.trim();
+      const name = document.getElementById('newGlName').value.trim();
+      const grp = document.getElementById('newGlGroup').value.trim();
+      const iog = document.getElementById('newGlIo').value.trim();
+      if (!/^\d{6,7}$/.test(code)) { toast('รหัส GL ต้องเป็นตัวเลข 6-7 หลัก', 'err'); return; }
+      if (!name) { toast('กรอกชื่อบัญชี', 'err'); return; }
+      if (iog && !/^\d{2}$/.test(iog)) { toast('กลุ่ม IO ต้องเป็นตัวเลข 2 หลัก หรือเว้นว่าง (= ไม่คุม)', 'err'); return; }
+      try {
+        Store.addGL(user, code, name, grp, iog);
+        toast(`เพิ่ม GL ${code} ${name} แล้ว — มอบหมายให้หน่วยงานได้ที่ปุ่ม "＋ GL" ในการ์ดหน่วยงาน`);
+        App.render();
+      } catch (e) { toast(e.message, 'err'); }
     });
     document.querySelectorAll('[data-assign]').forEach(b => b.addEventListener('click', () => {
       const deptId = b.dataset.assign;
