@@ -720,3 +720,10 @@ body.no-scroll { overflow: hidden; }
   .content { padding: 14px 12px 80px; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }
+
+/* ---------- แถวหัวกลุ่ม "ด้าน" ในตารางหน่วยงาน (v3.4) ---------- */
+.data-table tr.side-row td{
+  background:linear-gradient(90deg,#eef4fc,#f7fafd);
+  color:#1c4e8f;font-weight:700;font-size:13px;
+  border-top:2px solid #d5e3f5;padding:8px 14px;letter-spacing:.2px;
+}

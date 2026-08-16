@@ -115,17 +115,27 @@ const PagesAcc = (() => {
       { name: `ปี ${prevYear}`, color: Charts.PREV_C, values: Store.companyMonthly(prevYear) },
       { name: `ปี ${year}`,     color: Charts.CUR_C,  values: Store.companyMonthly(year) },
     ]);
-    // แท่งนอนเรียงจากมากไปน้อย (รองรับ 17 หน่วยงาน — แสดงปีที่มีข้อมูลเป็นหลัก)
+    // แท่งนอนเรียงจากมากไปน้อย — แสดง Top 15 (ทั้งบริษัท 62 แผนก ดูครบได้ที่แท็บหน่วยงาน)
     const deptBars = depts.map(d => {
       const cur = Store.deptTotal(year, d.id), prev = Store.deptTotal(prevYear, d.id);
       return { d, v: cur > 0 ? cur : prev, cur, prev };
     }).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
-    Charts.hbar(document.getElementById('chAccDept'),
-      deptBars.map(x => ({
-        label: x.d.name, value: x.v, color: x.cur > 0 ? Charts.CUR_C : Charts.PREV_C,
-        sub: `ปี ${prevYear}: ${Math.round(x.prev).toLocaleString()} กีบ · ปี ${year}: ${Math.round(x.cur).toLocaleString()} กีบ<br>`,
-        onClick: () => { location.hash = `#/acc/departments?d=${x.d.id}`; },
-      })), { labelW: 230 });
+    const TOP_N = 15;
+    const shown = deptBars.slice(0, TOP_N);
+    const rest = deptBars.slice(TOP_N);
+    const bars = shown.map(x => ({
+      label: x.d.name, value: x.v, color: x.cur > 0 ? Charts.CUR_C : Charts.PREV_C,
+      sub: `ปี ${prevYear}: ${Math.round(x.prev).toLocaleString()} กีบ · ปี ${year}: ${Math.round(x.cur).toLocaleString()} กีบ<br>`,
+      onClick: () => { location.hash = `#/acc/departments?d=${x.d.id}`; },
+    }));
+    if (rest.length) {
+      bars.push({
+        label: `อื่นๆ อีก ${rest.length} หน่วยงาน`, value: rest.reduce((s, x) => s + x.v, 0), color: '#c3c2b7',
+        sub: `ดูครบทุกหน่วยงานที่แท็บ "หน่วยงาน"<br>`,
+        onClick: () => { location.hash = '#/acc/departments'; },
+      });
+    }
+    Charts.hbar(document.getElementById('chAccDept'), bars, { labelW: 230 });
     const allGl = depts.flatMap(d => Store.deptGLs(d.id).map(g => ({ d, g, v: Store.glTotal(year, d.id, g.id) })));
     const top = allGl.filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 6);
     Charts.hbar(document.getElementById('chAccTopGL'),
@@ -154,13 +164,22 @@ const PagesAcc = (() => {
     if (qs.d && qs.gl) return drillGL(user, qs.d, qs.gl);
     if (qs.d) return drillDept(user, qs.d);
 
-    const depts = Store.activeDepartments();
+    const sides = Store.db.meta.sides || {};
+    const depts = Store.activeDepartments().slice().sort((a, b) => a.code.localeCompare(b.code));
+    let lastSide = null;
     const rows = depts.map(d => {
       const cur = Store.deptTotal(year, d.id), prev = Store.deptTotal(prevYear, d.id);
       const cmp = Store.compare(cur, prev);
       const comp = Store.completion(year, d.id);
       const st = Store.deptState(year, d.id);
-      return `<tr>
+      const side = d.side || (d.code || '')[0];
+      let head = '';
+      if (side !== lastSide) {
+        lastSide = side;
+        const n = depts.filter(x => (x.side || (x.code || '')[0]) === side).length;
+        head = `<tr class="side-row"><td colspan="8">${esc(sides[side] || 'อื่นๆ')} · ${n} หน่วยงาน</td></tr>`;
+      }
+      return `${head}<tr>
         <td><a class="link" href="#/acc/departments?d=${d.id}"><b>${esc(d.name)}</b></a><div class="muted small">${d.code}</div></td>
         <td class="num">${fmt(prev)}</td><td class="num">${fmt(cur)}</td>
         <td class="num ${cmp.diff > 0 ? 'txt-up' : cmp.diff < 0 ? 'txt-down' : ''}">${(cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff)}</td>

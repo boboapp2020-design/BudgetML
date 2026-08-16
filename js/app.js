@@ -19,8 +19,16 @@ const App = (() => {
   };
 
   function loginPage() {
-    const deptOpts = Store.db.departments.filter(d => d.active)
-      .map(d => `<option value="${d.code}">${UI.esc(d.name)} (${d.code})</option>`).join('');
+    // จัดกลุ่มหน่วยงานตาม "ด้าน" (1=สนับสนุน 2=อ้อย 3=โรงงาน 4=บริหารสำนักงาน)
+    const sides = (Store.db.meta.sides) || {};
+    const depts = Store.db.departments.filter(d => d.active);
+    const bySide = {};
+    depts.forEach(d => { const s = d.side || (d.code || '')[0] || '?'; (bySide[s] = bySide[s] || []).push(d); });
+    const deptOpts = Object.keys(bySide).sort().map(s => {
+      const opts = bySide[s].sort((a, b) => a.code.localeCompare(b.code))
+        .map(d => `<option value="${d.code}">${UI.esc(d.name)} (${d.code})</option>`).join('');
+      return `<optgroup label="${UI.esc(sides[s] || 'อื่นๆ')}">${opts}</optgroup>`;
+    }).join('');
 
     root().innerHTML = `
     <div class="login-wrap">
