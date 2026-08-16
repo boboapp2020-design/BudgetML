@@ -242,7 +242,9 @@ function rebuildViews_(db) {
   });
 
   /* ---- เก็บกวาด: ลบแท็บที่สคริปต์เคยสร้างแต่รอบนี้ไม่ได้สร้างแล้ว ----
-     ลบเฉพาะชื่อที่อยู่ในรายการ abp_view_tabs (ไม่แตะแท็บอื่นของผู้ใช้) */
+     1) ชื่อที่อยู่ในรายการ abp_view_tabs (แท็บที่เวอร์ชันนี้เคยสร้าง)
+     2) แท็บตกค้างจากโค้ดรุ่นเก่า: ชื่อขึ้นต้นรหัสแผนก 4 หลัก และ A1 = 'ปีงบ'
+        (ลายเซ็นของแท็บที่สคริปต์สร้าง — ไม่แตะแท็บอื่นของผู้ใช้) */
   var props = PropertiesService.getScriptProperties();
   var prev = [];
   try { prev = JSON.parse(props.getProperty('abp_view_tabs') || '[]'); } catch (e2) {}
@@ -252,6 +254,14 @@ function rebuildViews_(db) {
     if (nowSet[n] || n === DB_SHEET) return;
     var sh = ss.getSheetByName(n);
     if (sh) { try { ss.deleteSheet(sh); } catch (e3) {} }
+  });
+  ss.getSheets().forEach(function (sh) {
+    var n = sh.getName();
+    if (nowSet[n] || n === DB_SHEET) return;
+    if (!/^\d{4} /.test(n)) return;
+    try {
+      if (String(sh.getRange(1, 1).getValue()) === 'ปีงบ') ss.deleteSheet(sh);
+    } catch (e4) {}
   });
   props.setProperty('abp_view_tabs', JSON.stringify(viewNames));
 }
