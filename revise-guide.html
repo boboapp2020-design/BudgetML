@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>คู่มือรอบ Revise กลางปี — งบประมาณประจำปี (Annual Budget)</title>
+<link rel="stylesheet" href="fonts/plex.css">
+<style>
+  :root{
+    --navy:#0c2c61; --blue:#256abf; --blue2:#2f7fd6;
+    --green:#0e9f6e; --green-bg:#e6f7f0; --green-bd:#9be0c5;
+    --amber:#b45309; --amber-bg:#fdf3e3; --amber-bd:#f3cf8f;
+    --purple:#6d28d9; --purple-bg:#f1ecfd; --purple-bd:#cfc2f4;
+    --ink:#22314a; --mut:#64748b; --line:#dde5f0; --bg:#f2f6fb; --card:#ffffff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'IBM Plex Sans Thai','Segoe UI','Leelawadee UI',sans-serif;background:var(--bg);color:var(--ink);line-height:1.65}
+  .wrap{max-width:880px;margin:0 auto;padding:28px 20px 60px}
+  header.hero{background:linear-gradient(135deg,#0c2c61,#1c4e8f 60%,#2f7fd6);color:#fff;border-radius:16px;padding:28px 30px;margin-bottom:26px;box-shadow:0 12px 34px rgba(12,44,97,.25)}
+  .hero h1{font-size:26px;font-weight:700;margin-bottom:6px}
+  .hero p{opacity:.92;font-size:14.5px}
+  .hero .tag{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 14px;font-size:12.5px;margin-bottom:12px;letter-spacing:.3px}
+  h2{font-size:19px;color:var(--navy);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:var(--navy);color:#fff;font-size:15px;flex:none}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 4px 16px rgba(30,64,120,.06)}
+  /* ---------- timeline ---------- */
+  .steps{list-style:none;position:relative;padding-left:46px}
+  .steps::before{content:'';position:absolute;left:17px;top:8px;bottom:8px;width:3px;border-radius:2px;background:linear-gradient(#c9d8ef,#7fb0e8)}
+  .steps li{position:relative;padding:0 0 20px}
+  .steps li:last-child{padding-bottom:0}
+  .steps .dot{position:absolute;left:-46px;top:0;width:36px;height:36px;border-radius:50%;background:#fff;border:3px solid var(--blue);color:var(--blue);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .steps li.acc .dot{border-color:var(--navy);color:var(--navy)}
+  .steps li.dept .dot{border-color:#d85a30;color:#d85a30}
+  .steps b.who{font-size:12px;border-radius:999px;padding:2px 10px;margin-left:8px;vertical-align:2px;font-weight:600}
+  .who.acc{background:#e3edfa;color:var(--navy)}
+  .who.dept{background:#faeae2;color:#a6431f}
+  .steps h3{font-size:16px;color:var(--navy)}
+  .steps p{font-size:14px;color:var(--mut);margin-top:3px}
+  .steps p b{color:var(--ink)}
+  /* ---------- month strip ---------- */
+  .months{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin:16px 0 14px}
+  .mo{border-radius:9px;text-align:center;padding:9px 2px 7px;font-weight:700;font-size:15px;border:1.6px solid}
+  .mo small{display:block;font-weight:500;font-size:10.5px;margin-top:1px}
+  .mo.lock{background:var(--green-bg);border-color:var(--green-bd);color:#066e4c}
+  .mo.floor{background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)}
+  .mo.free{background:var(--purple-bg);border-color:var(--purple-bd);color:#5527ae}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 22px;font-size:13px;color:var(--mut)}
+  .legend i{display:inline-block;width:13px;height:13px;border-radius:4px;margin-right:6px;vertical-align:-2px;border:1.5px solid}
+  .legend .l1{background:var(--green-bg);border-color:var(--green-bd)}
+  .legend .l2{background:var(--amber-bg);border-color:var(--amber-bd)}
+  .legend .l3{background:var(--purple-bg);border-color:var(--purple-bd)}
+  /* ---------- rules table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{background:linear-gradient(135deg,#0c2c61,#1c4e8f);color:#fff;text-align:left;padding:10px 14px;font-weight:600}
+  th:first-child{border-radius:10px 0 0 0}th:last-child{border-radius:0 10px 0 0}
+  td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td .pill{display:inline-block;border-radius:999px;padding:2px 11px;font-size:12.5px;font-weight:600;white-space:nowrap}
+  .pill.g{background:var(--green-bg);color:#066e4c}.pill.a{background:var(--amber-bg);color:var(--amber)}.pill.p{background:var(--purple-bg);color:#5527ae}
+  /* ---------- compare ---------- */
+  .cmp{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;margin-top:6px}
+  .cmp .box{flex:1 1 200px;border-radius:12px;padding:14px 16px;border:1.6px solid}
+  .cmp .box h4{font-size:15px;margin-bottom:4px}
+  .cmp .box p{font-size:13px;color:var(--mut)}
+  .cmp .rv{background:#fdeef4;border-color:#f2bdd2}.cmp .rv h4{color:#a92e5e}
+  .cmp .og{background:#f4f6f9;border-color:#d5dde8}.cmp .og h4{color:#3d4c63}
+  .cmp .vs{align-self:center;font-weight:800;color:var(--navy);font-size:17px;padding:0 4px}
+  .note{background:#fffbe9;border:1px solid #f1e3a6;border-radius:12px;padding:14px 18px;font-size:13.5px;color:#7a5d00;margin-top:26px}
+  .note b{color:#5c4500}
+  .keys{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+  .keys .k{border-radius:12px;padding:16px 18px;color:#fff}
+  .keys .k1{background:linear-gradient(135deg,#0e9f6e,#0b7f58)}
+  .keys .k2{background:linear-gradient(135deg,#6d28d9,#4c1d95)}
+  .keys h4{font-size:15px;margin-bottom:5px}
+  .keys p{font-size:13px;opacity:.92}
+  footer{margin-top:44px;text-align:center;color:var(--mut);font-size:12.5px}
+  @media (max-width:640px){.months{grid-template-columns:repeat(6,1fr)}.keys{grid-template-columns:1fr}}
+  @media print{body{background:#fff}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="tag">คู่มือระบบงบประมาณ · บริษัท น้ำตาลมิตรลาว จำกัด</span>
+    <h1>🔁 รอบ Revise งบประมาณกลางปี ทำงานอย่างไร</h1>
+    <p>ปรับคาดการณ์ครึ่งปีหลังด้วยตัวเลขเกิดจริง โดยเก็บงบเดิมไว้เป็นหลักฐานเทียบเสมอ</p>
+  </header>
+
+  <h2><span class="n">1</span> ขั้นตอนทั้งหมด 7 ขั้น</h2>
+  <div class="card">
+    <ol class="steps">
+      <li class="acc"><span class="dot">1</span>
+        <h3>ตั้งงบต้นปี แล้วบัญชี Lock <b class="who acc">บัญชี</b></h3>
+        <p>งบที่อนุมัติและล็อกแล้วคือ <b>"งบเดิม" (Original)</b> — จุดตั้งต้นของทั้งปี</p></li>
+      <li class="acc"><span class="dot">2</span>
+        <h3>บัญชีเปิดรอบ Revise <b class="who acc">บัญชี</b></h3>
+        <p>ที่เมนู Budget Control กด <b>"🔁 เปิดรอบ Revise"</b> แล้วเลือกว่ามีเกิดจริงถึงเดือนไหน — วินาทีนั้นระบบ<b>ถ่ายสำเนางบเดิมทั้งปีเก็บถาวร (snapshot)</b> ก่อนปลดล็อก งบเดิมจึงไม่มีวันหาย</p></li>
+      <li class="acc"><span class="dot">3</span>
+        <h3>บัญชีใส่ตัวเลขเกิดจริง <b class="who acc">บัญชี</b></h3>
+        <p>ที่เมนู <b>"📥 ใส่เกิดจริง"</b> — กรอกทีละช่อง หรือ copy จาก Excel/SAP มาวางทั้งก้อน (จับคู่ด้วย code a หรือ CCT+GL) ตัวเลขจะทับเดือนที่ผ่านมาแล้วและ<b>ล็อกทันที</b></p></li>
+      <li class="dept"><span class="dot">4</span>
+        <h3>หน่วยงานปรับคาดการณ์เดือนที่เหลือ <b class="who dept">หน่วยงาน</b></h3>
+        <p>แก้ได้เฉพาะเดือนอนาคต โดยเห็น "งบเดิม" เป็นตัวเทียบตลอด — <b>แถวไหนยอดรวมต่างจากงบเดิม ระบบบังคับให้ระบุเหตุผลก่อนส่ง</b></p></li>
+      <li class="dept"><span class="dot">5</span>
+        <h3>ส่งเข้าระบบ <b class="who dept">หน่วยงาน</b></h3>
+        <p>กดส่ง (Submit) เหมือนรอบตั้งงบปกติ</p></li>
+      <li class="acc"><span class="dot">6</span>
+        <h3>บัญชีตรวจ + เทียบงบเดิม <b class="who acc">บัญชี</b></h3>
+        <p>ระบบแสดงตารางเทียบอัตโนมัติราย GL / รายแผนก พร้อมเหตุผลของหน่วยงาน — ไม่ผ่านก็<b>ตีกลับ</b>ให้แก้ได้</p></li>
+      <li class="acc"><span class="dot">7</span>
+        <h3>Lock ปิดรอบ <b class="who acc">บัญชี</b></h3>
+        <p>งบ Revise กลายเป็น<b>งบใช้จริงของปีนั้น</b> ส่วนงบเดิมยังเปิดดูย้อนหลังได้เสมอ ทั้งในแอปและบน Google Sheet (คอลัมน์ งบเดิม / เพิ่ม-ลด / เกิดจริงสะสม)</p></li>
+    </ol>
+  </div>
+
+  <h2><span class="n">2</span> กติการายเดือน (ตัวอย่าง: เกิดจริงถึงเดือน 4)</h2>
+  <div class="card">
+    <div class="months">
+      <div class="mo lock">1<small>ม.ค.</small></div>
+      <div class="mo lock">2<small>ก.พ.</small></div>
+      <div class="mo lock">3<small>มี.ค.</small></div>
+      <div class="mo floor">4<small>เม.ย.</small></div>
+      <div class="mo free">5<small>พ.ค.</small></div>
+      <div class="mo free">6<small>มิ.ย.</small></div>
+      <div class="mo free">7<small>ก.ค.</small></div>
+      <div class="mo free">8<small>ส.ค.</small></div>
+      <div class="mo free">9<small>ก.ย.</small></div>
+      <div class="mo free">10<small>ต.ค.</small></div>
+      <div class="mo free">11<small>พ.ย.</small></div>
+      <div class="mo free">12<small>ธ.ค.</small></div>
+    </div>
+    <div class="legend">
+      <span><i class="l1"></i>เกิดจริง — ล็อกสนิท แก้ไม่ได้</span>
+      <span><i class="l2"></i>เดือนตัดยอด — เพิ่มได้ ลดต่ำกว่าเกิดจริงไม่ได้</span>
+      <span><i class="l3"></i>คาดการณ์ — หน่วยงานแก้ได้อิสระ</span>
+    </div>
+    <br>
+    <table>
+      <thead><tr><th style="width:130px">ช่วงเดือน</th><th style="width:170px">สถานะ</th><th>เหตุผลที่ออกแบบแบบนี้</th></tr></thead>
+      <tbody>
+        <tr><td><b>เดือน 1–3</b></td><td><span class="pill g">🔒 เกิดจริง ล็อกสนิท</span></td><td>เงินที่จ่ายไปแล้วคือข้อเท็จจริง ย้อนแก้ไม่ได้ — ล็อกโดยแผนกบัญชีเท่านั้น</td></tr>
+        <tr><td><b>เดือน 4</b></td><td><span class="pill a">⚠ พื้น (Floor)</span></td><td>เดือนตัดยอดอาจมีบิลตกค้าง จึง<b>เพิ่มได้</b> แต่กรอกต่ำกว่ายอดที่จ่ายจริงไปแล้วไม่ได้</td></tr>
+        <tr><td><b>เดือน 5–12</b></td><td><span class="pill p">✏ คาดการณ์ใหม่</span></td><td>อนาคตที่ยังปรับได้ — ค่าเริ่มต้นคืองบเดิม ถ้าเปลี่ยนจนยอดรวมแถวต่างไป ต้องระบุเหตุผล</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2><span class="n">3</span> ตอนบัญชีตรวจ ระบบเทียบให้อัตโนมัติ</h2>
+  <div class="card">
+    <div class="cmp">
+      <div class="box rv"><h4>งบ Revise ทั้งปี</h4><p>= เกิดจริง เดือน 1–4 + คาดการณ์ เดือน 5–12</p></div>
+      <div class="vs">⇄ เทียบ</div>
+      <div class="box og"><h4>งบเดิม (Snapshot)</h4><p>หลักฐานถาวร ถ่ายเก็บตอนเปิดรอบ ไม่มีใครแก้ได้</p></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--mut);margin-top:12px">ผลต่าง (Δ) แสดงราย GL และรายแผนก พร้อมเหตุผลที่หน่วยงานระบุ — ดูได้ที่แท็บ "หน่วยงาน" ของผู้ดูแล และบนแท็บ Google Sheet ของแต่ละแผนก</p>
+  </div>
+
+  <h2><span class="n">4</span> หัวใจของการออกแบบ</h2>
+  <div class="keys">
+    <div class="k k1"><h4>🔒 เกิดจริง = ข้อเท็จจริง</h4><p>ใส่และล็อกโดยแผนกบัญชีเท่านั้น หน่วยงานแตะไม่ได้ — ตัวเลขในระบบจึงเชื่อถือได้เสมอ</p></div>
+    <div class="k k2"><h4>💬 เปลี่ยนจากงบเดิม ต้องมีเหตุผล</h4><p>ทุกแถวที่ยอดต่างจากงบเดิม ระบบบังคับให้อธิบาย — ตรวจย้อนหลังได้ทุกรายการ</p></div>
+  </div>
+
+  <div class="note"><b>สรุปสั้นที่สุด:</b> งบเดิมถูกเก็บเป็นหลักฐานก่อนเสมอ → บัญชีใส่ความจริง (เกิดจริง) → หน่วยงานปรับอนาคตพร้อมเหตุผล → บัญชีเทียบและล็อก → งบ Revise คืองบใช้จริงของปี</div>
+
+  <footer>งบประมาณประจำปี (Annual Budget) · บริษัท น้ำตาลมิตรลาว จำกัด — คู่มือรอบ Revise v1.0</footer>
+</div>
+</body>
+</html>
