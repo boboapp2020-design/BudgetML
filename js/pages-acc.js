@@ -22,31 +22,81 @@ const PagesAcc = (() => {
     DRAFT:         { label: 'ยังไม่เริ่ม',    color: '#c3c2b7' },
   };
 
-  /* ============ Executive Dashboard ============ */
+  /* ============ Executive Dashboard (v3.6) ============ */
+  const SIDE_META = {
+    '1': { c: '#2a78d6', bg: '#e8f1fc', icon: '🏢' },
+    '2': { c: '#13a06d', bg: '#e6f7f0', icon: '🌾' },
+    '3': { c: '#eb6834', bg: '#fdeee6', icon: '🏭' },
+    '4': { c: '#8b5cf6', bg: '#f1ecfd', icon: '🗂️' },
+  };
+  // ตัวเลขอ่านง่ายสำหรับผู้บริหาร: 1.36 ล้านล้าน / 45.2 พันล้าน / 8.4 ล้าน
+  const thShort = v => {
+    const a = Math.abs(v), sign = v < 0 ? '−' : '';
+    if (a >= 1e12) return sign + (a / 1e12).toFixed(2) + ' ล้านล้าน';
+    if (a >= 1e9)  return sign + (a / 1e9).toFixed(1) + ' พันล้าน';
+    if (a >= 1e6)  return sign + (a / 1e6).toFixed(1) + ' ล้าน';
+    return sign + fmt(a);
+  };
+
   function dashboard(user) {
     const year = UI.year(), prevYear = year - 1;
     const depts = Store.activeDepartments();
-    const cur = Store.companyTotal(year), prev = Store.companyTotal(prevYear);
-    const cmp = Store.compare(cur, prev);
+    const rv = Store.revisePhase(year);
+    const pd = Store.db.budgetPeriods.find(x => x.year === year) || {};
+    const cur = Store.companyTotal(year);
+
+    // ---------- เกิดจริงสะสม ----------
+    const actuals = (Store.db.actuals || []).filter(a => a.year === year);
+    const actTotal = actuals.reduce((s, a) => s + a.months.reduce((x, v) => x + (v || 0), 0), 0);
+    const actDeptN = new Set(actuals.map(a => a.departmentId)).size;
+    const actPct = cur > 0 ? actTotal / cur * 100 : 0;
+
+    // ---------- งบเดิม (snapshot) เทียบ Revise ----------
+    const origTotal = rv.on ? depts.reduce((s, d) => s + Store.originalDeptTotal(year, d.id), 0) : 0;
+    const rvDiff = rv.on ? cur - origTotal : 0;
+    const rvPct = rv.on && origTotal > 0 ? rvDiff / origTotal * 100 : 0;
+
+    // ---------- MTP ปี +1 / +2 ----------
+    const bs = Store.db.budgets.filter(b => b.year === year);
+    const mtp1 = bs.reduce((s, b) => s + (typeof b.mtp1 === 'number' ? b.mtp1 : 0), 0);
+    const mtp2 = bs.reduce((s, b) => s + (typeof b.mtp2 === 'number' ? b.mtp2 : 0), 0);
+
+    // ---------- สถานะแผนก ----------
     const states = depts.map(d => ({ d, st: Store.deptState(year, d.id).status }));
     const cnt = {};
     states.forEach(x => { cnt[x.st] = (cnt[x.st] || 0) + 1; });
     const submitted = (cnt.SUBMITTED || 0) + (cnt.LOCKED || 0);
-    const anomalies = depts.flatMap(d => Store.deptAnomalies(year, d.id));
-
-    // แถบสถานะการส่ง (segmented bar)
     const stOrder = ['SUBMITTED', 'LOCKED', 'COMPLETED', 'IN_PROGRESS', 'NEED_REVISION', 'DRAFT'];
     const segs = stOrder.filter(s => cnt[s]).map(s =>
       `<div class="status-seg" style="flex:${cnt[s]};background:${ST_META[s].color}" title="${ST_META[s].label}: ${cnt[s]} หน่วยงาน"></div>`).join('');
     const legends = stOrder.filter(s => cnt[s]).map(s =>
       `<span class="st-legend"><span class="dl-dot" style="background:${ST_META[s].color}"></span>${ST_META[s].label} <b>${cnt[s]}</b></span>`).join('');
     const waiting = states.filter(x => !['SUBMITTED', 'LOCKED'].includes(x.st));
-    const waitingNames = waiting.map(x => esc(x.d.name.replace('แผนก', ''))).join(' · ');
+    const waitingNames = waiting.slice(0, 20).map(x => esc(x.d.name.replace('แผนก', ''))).join(' · ')
+      + (waiting.length > 20 ? ` · และอีก ${waiting.length - 20} แผนก` : '');
 
-    // Top 5 เพิ่ม/ลด พร้อมเหตุผล
-    const movers = depts.flatMap(d => Store.deptGLs(d.id).map(g => ({
-      d, g, cmp: Store.compare(Store.glTotal(year, d.id, g.id), Store.glTotal(prevYear, d.id, g.id)),
-    })));
+    // ---------- สรุปรายด้าน (4 ด้าน) ----------
+    const sides = Store.db.meta.sides || {};
+    const sideAgg = {};
+    depts.forEach(d => {
+      const s = d.side || (d.code || '')[0];
+      const t = Store.deptTotal(year, d.id);
+      const a = sideAgg[s] = sideAgg[s] || { total: 0, n: 0, top: null };
+      a.total += t; a.n++;
+      if (!a.top || t > a.top.t) a.top = { name: d.name, t };
+    });
+    const sideCards = Object.keys(sideAgg).sort().map(s => {
+      const a = sideAgg[s], m = SIDE_META[s] || SIDE_META['1'];
+      const share = cur > 0 ? a.total / cur * 100 : 0;
+      return `<a class="side-card" style="--sc:${m.c};--scbg:${m.bg}" href="#/acc/departments">
+        <div class="sc-head"><span>${m.icon}</span> ${esc(sides[s] || 'อื่นๆ')} <span class="sc-n">${a.n} แผนก</span></div>
+        <div class="sc-val">${thShort(a.total)} <small>กีบ</small></div>
+        <div class="sc-bar"><i style="width:${Math.max(2, share).toFixed(1)}%"></i></div>
+        <div class="sc-sub">${share.toFixed(1)}% ของทั้งบริษัท · สูงสุด: ${esc((a.top ? a.top.name : '—').replace('แผนก', ''))}</div>
+      </a>`;
+    }).join('');
+
+    // ---------- Top movers: ช่วง Revise เทียบ "งบเดิม" / ปกติเทียบปีก่อน ----------
     const moverRow = x => {
       const reason = (Store.note(year, x.d.id, x.g.id).reason || '').trim();
       return `<a class="mover-row" href="#/acc/departments?d=${x.d.id}&gl=${x.g.id}">
@@ -54,50 +104,115 @@ const PagesAcc = (() => {
           <small>${esc(x.d.name)}${reason ? ' · 💬 ' + esc(reason.slice(0, 55)) + (reason.length > 55 ? '…' : '') : ''}</small></span>
         <span class="mv-val"><span class="num">${(x.cmp.diff >= 0 ? '+' : '') + UI.fmtShort(x.cmp.diff)}</span>${deltaBadge(x.cmp.diff, x.cmp.pct)}</span></a>`;
     };
+    let movers;
+    if (rv.on) {
+      movers = depts.flatMap(d => Store.deptGLs(d.id).map(g => ({
+        d, g, cmp: Store.compare(Store.glTotal(year, d.id, g.id), Store.originalGlTotal(year, d.id, g.id)),
+      }))).filter(x => Math.abs(x.cmp.diff) > 0.5);
+    } else {
+      movers = depts.filter(d => Store.deptTotal(prevYear, d.id) > 0)
+        .flatMap(d => Store.deptGLs(d.id).map(g => ({
+          d, g, cmp: Store.compare(Store.glTotal(year, d.id, g.id), Store.glTotal(prevYear, d.id, g.id)),
+        })));
+    }
     const topInc = movers.filter(x => x.cmp.diff > 0).sort((a, b) => b.cmp.diff - a.cmp.diff).slice(0, 5).map(moverRow).join('');
     const topDec = movers.filter(x => x.cmp.diff < 0).sort((a, b) => a.cmp.diff - b.cmp.diff).slice(0, 5).map(moverRow).join('');
+    const mvBase = rv.on ? 'จากงบเดิม (รอบ Revise)' : `เทียบปี ${prevYear}`;
+    const mvEmpty = rv.on ? 'ยังไม่มีแผนกใดปรับจากงบเดิม' : 'ไม่มีรายการ';
+
+    // ---------- Exceptions: เฉพาะหน่วยงานที่มีฐานเทียบปีก่อน ----------
+    const baseDepts = depts.filter(d => Store.deptTotal(prevYear, d.id) > 0);
+    const anomalies = baseDepts.flatMap(d => Store.deptAnomalies(year, d.id));
+
+    // ---------- MTP outlook (คอลัมน์เทียบ 3 ปี) ----------
+    const mtpMax = Math.max(cur, mtp1, mtp2, 1);
+    const mtpCol = (label, v, base, first) => {
+      const dp = base > 0 ? (v - base) / base * 100 : null;
+      return `<div class="mtp-col">
+        <div class="mtp-bar-wrap"><div class="mtp-bar${first ? ' mtp-bar-cur' : ''}" style="height:${Math.max(8, v / mtpMax * 118).toFixed(0)}px"></div></div>
+        <div class="mtp-y">${label}</div>
+        <div class="mtp-v">${v > 0 ? thShort(v) + ' กีบ' : '—'}</div>
+        <div class="mtp-d" style="color:${dp === null ? '#98a4b5' : dp >= 0 ? '#0ca30c' : '#d03b3b'}">${dp === null ? '&nbsp;' : (dp >= 0 ? '+' : '') + dp.toFixed(1) + '%'}</div>
+      </div>`;
+    };
+    const mtpHtml = `<div class="mtp-row">
+        ${mtpCol('ปี ' + year + (rv.on ? ' (Revise)' : ''), cur, 0, true)}
+        ${mtpCol('ปี ' + (year + 1) + ' (MTP)', mtp1, cur, false)}
+        ${mtpCol('ปี ' + (year + 2) + ' (MTP)', mtp2, mtp1, false)}
+      </div>
+      <p class="muted small" style="text-align:center;margin-top:4px">แผนระยะกลาง (MTP) จากคอลัมน์ "ปี ${year + 1} / ปี ${year + 2}" ของไฟล์งบอนุมัติ — บางรายการไม่ได้ระบุ MTP</p>`;
+
+    // ---------- Hero chip ----------
+    const phaseChip = rv.on
+      ? `<span class="eh-chip eh-chip-rv">🔁 รอบ Revise · เกิดจริงถึง ด.${rv.thru}</span>`
+      : pd.status === 'OPEN'
+        ? `<span class="eh-chip">🟢 เปิดรับข้อมูล</span>`
+        : `<span class="eh-chip">🔒 ปิดรอบแล้ว</span>`;
 
     return pageHead(`Executive Dashboard 📊`,
-        `งบประมาณปี ${year} เทียบปี ${prevYear} · ${esc(Store.db.meta.company)} · ${asOf()}`,
+        `ภาพรวมงบประมาณทั้งบริษัท ปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
         `<button class="ghost-btn" onclick="Store.exportDeptSummary(${year})">⬇ Export สรุปหน่วยงาน</button>
          <button class="ghost-btn" onclick="Store.exportDetail(${year})">⬇ Export รายละเอียด</button>
          <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
 
-      + `<div class="kpi-grid">
-        ${kpiC('💰', '#e6f0fb', 'kpi-tint-blue', `งบประมาณรวมปี ${year}`,
-            `${UI.fmtShort(cur)} <small>กีบ</small>`, fmt(cur) + ' กีบ · ' + depts.length + ' หน่วยงาน')}
-        ${kpiC('🗓️', '#e6f7f0', 'kpi-tint-teal', `ปีก่อน ${prevYear} (baseline)`,
-            `${UI.fmtShort(prev)} <small>กีบ</small>`, fmt(prev) + ' กีบ')}
-        ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', 'เพิ่ม/ลด เทียบปีก่อน',
-            deltaBadge(cmp.diff, cmp.pct), (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
-        ${kpiC('📤', submitted === depts.length ? '#eaf6ea' : '#fff7e6', 'kpi-tint-amber', 'ส่งงบประมาณแล้ว',
-            `${submitted} <small>/ ${depts.length} หน่วยงาน</small>`, submitted === depts.length ? 'ครบทุกหน่วยงาน ✓' : `รออีก ${depts.length - submitted} หน่วยงาน`)}
-        ${kpiC('⚠️', anomalies.length ? '#fdecec' : '#eaf6ea', anomalies.length ? 'kpi-tint-red' : 'kpi-tint-green', 'รายการผิดปกติ',
-            `${anomalies.length} <small>รายการ</small>`, anomalies.length ? '<a class="link" href="#dashExceptions">ตรวจสอบด้านล่าง ↓</a>' : 'ไม่พบความผิดปกติ')}
-      </div>`
+      + `<div class="exec-hero">
+          <div class="eh-main">
+            <div class="eh-kicker">งบประมาณทั้งบริษัท ปี ${year} ${phaseChip}</div>
+            <div class="eh-big">${thShort(cur)} <small>กีบ</small></div>
+            <div class="eh-full">${fmt(cur)} กีบ · ${depts.length} แผนก · ${(Store.db.departmentRows || []).length.toLocaleString()} รายการงบ (CCT × GL)</div>
+          </div>
+          <div class="eh-stats">
+            <div class="eh-stat">
+              <div class="ehs-label">💸 เกิดจริงสะสม${rv.on ? ` (ด.1-${rv.thru})` : ''}</div>
+              <div class="ehs-val">${actTotal > 0 ? thShort(actTotal) + ' <small>กีบ</small>' : '<small>รอใส่ข้อมูล</small>'}</div>
+              <div class="ehs-bar"><i style="width:${Math.min(100, actPct).toFixed(1)}%"></i></div>
+              <div class="ehs-sub">ใช้ไป ${actPct.toFixed(1)}% ของงบ · มีข้อมูล ${actDeptN}/${depts.length} แผนก</div>
+            </div>
+            <div class="eh-stat">
+              <div class="ehs-label">🔁 Revise เทียบงบเดิม</div>
+              <div class="ehs-val">${rv.on ? (Math.abs(rvDiff) < 0.5 ? '± 0' : (rvDiff > 0 ? '+' : '−') + thShort(Math.abs(rvDiff))) + ' <small>กีบ</small>' : '<small>ยังไม่เปิดรอบ</small>'}</div>
+              <div class="ehs-sub">${rv.on ? `งบเดิม ${thShort(origTotal)} กีบ · ${(rvPct >= 0 ? '+' : '') + rvPct.toFixed(2)}%` : 'งบปัจจุบัน = งบอนุมัติ'}</div>
+            </div>
+            <div class="eh-stat">
+              <div class="ehs-label">🎯 MTP ปี ${year + 1}</div>
+              <div class="ehs-val">${mtp1 > 0 ? thShort(mtp1) + ' <small>กีบ</small>' : '—'}</div>
+              <div class="ehs-sub">${mtp1 > 0 && cur > 0 ? ((mtp1 - cur) / cur >= 0 ? '+' : '') + ((mtp1 - cur) / cur * 100).toFixed(1) + '% จากปี ' + year : 'จากไฟล์แผนระยะกลาง'}</div>
+            </div>
+            <div class="eh-stat">
+              <div class="ehs-label">📮 ${rv.on ? 'ส่ง Revise แล้ว' : 'ส่งงบแล้ว'}</div>
+              <div class="ehs-val">${submitted} <small>/ ${depts.length} แผนก</small></div>
+              <div class="ehs-sub">${rv.on ? `กำลังปรับคาดการณ์ ${cnt.IN_PROGRESS || 0} แผนก` : (submitted === depts.length ? 'ครบทุกแผนก ✓' : `รออีก ${depts.length - submitted} แผนก`)}</div>
+            </div>
+          </div>
+        </div>`
 
-      + card(`📮 สถานะการส่งงบประมาณ — ${submitted}/${depts.length} หน่วยงานส่งแล้ว`, `
-          <div class="exec-status-bar">${segs}</div>
-          <div class="st-legends">${legends}</div>
-          ${waiting.length ? `<div class="st-waiting">⏳ ยังไม่ส่ง: ${waitingNames} — <a class="link" href="#/acc/departments">ติดตาม →</a></div>` : ''}`)
+      + `<div class="side-cards">${sideCards}</div>`
 
       + `<div class="grid-2">`
-      + card(`📈 งบรายเดือน ปี ${year} เทียบปี ${prevYear} (กีบ)`, `<div id="chAccMonthly"></div>`)
+      + card(`📈 งบปี ${year} รายเดือน${actTotal > 0 ? ' เทียบเกิดจริง' : ''}${rv.on ? ' และงบเดิม' : ''} (กีบ)`, `<div id="chAccMonthly"></div>`)
       + card(`🍩 สัดส่วนงบตามกลุ่มบัญชี ปี ${year}`, `<div id="chAccGroup"></div>`)
       + `</div>`
       + `<div class="grid-2">`
-      + card(`🏢 งบประมาณตามหน่วยงาน (กีบ) — คลิกเพื่อ drill-down`, `<div id="chAccDept"></div>`)
-      + card(`🏆 Top GL งบประมาณสูงสุด ปี ${year} (กีบ) — คลิกเพื่อ drill-down`, `<div id="chAccTopGL"></div>`)
+      + card(`🏢 Top 15 แผนกงบสูงสุด (กีบ) — คลิกเพื่อ drill-down`, `<div id="chAccDept"></div>`)
+      + card(`🏆 Top 8 GL ค่าใช้จ่ายสูงสุดทั้งบริษัท ปี ${year} (กีบ)`, `<div id="chAccTopGL"></div>`)
       + `</div>`
 
       + `<div class="grid-2">`
-      + card(`📈 Top 5 เพิ่มขึ้นสูงสุด (พร้อมเหตุผลจากหน่วยงาน)`, topInc ? `<div class="mover-list">${topInc}</div>` : '<p class="muted">ไม่มีรายการ</p>')
-      + card(`📉 Top 5 ลดลงมากสุด`, topDec ? `<div class="mover-list">${topDec}</div>` : '<p class="muted">ไม่มีรายการ</p>')
+      + card(`🧭 แนวโน้มแผนระยะกลาง ${year} → ${year + 2}`, mtpHtml)
+      + card(`📮 สถานะ${rv.on ? 'รอบ Revise' : 'การส่งงบประมาณ'} — ${submitted}/${depts.length} แผนกส่งแล้ว`, `
+          <div class="exec-status-bar">${segs}</div>
+          <div class="st-legends">${legends}</div>
+          ${waiting.length ? `<div class="st-waiting">⏳ ${rv.on ? 'ยังไม่ส่ง Revise' : 'ยังไม่ส่ง'}: ${waitingNames} — <a class="link" href="#/acc/departments">ติดตาม →</a></div>` : ''}`)
+      + `</div>`
+
+      + `<div class="grid-2">`
+      + card(`📈 Top 5 เพิ่มขึ้นสูงสุด ${mvBase}`, topInc ? `<div class="mover-list">${topInc}</div>` : `<p class="muted">${mvEmpty}</p>`)
+      + card(`📉 Top 5 ลดลงมากสุด ${mvBase}`, topDec ? `<div class="mover-list">${topDec}</div>` : `<p class="muted">${mvEmpty}</p>`)
       + `</div>`
 
       + `<div id="dashExceptions"></div>`
-      + card(`⚠️ Exceptions — การเปลี่ยนแปลงผิดปกติที่ควรตรวจสอบ (${anomalies.length})`,
-          anomalies.length ? `<div class="table-scroll"><table class="data-table"><thead>
+      + card(`⚠️ Exceptions — การเปลี่ยนแปลงผิดปกติเทียบปี ${prevYear} (${anomalies.length}) · เฉพาะ ${baseDepts.length} หน่วยงานที่มีฐานปีก่อน`,
+          anomalies.length ? `<div class="table-scroll" style="max-height:340px"><table class="data-table"><thead>
             <tr><th>หน่วยงาน</th><th>GL</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th><th>%</th><th>ประเภท</th><th></th></tr></thead><tbody>
             ${anomalies.map(a => `<tr class="exc-${a.level}">
               <td>${esc(Store.dept(a.deptId).name)}</td>
@@ -108,42 +223,68 @@ const PagesAcc = (() => {
               <td><a class="link" href="#/acc/departments?d=${a.deptId}&gl=${a.gl.id}">ดูรายละเอียด →</a></td></tr>`).join('')}
           </tbody></table></div>` : '<p class="muted">ไม่พบการเปลี่ยนแปลงผิดปกติ ✓</p>');
   }
+
   function dashboardBind(user) {
-    const year = UI.year(), prevYear = year - 1;
+    const year = UI.year();
     const depts = Store.activeDepartments();
-    Charts.line(document.getElementById('chAccMonthly'), Store.MONTH_S, [
-      { name: `ปี ${prevYear}`, color: Charts.PREV_C, values: Store.companyMonthly(prevYear) },
-      { name: `ปี ${year}`,     color: Charts.CUR_C,  values: Store.companyMonthly(year) },
-    ]);
-    // แท่งนอนเรียงจากมากไปน้อย — แสดง Top 15 (ทั้งบริษัท 62 แผนก ดูครบได้ที่แท็บหน่วยงาน)
-    const deptBars = depts.map(d => {
-      const cur = Store.deptTotal(year, d.id), prev = Store.deptTotal(prevYear, d.id);
-      return { d, v: cur > 0 ? cur : prev, cur, prev };
-    }).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
+    const rv = Store.revisePhase(year);
+
+    // ---------- เส้นรายเดือน: งบเดิม (ช่วง revise) / งบปัจจุบัน / เกิดจริง ----------
+    const actuals = (Store.db.actuals || []).filter(a => a.year === year);
+    const actualMonthly = Array(12).fill(0);
+    actuals.forEach(a => a.months.forEach((v, i) => { actualMonthly[i] += (v || 0); }));
+    const series = [];
+    if (rv.on) {
+      const om = Array(12).fill(0);
+      depts.forEach(d => Store.originalDeptMonthly(year, d.id).forEach((v, i) => { om[i] += (v || 0); }));
+      series.push({ name: 'งบเดิม', color: Charts.PREV_C, values: om });
+    }
+    series.push({ name: `ปี ${year}${rv.on ? ' (Revise)' : ''}`, color: Charts.CUR_C, values: Store.companyMonthly(year) });
+    if (actualMonthly.some(v => v > 0)) {
+      series.push({ name: 'เกิดจริง', color: '#0ca30c', values: actualMonthly.slice(0, Math.max(1, rv.thru || 12)) });
+    }
+    Charts.line(document.getElementById('chAccMonthly'), Store.MONTH_S, series);
+
+    // ---------- Top 15 แผนก + อื่นๆ ----------
+    const com = Math.max(1, Store.companyTotal(year));
+    const deptBars = depts.map(d => ({ d, v: Store.deptTotal(year, d.id) })).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
     const TOP_N = 15;
-    const shown = deptBars.slice(0, TOP_N);
-    const rest = deptBars.slice(TOP_N);
-    const bars = shown.map(x => ({
-      label: x.d.name, value: x.v, color: x.cur > 0 ? Charts.CUR_C : Charts.PREV_C,
-      sub: `ปี ${prevYear}: ${Math.round(x.prev).toLocaleString()} กีบ · ปี ${year}: ${Math.round(x.cur).toLocaleString()} กีบ<br>`,
+    const bars = deptBars.slice(0, TOP_N).map(x => ({
+      label: x.d.name, value: x.v, color: (SIDE_META[x.d.side || (x.d.code || '')[0]] || {}).c || Charts.CUR_C,
+      sub: `${(x.v / com * 100).toFixed(1)}% ของทั้งบริษัท · ${Math.round(x.v).toLocaleString()} กีบ<br>`,
       onClick: () => { location.hash = `#/acc/departments?d=${x.d.id}`; },
     }));
+    const rest = deptBars.slice(TOP_N);
     if (rest.length) {
-      bars.push({
-        label: `อื่นๆ อีก ${rest.length} หน่วยงาน`, value: rest.reduce((s, x) => s + x.v, 0), color: '#c3c2b7',
-        sub: `ดูครบทุกหน่วยงานที่แท็บ "หน่วยงาน"<br>`,
-        onClick: () => { location.hash = '#/acc/departments'; },
-      });
+      const rv2 = rest.reduce((s, x) => s + x.v, 0);
+      bars.push({ label: `อื่นๆ อีก ${rest.length} หน่วยงาน`, value: rv2, color: '#c3c2b7',
+        sub: `${(rv2 / com * 100).toFixed(1)}% ของทั้งบริษัท · ดูครบที่แท็บ "หน่วยงาน"<br>`,
+        onClick: () => { location.hash = '#/acc/departments'; } });
     }
     Charts.hbar(document.getElementById('chAccDept'), bars, { labelW: 230 });
-    const allGl = depts.flatMap(d => Store.deptGLs(d.id).map(g => ({ d, g, v: Store.glTotal(year, d.id, g.id) })));
-    const top = allGl.filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 6);
-    Charts.hbar(document.getElementById('chAccTopGL'),
-      top.map(x => ({ label: `${x.g.code} ${x.g.name}`, sub: esc(x.d.name) + '<br>', value: x.v, color: Charts.CUR_C,
-                      onClick: () => { location.hash = `#/acc/departments?d=${x.d.id}&gl=${x.g.id}`; } })));
-    // donut ≤4 กลุ่ม + อื่นๆ
+
+    // ---------- Top 8 GL รวมทั้งบริษัท ----------
+    const glTot = {};
+    Store.db.budgets.filter(b => b.year === year).forEach(b => {
+      glTot[b.glId] = (glTot[b.glId] || 0) + b.months.reduce((s, v) => s + (v || 0), 0);
+    });
+    const glUse = {};
+    (Store.db.departmentRows || []).forEach(x => { (glUse[x.glId] = glUse[x.glId] || new Set()).add(x.departmentId); });
+    const gById = {};
+    Store.db.glAccounts.forEach(g => { gById[g.id] = g; });
+    const topGl = Object.entries(glTot).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    Charts.hbar(document.getElementById('chAccTopGL'), topGl.map(([id, v]) => {
+      const g = gById[id] || { code: id, name: '' };
+      return { label: `${g.code} ${g.name}`, value: v, color: Charts.CUR_C,
+        sub: `${(v / com * 100).toFixed(1)}% ของทั้งบริษัท · ใช้ใน ${(glUse[id] || new Set()).size} แผนก<br>` };
+    }));
+
+    // ---------- โดนัทกลุ่มบัญชี (aggregate ตรงจาก budgets — เร็ว) ----------
     const byGroup = {};
-    allGl.forEach(x => { byGroup[x.g.glGroup] = (byGroup[x.g.glGroup] || 0) + x.v; });
+    Object.entries(glTot).forEach(([id, v]) => {
+      const k = (gById[id] && gById[id].glGroup) || 'อื่นๆ';
+      byGroup[k] = (byGroup[k] || 0) + v;
+    });
     let items = Object.entries(byGroup).map(([label, value]) => ({ label, value })).filter(i => i.value > 0).sort((a, b) => b.value - a.value);
     if (items.length > 4) {
       const other = items.slice(3).reduce((s, i) => s + i.value, 0);
