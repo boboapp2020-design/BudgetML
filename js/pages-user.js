@@ -296,10 +296,18 @@ const PagesUser = (() => {
       } catch (e) { toast(e.message, 'err'); input.value = ''; }
     }
 
+    // ตัวเลขหลักพันล้านขึ้นไปยาวเกินช่อง → ย่อฟอนต์อัตโนมัติ (คงอ่านครบทุกหลัก)
+    const fitCell = inp => {
+      const n = (inp.value || '').length;
+      inp.classList.toggle('cell-long', n > 11 && n <= 14);
+      inp.classList.toggle('cell-xlong', n > 14);
+    };
     const cells = Array.from(document.querySelectorAll('.cell'));
     cells.forEach(inp => {
+      fitCell(inp);
+      inp.addEventListener('input', () => fitCell(inp));
       inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
-      inp.addEventListener('blur', () => commit(inp));
+      inp.addEventListener('blur', () => { commit(inp); fitCell(inp); });
       inp.addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); inp.blur(); moveFocus(inp, 0, 1); }
       });
