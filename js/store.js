@@ -697,6 +697,27 @@ const Store = (() => {
     notify({ deptId }, `งบประมาณปี ${year} ถูกส่งกลับให้แก้ไข${noteMsg ? ' — ' + noteMsg : ''}`);
     save();
   }
+  // ---- สายอนุมัติผู้จัดการฝ่าย (SoD): รับรอง / ตีกลับ เฉพาะแผนกใน subtree ตน ----
+  function assertMgrScope(actor, deptId) {
+    if (actor.role !== 'MANAGER') throw new Error('เฉพาะผู้จัดการฝ่ายเท่านั้น');
+    if (!subtreeDeptCodes(actor.orgUnit).includes(dept(deptId)?.code)) throw new Error('แผนกนี้อยู่นอกฝ่ายที่ท่านดูแล');
+  }
+  function mgrApprove(actor, year, deptId) {
+    assertMgrScope(actor, deptId);
+    const st = deptState(year, deptId).status;
+    if (st !== 'SUBMITTED') throw new Error('รับรองได้เฉพาะแผนกที่ "ส่งแล้ว รอตรวจ"');
+    setStatusInternal(year, deptId, 'ENDORSED', { endorsedAt: new Date().toISOString(), endorsedBy: actor.name });
+    audit(actor, 'ผู้จัดการฝ่ายรับรองงบ', { deptId, newValue: `ปี ${year}` });
+    notify({ role: 'ACCOUNTING' }, `${dept(deptId).name} ผ่านการรับรองจาก ${actor.name} — รอบัญชีล็อก`);
+    save();
+  }
+  function mgrReturn(actor, year, deptId, noteMsg) {
+    assertMgrScope(actor, deptId);
+    setStatusInternal(year, deptId, 'NEED_REVISION', { revisionNote: noteMsg || null });
+    audit(actor, 'ผู้จัดการฝ่ายตีกลับงบ', { deptId, newValue: noteMsg });
+    notify({ deptId }, `งบประมาณปี ${year} ถูกผู้จัดการฝ่ายส่งกลับให้แก้ไข${noteMsg ? ' — ' + noteMsg : ''}`);
+    save();
+  }
   function lockPeriod(actor, year) {
     assertAccounting(actor);
     const p = period(year);
@@ -876,7 +897,7 @@ const Store = (() => {
     actualRowRef, importActuals, importBudgetFile,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
-    needRevision, lockPeriod, unlockPeriod, openPeriod,
+    needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod,
     addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary,

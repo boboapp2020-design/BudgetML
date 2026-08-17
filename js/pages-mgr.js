@@ -12,7 +12,7 @@ const PagesMgr = (() => {
       <div class="kpi-value">${valueHtml}</div><div class="kpi-sub">${sub}</div></div></div>`;
   }
   const ST_META = {
-    SUBMITTED: { label: 'ส่งแล้ว รอตรวจ', color: '#256abf' }, LOCKED: { label: 'ปิดรอบแล้ว', color: '#52514e' },
+    SUBMITTED: { label: 'ส่งแล้ว รอตรวจ', color: '#256abf' }, ENDORSED: { label: 'ผจก.รับรองแล้ว', color: '#0d9488' }, LOCKED: { label: 'ปิดรอบแล้ว', color: '#52514e' },
     COMPLETED: { label: 'ครบ รอส่ง', color: '#0ca30c' }, IN_PROGRESS: { label: 'กำลังกรอก', color: '#eda100' },
     NEED_REVISION: { label: 'ตีกลับแก้ไข', color: '#d03b3b' }, DRAFT: { label: 'ยังไม่เริ่ม', color: '#c3c2b7' },
   };
@@ -35,8 +35,8 @@ const PagesMgr = (() => {
     // สถานะการส่ง
     const states = depts.map(d => Store.deptState(year, d.id).status);
     const cnt = {}; states.forEach(s => cnt[s] = (cnt[s] || 0) + 1);
-    const submitted = (cnt.SUBMITTED || 0) + (cnt.LOCKED || 0);
-    const stOrder = ['SUBMITTED', 'LOCKED', 'COMPLETED', 'IN_PROGRESS', 'NEED_REVISION', 'DRAFT'];
+    const submitted = (cnt.SUBMITTED || 0) + (cnt.ENDORSED || 0) + (cnt.LOCKED || 0);
+    const stOrder = ['SUBMITTED', 'ENDORSED', 'LOCKED', 'COMPLETED', 'IN_PROGRESS', 'NEED_REVISION', 'DRAFT'];
     const segs = stOrder.filter(s => cnt[s]).map(s =>
       `<div class="status-seg" style="flex:${cnt[s]};background:${ST_META[s].color}" title="${ST_META[s].label}: ${cnt[s]}"></div>`).join('');
     const legends = stOrder.filter(s => cnt[s]).map(s =>
@@ -57,7 +57,11 @@ const PagesMgr = (() => {
         <td class="num" data-v="${c}">${fmt(c)}</td>
         <td data-v="${cc.diff}">${deltaBadge(cc.diff, cc.pct)}</td>
         <td data-v="${share}"><div class="comp-bar"><div class="comp-fill" style="width:${share.toFixed(0)}%"></div></div>${share.toFixed(1)}%</td>
-        <td data-v="${stOrd}"><span class="anomaly" style="background:${ST_META[st].color}22;color:${ST_META[st].color}">${ST_META[st].label}</span></td></tr>`;
+        <td data-v="${stOrd}"><span class="anomaly" style="background:${ST_META[st].color}22;color:${ST_META[st].color}">${ST_META[st].label}</span></td>
+        <td class="td-actions">${st === 'SUBMITTED'
+          ? `<button class="ghost-btn small" data-mgr-approve="${d.id}" style="color:#0d9488;font-weight:600">✓ รับรอง</button> <button class="ghost-btn small" data-mgr-return="${d.id}" title="ตีกลับให้แก้ไข">↩</button>`
+          : st === 'ENDORSED' ? '<span class="muted small">✓ รับรองแล้ว</span>'
+          : st === 'NEED_REVISION' ? '<span class="muted small">↩ ตีกลับแล้ว</span>' : '<span class="muted small">—</span>'}</td></tr>`;
     }).join('');
 
     const kidNote = kids.length ? ` · ครอบคลุมหน่วย: ${kids.map(k => esc(k.name)).join(', ')}` : '';
@@ -80,7 +84,7 @@ const PagesMgr = (() => {
       + `</div>`
 
       + card(`🏢 แผนกภายใต้ ${esc(div)} (${depts.length})`, `<div class="table-scroll"><table class="data-table sortable-table" id="mgrDeptTable">
-          <thead><tr><th class="sortable">แผนก</th><th class="num sortable">${rv.on ? 'งบเดิม' : 'ปี ' + prevYear} (กีบ)</th><th class="num sortable">ปี ${year} (กีบ)</th><th class="sortable">%Δ</th><th class="sortable">สัดส่วนในฝ่าย</th><th class="sortable">สถานะ</th></tr></thead>
+          <thead><tr><th class="sortable">แผนก</th><th class="num sortable">${rv.on ? 'งบเดิม' : 'ปี ' + prevYear} (กีบ)</th><th class="num sortable">ปี ${year} (กีบ)</th><th class="sortable">%Δ</th><th class="sortable">สัดส่วนในฝ่าย</th><th class="sortable">สถานะ</th><th>รับรอง</th></tr></thead>
           <tbody>${rows}</tbody></table></div>
           <p class="muted small" style="margin-top:6px">💡 คลิกหัวคอลัมน์เพื่อเรียงลำดับ</p>`, { cls: 'card-flush' });
   }
@@ -90,6 +94,22 @@ const PagesMgr = (() => {
     const depts = Store.subtreeDepartments(user.orgUnit);
     const rv = Store.revisePhase(year);
     UI.enableSort(document.getElementById('mgrDeptTable'));
+    // รับรอง / ตีกลับ (ผู้จัดการฝ่าย)
+    document.querySelectorAll('[data-mgr-approve]').forEach(b => b.addEventListener('click', () => {
+      try { Store.mgrApprove(user, year, b.dataset.mgrApprove); UI.toast('รับรองงบแล้ว ✓ — ส่งต่อให้บัญชี'); App.render(); }
+      catch (e) { UI.toast(e.message, 'err'); }
+    }));
+    document.querySelectorAll('[data-mgr-return]').forEach(b => b.addEventListener('click', () => {
+      const deptId = b.dataset.mgrReturn;
+      UI.modal(`↩ ตีกลับให้แก้ไข — ${UI.esc(Store.dept(deptId).name)}`,
+        `<p>ระบุเหตุผลที่ต้องแก้ไข (แจ้งไปยังแผนก):</p><textarea id="mgrRetNote" rows="3" placeholder="เช่น ค่าใช้จ่ายเดินทางสูงผิดปกติ กรุณาทบทวน"></textarea>`, [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: '↩ ยืนยันตีกลับ', cls: 'danger-btn', onClick: close => {
+            try { Store.mgrReturn(user, year, deptId, document.getElementById('mgrRetNote').value.trim()); UI.toast('ตีกลับให้แผนกแก้ไขแล้ว'); close(); App.render(); }
+            catch (e) { UI.toast(e.message, 'err'); }
+          } },
+      ]);
+    }));
 
     // รายเดือน: ปีนี้ (+ งบเดิม ช่วง revise + เกิดจริง)
     const monthly = y => { const m = Array(12).fill(0); depts.forEach(d => Store.deptMonthly(y, d.id).forEach((v, i) => m[i] += (v || 0))); return m; };

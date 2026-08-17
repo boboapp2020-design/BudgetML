@@ -15,6 +15,7 @@ const PagesAcc = (() => {
 
   const ST_META = {
     SUBMITTED:     { label: 'ส่งแล้ว รอตรวจ', color: '#256abf' },
+    ENDORSED:      { label: 'ผจก.รับรองแล้ว', color: '#0d9488' },
     LOCKED:        { label: 'ปิดรอบแล้ว',     color: '#52514e' },
     COMPLETED:     { label: 'ครบ รอส่ง',      color: '#0ca30c' },
     IN_PROGRESS:   { label: 'กำลังกรอก',      color: '#eda100' },
@@ -65,8 +66,8 @@ const PagesAcc = (() => {
     const states = depts.map(d => ({ d, st: Store.deptState(year, d.id).status }));
     const cnt = {};
     states.forEach(x => { cnt[x.st] = (cnt[x.st] || 0) + 1; });
-    const submitted = (cnt.SUBMITTED || 0) + (cnt.LOCKED || 0);
-    const stOrder = ['SUBMITTED', 'LOCKED', 'COMPLETED', 'IN_PROGRESS', 'NEED_REVISION', 'DRAFT'];
+    const submitted = (cnt.SUBMITTED || 0) + (cnt.ENDORSED || 0) + (cnt.LOCKED || 0);
+    const stOrder = ['SUBMITTED', 'ENDORSED', 'LOCKED', 'COMPLETED', 'IN_PROGRESS', 'NEED_REVISION', 'DRAFT'];
     const segs = stOrder.filter(s => cnt[s]).map(s =>
       `<div class="status-seg" style="flex:${cnt[s]};background:${ST_META[s].color}" title="${ST_META[s].label}: ${cnt[s]} หน่วยงาน"></div>`).join('');
     const legends = stOrder.filter(s => cnt[s]).map(s =>

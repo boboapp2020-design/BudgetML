@@ -28,6 +28,7 @@ const UI = (() => {
     IN_PROGRESS:  { label: 'In Progress',   th: 'กำลังจัดทำ',        cls: 'st-progress' },
     COMPLETED:    { label: 'Completed',     th: 'กรอกครบแล้ว',       cls: 'st-completed' },
     SUBMITTED:    { label: 'Submitted',     th: 'ส่งแล้ว รอตรวจ',    cls: 'st-submitted' },
+    ENDORSED:     { label: 'Endorsed',      th: 'ผจก.รับรองแล้ว',    cls: 'st-endorsed' },
     NEED_REVISION:{ label: 'Need Revision', th: 'ต้องแก้ไข',         cls: 'st-revision' },
     LOCKED:       { label: 'Locked',        th: 'ปิดรอบแล้ว',        cls: 'st-locked' },
   };
