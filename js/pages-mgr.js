@@ -156,14 +156,30 @@ const PagesMgr = (() => {
         ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', 'เพิ่ม/ลด', `<span>${deltaBadge(cmp.diff, cmp.pct)}</span>`, (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
         ${kpiC('📋', '#fff7e6', 'kpi-tint-amber', 'จำนวนรายการ', `${rows.length} <small>รายการ</small>`, 'GL × CCT')}
       </div>`
-      + card('', `<div class="table-scroll"><table class="data-table small">
+      + card('', `<div class="mgr-toolbar"><button id="mgrFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶ ขยายตาราง</button></div>
+          <div class="table-scroll fs-scroll"><table class="data-table small">
           <thead><tr><th>รายการ (GL · CCT)</th>${Store.MONTH_S.map(mo => `<th class="num">${mo}</th>`).join('')}<th class="num">รวมทั้งปี</th></tr></thead>
           <tbody>${body}
           <tr class="tr-sum"><td><b>รวมทั้งแผนก</b></td>${Store.deptMonthly(year, d.id).map(v => `<td class="num"><b>${fmt(v)}</b></td>`).join('')}<td class="num"><b>${fmt(cur)}</b></td></tr>
-          </tbody></table></div>`, { cls: 'card-flush' });
+          </tbody></table></div>`, { cls: 'card-flush fs-card' });
+  }
+  function deptDetailBind() {
+    const fsCard = document.querySelector('.fs-card');
+    const fsBtn = document.getElementById('mgrFsBtn');
+    if (!fsCard || !fsBtn) return;
+    const setFs = on => {
+      fsCard.classList.toggle('fullscreen', on);
+      document.body.classList.toggle('no-scroll', on);
+      fsBtn.textContent = on ? '✕ ย่อกลับ' : '⛶ ขยายตาราง';
+    };
+    fsBtn.addEventListener('click', () => setFs(!fsCard.classList.contains('fullscreen')));
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape' && fsCard.classList.contains('fullscreen')) setFs(false);
+      if (!document.body.contains(fsCard)) { document.body.classList.remove('no-scroll'); document.removeEventListener('keydown', esc); }
+    });
   }
 
-  return { dashboard, dashboardBind, deptDetail };
+  return { dashboard, dashboardBind, deptDetail, deptDetailBind };
 })();
 
 window.PagesMgr = PagesMgr;

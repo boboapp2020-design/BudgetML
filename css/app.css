@@ -811,3 +811,14 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 /* ---------- v3.9: ป้ายสถานะ backend ที่กำลังใช้งาน ---------- */
 .pill-on{display:inline-block;font-size:12px;font-weight:600;color:#0b7f58;background:#e6f7f0;
   border:1px solid #9be0c5;border-radius:999px;padding:1px 10px;margin-left:8px;vertical-align:2px}
+
+/* ---------- v4.2: ขยาย/ย่อตารางทั่วไป (หน้ารายย่อยผู้จัดการ ฯลฯ) ---------- */
+.mgr-toolbar { display:flex; justify-content:flex-end; align-items:center; gap:8px; padding:2px 2px 10px; }
+.fs-card.fullscreen {
+  position: fixed; inset: 10px; z-index: 80; margin: 0; background:#fff;
+  border-radius:14px; box-shadow:0 24px 70px rgba(12,44,97,.32);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.fs-card.fullscreen .card-body { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.fs-card.fullscreen .fs-scroll { flex:1; max-height:none !important; }
+.fs-scroll { max-height: calc(100vh - 380px); overflow:auto; }
