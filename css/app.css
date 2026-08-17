@@ -894,3 +894,10 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .lh-logo { width: 120px; height: 120px; border-radius: 28px; }
 .lh-logo svg { width: 82px; height: 82px; }
 .login-hero h1 { font-size: 30px; }
+
+/* ---------- v6.0: ตารางเรียงลำดับได้ (คลิกหัวคอลัมน์) ---------- */
+.sortable-table th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; transition: background .12s; }
+.sortable-table th.sortable:hover { background: rgba(255,255,255,.12); }
+.sortable-table th.sortable::after { content: '⇅'; position: absolute; right: 6px; opacity: .4; font-size: 11px; }
+.sortable-table th.sortable.sort-asc::after { content: '▲'; opacity: 1; }
+.sortable-table th.sortable.sort-desc::after { content: '▼'; opacity: 1; }

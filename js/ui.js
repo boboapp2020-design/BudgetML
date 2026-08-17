@@ -237,6 +237,29 @@ const UI = (() => {
     ]);
   }
 
-  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, STATUS_TH, deptIcon,
+  /* ---------- ตารางเรียงลำดับได้ (คลิกหัวคอลัมน์) ---------- */
+  function enableSort(table) {
+    if (!table) return;
+    const ths = Array.from(table.querySelectorAll('thead th'));
+    let curCol = -1, dir = 1;
+    const doSort = idx => {
+      dir = (curCol === idx) ? -dir : (idx === 0 ? 1 : -1); // คอลัมน์ตัวเลขเริ่มจากมาก→น้อย, ชื่อจากน้อย→มาก
+      curCol = idx;
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const av = a.children[idx]?.dataset.v ?? a.children[idx]?.textContent.trim() ?? '';
+        const bv = b.children[idx]?.dataset.v ?? b.children[idx]?.textContent.trim() ?? '';
+        const an = parseFloat(av), bn = parseFloat(bv);
+        const c = (!isNaN(an) && !isNaN(bn)) ? an - bn : String(av).localeCompare(String(bv), 'th');
+        return c * dir;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+      ths.forEach((th, i) => { th.classList.remove('sort-asc', 'sort-desc'); if (i === idx) th.classList.add(dir > 0 ? 'sort-asc' : 'sort-desc'); });
+    };
+    ths.forEach((th, idx) => { if (th.classList.contains('sortable')) th.addEventListener('click', () => doSort(idx)); });
+  }
+
+  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, STATUS_TH, deptIcon, enableSort,
            shell, bindShell, year, setYear, kpi, card, pageHead, asOf, toast, modal, confirm2 };
 })();

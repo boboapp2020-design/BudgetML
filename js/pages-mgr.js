@@ -49,14 +49,15 @@ const PagesMgr = (() => {
       const cc = Store.compare(c, rv.on ? o : p);
       const st = Store.deptState(year, d.id).status;
       const share = cur > 0 ? (c / cur * 100) : 0;
-      const revCol = rv.on ? `<td class="num">${fmt(o)}</td>` : `<td class="num">${fmt(p)}</td>`;
+      const stOrd = ['DRAFT', 'IN_PROGRESS', 'NEED_REVISION', 'COMPLETED', 'SUBMITTED', 'LOCKED'].indexOf(st);
+      const revCol = rv.on ? `<td class="num" data-v="${o}">${fmt(o)}</td>` : `<td class="num" data-v="${p}">${fmt(p)}</td>`;
       return `<tr>
-        <td><a class="link" href="#/mgr/dept?d=${d.id}"><b>${UI.deptIcon(d)} ${esc(d.name)}</b></a><div class="muted small">${d.code} · <a class="link" href="#/mgr/dept?d=${d.id}">ดูรายย่อย →</a></div></td>
+        <td data-v="${esc(d.name)}"><a class="link" href="#/mgr/dept?d=${d.id}"><b>${UI.deptIcon(d)} ${esc(d.name)}</b></a><div class="muted small">${d.code} · <a class="link" href="#/mgr/dept?d=${d.id}">ดูรายย่อย →</a></div></td>
         ${revCol}
-        <td class="num">${fmt(c)}</td>
-        <td>${deltaBadge(cc.diff, cc.pct)}</td>
-        <td><div class="comp-bar"><div class="comp-fill" style="width:${share.toFixed(0)}%"></div></div>${share.toFixed(1)}%</td>
-        <td><span class="anomaly" style="background:${ST_META[st].color}22;color:${ST_META[st].color}">${ST_META[st].label}</span></td></tr>`;
+        <td class="num" data-v="${c}">${fmt(c)}</td>
+        <td data-v="${cc.diff}">${deltaBadge(cc.diff, cc.pct)}</td>
+        <td data-v="${share}"><div class="comp-bar"><div class="comp-fill" style="width:${share.toFixed(0)}%"></div></div>${share.toFixed(1)}%</td>
+        <td data-v="${stOrd}"><span class="anomaly" style="background:${ST_META[st].color}22;color:${ST_META[st].color}">${ST_META[st].label}</span></td></tr>`;
     }).join('');
 
     const kidNote = kids.length ? ` · ครอบคลุมหน่วย: ${kids.map(k => esc(k.name)).join(', ')}` : '';
@@ -78,15 +79,17 @@ const PagesMgr = (() => {
       + card(`🏆 Top GL ค่าใช้จ่ายสูงสุดในฝ่าย (กีบ)`, `<div id="chMgrTopGL"></div>`)
       + `</div>`
 
-      + card(`🏢 แผนกภายใต้ ${esc(div)} (${depts.length})`, `<div class="table-scroll"><table class="data-table">
-          <thead><tr><th>แผนก</th><th class="num">${rv.on ? 'งบเดิม' : 'ปี ' + prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th><th>%Δ</th><th>สัดส่วนในฝ่าย</th><th>สถานะ</th></tr></thead>
-          <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
+      + card(`🏢 แผนกภายใต้ ${esc(div)} (${depts.length})`, `<div class="table-scroll"><table class="data-table sortable-table" id="mgrDeptTable">
+          <thead><tr><th class="sortable">แผนก</th><th class="num sortable">${rv.on ? 'งบเดิม' : 'ปี ' + prevYear} (กีบ)</th><th class="num sortable">ปี ${year} (กีบ)</th><th class="sortable">%Δ</th><th class="sortable">สัดส่วนในฝ่าย</th><th class="sortable">สถานะ</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>
+          <p class="muted small" style="margin-top:6px">💡 คลิกหัวคอลัมน์เพื่อเรียงลำดับ</p>`, { cls: 'card-flush' });
   }
 
   function dashboardBind(user) {
     const year = UI.year();
     const depts = Store.subtreeDepartments(user.orgUnit);
     const rv = Store.revisePhase(year);
+    UI.enableSort(document.getElementById('mgrDeptTable'));
 
     // รายเดือน: ปีนี้ (+ งบเดิม ช่วง revise + เกิดจริง)
     const monthly = y => { const m = Array(12).fill(0); depts.forEach(d => Store.deptMonthly(y, d.id).forEach((v, i) => m[i] += (v || 0))); return m; };
