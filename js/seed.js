@@ -52,8 +52,8 @@ const SEED = (() => {
     // ── ด้านสนับสนุน ──
     { id: 'md',    name: 'กจ. บจ.น้ำตาลมิตรลาว', parent: null, deptCodes: ['1111'] },
     { id: 'qa',    name: 'ศูนย์ประกันคุณภาพ', parent: 'md', budget: false, deptCodes: ['1131', '1132', '1133'] },
-    { id: 'acct',  name: 'ฝ่ายบัญชีและการเงิน', parent: null, deptCodes: ['1161', '1162', '1194'] },
-    { id: 'office', name: 'ฝ่ายบริหารสำนักงาน', parent: null, deptCodes: ['1141', '1155', '1164', '1171'] },
+    { id: 'acct',  name: 'ฝ่ายบัญชีและการเงิน', parent: null, deptCodes: ['1194', '1161', '1162', '1164'] },
+    { id: 'office', name: 'ฝ่ายบริหารสำนักงาน', parent: null, deptCodes: ['1141', '1155', '1171'] },
     { id: 'proc',  name: 'ฝ่ายจัดซื้อและโลจิสติกส์', parent: null, deptCodes: ['1142', '1143', '1144', '1146'] },
     { id: 'legal', name: 'ฝ่ายกฎหมายและประสานงาน', parent: null, deptCodes: ['1122', '1172'] },
     // ── ด้านอ้อย ──

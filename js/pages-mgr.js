@@ -51,7 +51,7 @@ const PagesMgr = (() => {
       const share = cur > 0 ? (c / cur * 100) : 0;
       const revCol = rv.on ? `<td class="num">${fmt(o)}</td>` : `<td class="num">${fmt(p)}</td>`;
       return `<tr>
-        <td><b>${UI.deptIcon(d)} ${esc(d.name)}</b><div class="muted small">${d.code}</div></td>
+        <td><a class="link" href="#/mgr/dept?d=${d.id}"><b>${UI.deptIcon(d)} ${esc(d.name)}</b></a><div class="muted small">${d.code} · <a class="link" href="#/mgr/dept?d=${d.id}">ดูรายย่อย →</a></div></td>
         ${revCol}
         <td class="num">${fmt(c)}</td>
         <td>${deltaBadge(cc.diff, cc.pct)}</td>
@@ -116,7 +116,54 @@ const PagesMgr = (() => {
     }));
   }
 
-  return { dashboard, dashboardBind };
+  /* ---------- รายย่อยของแผนก (อ่านอย่างเดียว) ---------- */
+  function parseQS() {
+    const q = location.hash.split('?')[1] || '';
+    return Object.fromEntries(new URLSearchParams(q));
+  }
+  function deptDetail(user) {
+    const qs = parseQS();
+    const year = UI.year(), prevYear = year - 1;
+    const d = Store.dept(qs.d);
+    // กันสิทธิ์: ผจก.ดูได้เฉพาะแผนกใน subtree ของตน
+    if (!d || !Store.subtreeDeptCodes(user.orgUnit).includes(d.code)) { location.hash = '#/mgr/dashboard'; return ''; }
+    const rv = Store.revisePhase(year);
+    const unitName = (Store.oversightUnit(user.orgUnit) || {}).name || '';
+    const rows = Store.deptRows(d.id);
+    const cur = Store.deptTotal(year, d.id), prev = Store.deptTotal(prevYear, d.id);
+    const orig = rv.on ? Store.originalDeptTotal(year, d.id) : 0;
+    const baseVal = rv.on ? orig : prev;
+    const cmp = Store.compare(cur, baseVal);
+
+    const body = rows.map(r => {
+      const m = Store.rowMonths(year, d.id, r.key);
+      const tot = Store.rowTotal(year, d.id, r.key);
+      const nt = Store.note(year, d.id, r.key);
+      const noteHtml = (nt.reason || nt.assumption)
+        ? `<div class="muted" style="font-size:11px">${nt.reason ? '💬 ' + esc(nt.reason.slice(0, 70)) : ''}${nt.assumption ? ' · 📌 ' + esc(nt.assumption.slice(0, 50)) : ''}</div>` : '';
+      return `<tr>
+        <td class="small" style="min-width:220px"><span class="gl-code">${r.gl.code}</span> ${esc(r.gl.name)}
+          <div class="muted" style="font-size:11px">CCT ${r.cct}${r.io && r.io !== 'ไม่คุม' ? ' · IO ' + esc(r.io) : ''}</div>${noteHtml}</td>
+        ${m.map(v => `<td class="num small">${v ? fmt(v) : '<span class="muted">—</span>'}</td>`).join('')}
+        <td class="num"><b>${fmt(tot)}</b></td></tr>`;
+    }).join('');
+
+    return pageHead(`${UI.deptIcon(d)} ${esc(d.name)}`, `รายย่อยงบปี ${year} · 🔒 อ่านอย่างเดียว · ${asOf()}`)
+      + `<div class="breadcrumb"><a href="#/mgr/dashboard">← กลับภาพรวม${esc(unitName)}</a> › <b>${esc(d.name)}</b></div>`
+      + `<div class="kpi-grid kpi-grid-4">
+        ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', `งบปี ${year}`, `${fmtShort(cur)} <small>กีบ</small>`, fmt(cur) + ' กีบ')}
+        ${kpiC(rv.on ? '🧊' : '🗓️', '#e6f7f0', 'kpi-tint-teal', rv.on ? 'งบเดิม' : `ปี ${prevYear}`, `${fmtShort(baseVal)} <small>กีบ</small>`, fmt(baseVal) + ' กีบ')}
+        ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', 'เพิ่ม/ลด', `<span>${deltaBadge(cmp.diff, cmp.pct)}</span>`, (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
+        ${kpiC('📋', '#fff7e6', 'kpi-tint-amber', 'จำนวนรายการ', `${rows.length} <small>รายการ</small>`, 'GL × CCT')}
+      </div>`
+      + card('', `<div class="table-scroll"><table class="data-table small">
+          <thead><tr><th>รายการ (GL · CCT)</th>${Store.MONTH_S.map(mo => `<th class="num">${mo}</th>`).join('')}<th class="num">รวมทั้งปี</th></tr></thead>
+          <tbody>${body}
+          <tr class="tr-sum"><td><b>รวมทั้งแผนก</b></td>${Store.deptMonthly(year, d.id).map(v => `<td class="num"><b>${fmt(v)}</b></td>`).join('')}<td class="num"><b>${fmt(cur)}</b></td></tr>
+          </tbody></table></div>`, { cls: 'card-flush' });
+  }
+
+  return { dashboard, dashboardBind, deptDetail };
 })();
 
 window.PagesMgr = PagesMgr;
