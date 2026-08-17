@@ -118,7 +118,8 @@ const Sync = (() => {
   function schedulePush() {
     if (!enabled()) return;
     clearTimeout(timer);
-    timer = setTimeout(() => push(), 2500);
+    // หน่วงสั้น (รวมการพิมพ์รัวๆ/วางทั้งก้อนเป็น 1 ครั้ง) แล้วซิงค์ขึ้น Supabase เกือบทันที
+    timer = setTimeout(() => push(), 800);
   }
 
   async function ping() { return backend() === 'supa' ? Supa.ping() : gasPing(); }
