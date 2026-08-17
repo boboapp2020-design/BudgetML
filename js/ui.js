@@ -57,27 +57,7 @@ const UI = (() => {
   ];
 
   /* โลโก้แอป — ถุงเงิน ₭ + เหรียญซ้อน + แท่งกราฟ + ลูกศรขึ้น ในวงกลมน้ำเงิน (inline SVG) */
-  const APP_LOGO = `
-  <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="โลโก้ งบประมาณประจำปี">
-    <defs>
-      <linearGradient id="alRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f8be8"/><stop offset="1" stop-color="#1c5cab"/></linearGradient>
-      <linearGradient id="alBag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a4494"/><stop offset="1" stop-color="#0c2c61"/></linearGradient>
-    </defs>
-    <circle cx="24" cy="24" r="22" fill="#ffffff"/>
-    <circle cx="24" cy="24" r="22" fill="none" stroke="url(#alRing)" stroke-width="3.1"/>
-    <rect x="8.5" y="27.5" width="3" height="6.5" rx="1" fill="#2a78d6"/>
-    <rect x="12.6" y="24" width="3" height="10" rx="1" fill="#6da7ec"/>
-    <path d="M27.4 21.6 L33.6 15.4" fill="none" stroke="#6da7ec" stroke-width="2.2" stroke-linecap="round"/>
-    <path d="M30.5 15.1 L34 14.9 L33.8 18.4" fill="none" stroke="#6da7ec" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M18.6 20 C14.5 23.4 13.6 30.2 17.2 33.9 C20.1 36.9 27.9 36.9 30.8 33.9 C34.4 30.2 33.5 23.4 29.4 20 Z" fill="url(#alBag)"/>
-    <path d="M19.3 19.6 C19.3 15.4 21.2 13.8 24 13.8 C26.8 13.8 28.7 15.4 28.7 19.6 Z" fill="url(#alBag)"/>
-    <rect x="18.2" y="18.3" width="11.6" height="2.8" rx="1.4" fill="#2f7fd6"/>
-    <text x="24" y="30.6" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" font-weight="800" fill="#ffffff">₭</text>
-    <ellipse cx="34.6" cy="36" rx="5.8" ry="2" fill="#1c5cab"/>
-    <ellipse cx="34.6" cy="33.9" rx="5.8" ry="2" fill="#2a78d6"/>
-    <ellipse cx="34.6" cy="31.8" rx="5.8" ry="2" fill="#5598e7"/>
-    <text x="34.6" y="32.7" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="4.4" font-weight="800" fill="#ffffff">₭</text>
-  </svg>`;
+  const APP_LOGO = '<img src="logo-app.png?v=7.1" alt="Annual Budget logo" class="app-logo-img">';
 
   /* ---------- ไอคอนประจำแผนก (เลือกจากคำสำคัญในชื่อ — เรียงจากเฉพาะเจาะจงก่อน) ---------- */
   const DEPT_ICONS = [

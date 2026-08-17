@@ -38,6 +38,7 @@ a { color: var(--blue); }
 .brand-link:hover { background: rgba(255,255,255,.06); }
 .brand-link:hover .brand-name { text-decoration: underline; text-underline-offset: 3px; }
 .app-logo svg { width: 40px; height: 40px; display: block; }
+.app-logo img { width: 42px; height: 42px; display: block; object-fit: contain; }
 .topbar-left { display: flex; align-items: center; gap: 14px; }
 .topbar-idash { height: 64px; display: block; }
 .login-applogo svg { width: 72px; height: 72px; margin: 0 auto 10px; display: block; }
@@ -902,3 +903,133 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .sortable-table th.sortable::after { content: '⇅'; position: absolute; right: 6px; opacity: .4; font-size: 11px; }
 .sortable-table th.sortable.sort-asc::after { content: '▲'; opacity: 1; }
 .sortable-table th.sortable.sort-desc::after { content: '▼'; opacity: 1; }
+
+/* ============ Landing / Login v7 (ตาม reference ใหม่) ============ */
+.login-wrap.login-v7 {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+  background:
+    radial-gradient(1200px 620px at 6% -4%, #17357e 0%, transparent 55%),
+    radial-gradient(1000px 720px at 104% 108%, #1b4fca 0%, transparent 52%),
+    linear-gradient(150deg, #071633 0%, #0b2050 55%, #0e2c6e 100%);
+}
+.login-v7 .lv-shell {
+  position: relative; z-index: 1; width: 1140px; max-width: 100%;
+  display: grid; grid-template-columns: 1.12fr .9fr;
+  border-radius: 28px; overflow: hidden; background: #fff;
+  box-shadow: 0 54px 130px rgba(3,12,40,.62), 0 2px 0 rgba(255,255,255,.4) inset;
+}
+
+/* ---- ซ้าย: hero ---- */
+.login-v7 .lv-hero {
+  position: relative; overflow: hidden; color: #fff; padding: 46px 44px;
+  display: flex; flex-direction: column; gap: 20px;
+  background: linear-gradient(158deg, #123a86 0%, #1a49b0 58%, #2358e6 120%);
+}
+.login-v7 .lv-hero::before { content: ''; position: absolute; top: -30%; right: -22%; width: 380px; height: 380px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(120,170,255,.35), transparent 62%); }
+.login-v7 .lv-hero::after { content: ''; position: absolute; bottom: -26%; left: -18%; width: 320px; height: 320px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(40,199,111,.22), transparent 60%); }
+.login-v7 .lv-brand { position: relative; }
+.login-v7 .lv-brand img { height: 34px; background: #fff; padding: 6px 12px; border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.22); }
+.login-v7 .lv-head { position: relative; }
+.login-v7 .lv-head h1 { font-size: 46px; line-height: 1.04; font-weight: 800; letter-spacing: -.5px;
+  text-shadow: 0 4px 18px rgba(0,0,0,.28); }
+.login-v7 .lv-en { margin-top: 8px; font-size: 15px; letter-spacing: .34em; font-weight: 600; color: #a9c6ff; }
+.login-v7 .lv-tag { margin-top: 14px; font-size: 15px; line-height: 1.5; color: rgba(255,255,255,.9); }
+
+.login-v7 .lv-features { position: relative; list-style: none; display: flex; flex-direction: column; gap: 13px; margin: 2px 0; }
+.login-v7 .lv-features li { display: flex; gap: 13px; align-items: center; }
+.login-v7 .lvf-ic { flex: none; width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
+  font-size: 19px; box-shadow: 0 8px 18px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.35); }
+.login-v7 .lvf-ic.i1 { background: linear-gradient(145deg,#3b74ff,#1f49d6); }
+.login-v7 .lvf-ic.i2 { background: linear-gradient(145deg,#22c37a,#12965b); }
+.login-v7 .lvf-ic.i3 { background: linear-gradient(145deg,#8a6bff,#5b3fe0); }
+.login-v7 .lvf-ic.i4 { background: linear-gradient(145deg,#39a7ff,#1f7fe0); }
+.login-v7 .lvf-tx { display: flex; flex-direction: column; }
+.login-v7 .lvf-tx b { font-size: 15px; font-weight: 700; }
+.login-v7 .lvf-tx small { font-size: 12.5px; color: rgba(255,255,255,.78); }
+
+/* mini dashboard ประดับ */
+.login-v7 .lv-deco { position: relative; border-radius: 16px; padding: 14px 16px;
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+  backdrop-filter: blur(6px); box-shadow: 0 14px 34px rgba(0,0,0,.22); display: flex; flex-direction: column; gap: 10px; }
+.login-v7 .lvd-head { display: flex; align-items: center; justify-content: space-between; font-size: 10.5px;
+  letter-spacing: .16em; color: rgba(255,255,255,.75); font-weight: 700; }
+.login-v7 .lvd-dot { width: 8px; height: 8px; border-radius: 50%; background: #28c76f; box-shadow: 0 0 0 4px rgba(40,199,111,.25); }
+.login-v7 .lvd-spark { display: flex; align-items: flex-end; gap: 5px; height: 40px; }
+.login-v7 .lvd-spark i { flex: 1; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg,#7fe6b0,#28c76f); }
+.login-v7 .lvd-spark i:nth-child(1){height:38%} .login-v7 .lvd-spark i:nth-child(2){height:58%}
+.login-v7 .lvd-spark i:nth-child(3){height:44%} .login-v7 .lvd-spark i:nth-child(4){height:78%}
+.login-v7 .lvd-spark i:nth-child(5){height:62%} .login-v7 .lvd-spark i:nth-child(6){height:90%}
+.login-v7 .lvd-spark i:nth-child(7){height:72%}
+.login-v7 .lvd-row { display: flex; align-items: flex-end; gap: 16px; }
+.login-v7 .lvd-bars { flex: 1; display: flex; align-items: flex-end; gap: 6px; height: 34px; }
+.login-v7 .lvd-bars i { flex: 1; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg,#8fb4ff,#3f74ff); }
+.login-v7 .lvd-bars i:nth-child(1){height:50%} .login-v7 .lvd-bars i:nth-child(2){height:74%}
+.login-v7 .lvd-bars i:nth-child(3){height:60%} .login-v7 .lvd-bars i:nth-child(4){height:96%}
+.login-v7 .lvd-donut { width: 44px; height: 44px; border-radius: 50%;
+  background: conic-gradient(#28c76f 0 38%, #3f74ff 38% 74%, #8a6bff 74% 100%); position: relative; }
+.login-v7 .lvd-donut::after { content: ''; position: absolute; inset: 12px; border-radius: 50%; background: #163a8e; }
+
+.login-v7 .lv-stats { position: relative; margin-top: auto; display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 6px; padding: 15px 8px; border-radius: 16px; background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.18); }
+.login-v7 .lv-stats > div { text-align: center; position: relative; }
+.login-v7 .lv-stats > div + div::before { content: ''; position: absolute; left: 0; top: 12%; height: 76%;
+  width: 1px; background: rgba(255,255,255,.16); }
+.login-v7 .lv-stats b { display: block; font-size: 21px; font-weight: 800; }
+.login-v7 .lv-stats span { font-size: 11.5px; color: rgba(255,255,255,.78); }
+
+/* ---- ขวา: การ์ด login ---- */
+.login-v7 .lv-login { background: #fbfcff; padding: 42px 42px 32px; display: flex; flex-direction: column; justify-content: center; }
+.login-v7 .lv-badge { width: 86px; height: 86px; margin: 0 auto 14px; border-radius: 24px; overflow: hidden;
+  box-shadow: 0 16px 34px rgba(21,51,150,.34), 0 0 0 6px rgba(43,92,240,.08); }
+.login-v7 .lv-badge svg { width: 100%; height: 100%; display: block; }
+.login-v7 .lv-badge img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.login-v7 .lv-badge { box-shadow: 0 18px 38px rgba(21,51,150,.28); border-radius: 22px; }
+.login-v7 .lv-login h2 { text-align: center; font-size: 26px; font-weight: 800; color: #16233a; }
+.login-v7 .lv-sub { text-align: center; font-size: 13.5px; color: #6b7a90; margin: 3px 0 22px; }
+.login-v7 .lv-login .fld { display: block; margin-bottom: 15px; }
+.login-v7 .lv-login .fld > span { display: block; margin-bottom: 6px; color: #35455c; font-weight: 600; font-size: 13.5px; }
+.login-v7 .lv-login select {
+  width: 100%; border-radius: 12px; border: 1.7px solid #dde5f1; padding: 12px 13px; font-size: 14px; background: #fff;
+  box-shadow: inset 0 1px 3px rgba(15,50,105,.05); transition: border-color .15s, box-shadow .15s;
+}
+.login-v7 .lv-pass { position: relative; display: flex; align-items: center; }
+.login-v7 .lv-pass .lv-lock { position: absolute; left: 13px; font-size: 14px; opacity: .55; pointer-events: none; }
+.login-v7 .lv-pass input {
+  width: 100%; border-radius: 12px; border: 1.7px solid #dde5f1; padding: 12px 42px 12px 38px; font-size: 14px; background: #fff;
+  box-shadow: inset 0 1px 3px rgba(15,50,105,.05); transition: border-color .15s, box-shadow .15s;
+}
+.login-v7 .lv-pass .lv-eye { position: absolute; right: 8px; background: none; border: none; cursor: pointer;
+  font-size: 15px; opacity: .55; padding: 6px; border-radius: 8px; }
+.login-v7 .lv-pass .lv-eye:hover { opacity: .9; background: #eef2f9; }
+.login-v7 .lv-login select:focus, .login-v7 .lv-pass input:focus {
+  border-color: #2b5cf0; box-shadow: 0 0 0 4px rgba(43,92,240,.16); outline: none;
+}
+.login-v7 .lv-row { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 18px; font-size: 13px; }
+.login-v7 .lv-remember { display: flex; align-items: center; gap: 7px; color: #4a5a72; cursor: pointer; }
+.login-v7 .lv-remember input { width: 15px; height: 15px; accent-color: #2b5cf0; }
+.login-v7 .lv-forgot { color: #2b5cf0; font-weight: 600; cursor: pointer; }
+.login-v7 .lv-forgot:hover { text-decoration: underline; }
+.login-v7 .lv-submit {
+  width: 100%; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 700;
+  background: linear-gradient(135deg, #2f66f2, #1c46d0); border: none; color: #fff;
+  box-shadow: 0 14px 30px rgba(37,80,208,.42); transition: transform .15s, box-shadow .15s;
+}
+.login-v7 .lv-submit:hover { transform: translateY(-1px); box-shadow: 0 18px 38px rgba(37,80,208,.52); }
+.login-v7 .lv-submit:disabled { opacity: .7; cursor: default; transform: none; }
+.login-v7 .lv-or { display: flex; align-items: center; gap: 12px; margin: 20px 0 14px; color: #9aa7ba; font-size: 12px; }
+.login-v7 .lv-or::before, .login-v7 .lv-or::after { content: ''; flex: 1; height: 1px; background: #e4e9f2; }
+.login-v7 .lv-idash { text-align: center; }
+.login-v7 .lv-idash img { height: 30px; padding: 8px 16px; border: 1.5px solid #e4e9f2; border-radius: 12px; background: #fff; }
+.login-v7 .lv-secure { text-align: center; margin-top: 16px; font-size: 12px; color: #8a97ab; }
+
+@media (max-width: 820px) {
+  .login-v7 .lv-shell { grid-template-columns: 1fr; width: 460px; }
+  .login-v7 .lv-hero { padding: 34px 30px; gap: 16px; }
+  .login-v7 .lv-head h1 { font-size: 36px; }
+  .login-v7 .lv-deco { display: none; }
+  .login-v7 .lv-login { padding: 30px 28px 28px; }
+}

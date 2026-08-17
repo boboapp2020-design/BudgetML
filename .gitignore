@@ -10,3 +10,9 @@ desktop.ini
 # รหัสผ่านผู้ใช้ (ห้ามขึ้น git เด็ดขาด)
 credentials.local.csv
 *.local.csv
+
+# preview/design artifacts
+landing-preview.html
+logo-app-crop.png
+logo app.png
+landing page.png
