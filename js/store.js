@@ -866,12 +866,25 @@ const Store = (() => {
     };
     return '﻿' + rows.map(r => r.map(esc).join(',')).join('\r\n');
   }
-  function download(filename, text) {
+  function download(filename, text, mime) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+    a.href = URL.createObjectURL(new Blob([text], { type: (mime || 'text/csv') + ';charset=utf-8' }));
     a.download = filename;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+  // สำรองข้อมูลทั้งหมดเป็นไฟล์ JSON (กู้คืนได้)
+  function exportBackup() {
+    const stamp = (db.meta.seededAt || '').slice(0, 10) || 'now';
+    download(`budget_backup_${db.meta.yearCurrent}_${stamp}.json`, JSON.stringify(db), 'application/json');
+  }
+  function restoreBackup(actor, jsonText) {
+    assertAccounting(actor);
+    let nd; try { nd = JSON.parse(jsonText); } catch (e) { throw new Error('ไฟล์ไม่ใช่ JSON ที่ถูกต้อง'); }
+    if (!nd.meta || !Array.isArray(nd.budgets) || !Array.isArray(nd.departments)) throw new Error('ไฟล์สำรองไม่สมบูรณ์ (ไม่พบ meta/budgets/departments)');
+    nd.meta.rev = Math.max((nd.meta.rev || 0), (db.meta.rev || 0)) + 1; // ให้ชนะ rev บนฐานข้อมูล
+    adoptDb(nd); save();
+    return { depts: nd.departments.length, budgets: nd.budgets.length };
   }
   const MONTH_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   function exportDetail(year) {
@@ -940,7 +953,7 @@ const Store = (() => {
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound,
     addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,
-    exportDetail, exportDeptSummary, exportPnl,
+    exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
     MONTH_TH, MONTH_S,
   };
 })();

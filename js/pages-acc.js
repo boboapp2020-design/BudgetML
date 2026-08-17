@@ -644,6 +644,12 @@ const PagesAcc = (() => {
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
+      + card('💾 สำรอง / กู้คืนข้อมูล (Backup)', `
+          <div class="td-actions">
+            <button class="primary-btn" id="backupBtn">⬇ ดาวน์โหลดสำรองทั้งหมด (JSON)</button>
+            <label class="ghost-btn" style="cursor:pointer;margin:0"><input type="file" id="restoreFile" accept=".json" style="display:none"> 📁 กู้คืนจากไฟล์สำรอง</label>
+          </div>
+          <p class="muted small" style="margin-top:8px">สำรองทุกอย่าง (งบทุกปี · master · เกิดจริง · สถานะ · audit) เป็นไฟล์เดียว เก็บไว้กู้คืนได้ · แนะนำดาวน์โหลดก่อนทำงานสำคัญทุกครั้ง · กู้คืนจะเขียนทับข้อมูลปัจจุบัน + ซิงค์ขึ้นฐานข้อมูล</p>`)
       + card('🧹 ล้างข้อมูล mock (เครื่องมือชั่วคราวสำหรับตั้งค่าก่อนใช้จริง)', `
           <div class="td-actions">
             <button class="danger-btn" id="clearMockBtn">🧹 ล้าง mock ทั้งหมด → ฟอร์มเปล่า (ปี ${year})</button>
@@ -866,6 +872,19 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
+    document.getElementById('backupBtn')?.addEventListener('click', () => {
+      try { Store.exportBackup(); toast('ดาวน์โหลดไฟล์สำรองแล้ว ✓'); } catch (e) { toast(e.message, 'err'); }
+    });
+    document.getElementById('restoreFile')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      let text; try { text = await file.text(); } catch (err) { toast('อ่านไฟล์ไม่สำเร็จ', 'err'); return; }
+      UI.confirm2('กู้คืนข้อมูลจากไฟล์สำรอง?', `ไฟล์: ${esc(file.name)} — ข้อมูลปัจจุบันทั้งหมดจะถูกเขียนทับด้วยไฟล์นี้ และซิงค์ขึ้นฐานข้อมูล`, 'ตรวจให้แน่ใจว่าเป็นไฟล์สำรองที่ถูกต้อง · ย้อนกลับไม่ได้',
+        async () => {
+          try { const r = Store.restoreBackup(user, text); await Sync.push?.(); toast(`กู้คืนแล้ว ✓ (${r.depts} แผนก · ${r.budgets} แถวงบ)`); App.render(); }
+          catch (err) { toast('กู้คืนไม่สำเร็จ: ' + err.message, 'err'); }
+          document.getElementById('restoreFile').value = '';
+        });
+    });
     document.getElementById('clearMockBtn')?.addEventListener('click', () => {
       const y = UI.year();
       UI.modal(`🧹 ล้าง mock ปี ${y} → ฟอร์มเปล่าทั้งหมด`, `
