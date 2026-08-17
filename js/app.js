@@ -61,33 +61,8 @@ const App = (() => {
       <div class="login-orbs"><span></span><span></span><span></span></div>
       <div class="lv-shell">
         <!-- ซ้าย: hero แบรนด์ -->
-        <aside class="lv-hero">
-          <div class="lv-brand"><img src="Logo%20iDash.png" alt="iDash"></div>
-          <div class="lv-head">
-            <h1>งบประมาณ<br>ประจำปี</h1>
-            <div class="lv-en">ANNUAL BUDGET SYSTEM</div>
-            <p class="lv-tag">ระบบวางแผนและบริหารงบประมาณ<br>อย่างชาญฉลาด ครบวงจร</p>
-          </div>
-          <ul class="lv-features">
-            <li><span class="lvf-ic i1">🎯</span><span class="lvf-tx"><b>วางแผนแม่นยำ</b><small>กำหนดเป้าหมาย และติดตามผลได้อย่างมีประสิทธิภาพ</small></span></li>
-            <li><span class="lvf-ic i2">📊</span><span class="lvf-tx"><b>ข้อมูลครบถ้วน</b><small>เชื่อมโยงทุกหน่วยงานในระบบเดียว</small></span></li>
-            <li><span class="lvf-ic i3">🛡️</span><span class="lvf-tx"><b>ปลอดภัย เชื่อถือได้</b><small>มาตรฐานความปลอดภัยระดับองค์กร</small></span></li>
-            <li><span class="lvf-ic i4">☁️</span><span class="lvf-tx"><b>เข้าถึงได้ทุกที่ ทุกเวลา</b><small>รองรับการใช้งานบนทุกอุปกรณ์</small></span></li>
-          </ul>
-          <div class="lv-deco" aria-hidden="true">
-            <div class="lvd-head"><span>BUDGET OVERVIEW</span><span class="lvd-dot"></span></div>
-            <div class="lvd-spark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            <div class="lvd-row">
-              <div class="lvd-bars"><i></i><i></i><i></i><i></i></div>
-              <div class="lvd-donut"></div>
-            </div>
-          </div>
-          <div class="lv-stats">
-            <div><b>${depts.length}+</b><span>หน่วยงาน</span></div>
-            <div><b>${rowsLabel}</b><span>รายการ</span></div>
-            <div><b>1.2B+</b><span>งบประมาณ (LAK)</span></div>
-            <div><b>99.9%</b><span>ความปลอดภัย</span></div>
-          </div>
+        <aside class="lv-hero lv-hero-img">
+          <img src="hero.jpg?v=7.2" alt="Annual Budget System">
         </aside>
 
         <!-- ขวา: การ์ด login -->
