@@ -16,6 +16,7 @@ const Supa = (() => {
   const PAGE = 1000;      // แถวต่อ 1 request fetch (PostgREST cap)
   const SEP = '~|~';      // ตัวคั่น key ที่ไม่โผล่ในข้อมูลจริง
 
+  const TOK_KEY = 'abp_sb_token', REF_KEY = 'abp_sb_refresh', UID_KEY = 'abp_sb_uid';
   const base = () => (localStorage.getItem(URL_KEY) || '').replace(/\/+$/, '');
   const key  = () => localStorage.getItem(KEY_KEY) || '';
   const enabled = () => !!(base() && key());
@@ -25,14 +26,69 @@ const Supa = (() => {
     else { localStorage.removeItem(URL_KEY); localStorage.removeItem(KEY_KEY); }
   }
 
+  /* ---------- Auth (GoTrue): login จริง → JWT ต่อ request ----------
+   * token (JWT ผู้ใช้) ใช้แทน anon key ใน Authorization → ผ่าน RLS ตามบทบาท
+   * เก็บ refresh token ไว้ต่ออายุตอนเปิดแอปใหม่ (ไม่ต้อง login ซ้ำทุกครั้ง) */
+  let token = localStorage.getItem(TOK_KEY) || null;
+  const authed = () => !!token;
+  function saveSession(d) {
+    token = d.access_token || null;
+    if (token) localStorage.setItem(TOK_KEY, token); else localStorage.removeItem(TOK_KEY);
+    if (d.refresh_token) localStorage.setItem(REF_KEY, d.refresh_token);
+    if (d.user && d.user.id) localStorage.setItem(UID_KEY, d.user.id);
+  }
+  async function authReq(pathQ, body) {
+    const res = await fetch(base() + '/auth/v1/' + pathQ, {
+      method: 'POST', headers: { apikey: key(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const txt = await res.text();
+    let data = {}; try { data = txt ? JSON.parse(txt) : {}; } catch (e) {}
+    if (!res.ok) {
+      const msg = data.error_description || data.msg || data.message || ('auth ' + res.status);
+      throw new Error(msg);
+    }
+    return data;
+  }
+  async function signIn(email, password) {
+    const d = await authReq('token?grant_type=password', { email, password });
+    saveSession(d);
+    return d;                                   // { access_token, refresh_token, user }
+  }
+  async function refresh() {
+    const rt = localStorage.getItem(REF_KEY);
+    if (!rt) return false;
+    try { saveSession(await authReq('token?grant_type=refresh_token', { refresh_token: rt })); return authed(); }
+    catch (e) { signOut(); return false; }
+  }
+  function signOut() {
+    token = null;
+    localStorage.removeItem(TOK_KEY); localStorage.removeItem(REF_KEY); localStorage.removeItem(UID_KEY);
+  }
+  async function myProfile() {
+    const uid = localStorage.getItem(UID_KEY);
+    if (!uid) return null;
+    const r = await req('GET', 'profiles?id=eq.' + uid + '&select=*');
+    return (r && r.length) ? r[0] : null;
+  }
+
   /* ---------- HTTP ---------- */
   async function req(method, path, body, prefer) {
-    const h = { apikey: key(), Authorization: 'Bearer ' + key() };
+    const bearer = token || key();               // มี JWT ผู้ใช้ → ใช้ก่อน (RLS ตามบทบาท) · ไม่มี → anon key
+    const h = { apikey: key(), Authorization: 'Bearer ' + bearer };
     if (body) h['Content-Type'] = 'application/json';
     if (prefer) h['Prefer'] = prefer;
-    const res = await fetch(base() + '/rest/v1/' + path, {
+    let res = await fetch(base() + '/rest/v1/' + path, {
       method, headers: h, body: body ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 401 && token) {           // JWT หมดอายุ → ต่ออายุแล้วลองใหม่ 1 ครั้ง
+      if (await refresh()) {
+        h.Authorization = 'Bearer ' + token;
+        res = await fetch(base() + '/rest/v1/' + path, {
+          method, headers: h, body: body ? JSON.stringify(body) : undefined,
+        });
+      }
+    }
     if (!res.ok) throw new Error('Supabase ' + res.status + ': ' + (await res.text()).slice(0, 240));
     if (res.status === 204) return null;
     return (res.headers.get('content-type') || '').includes('json') ? res.json() : null;
@@ -245,7 +301,8 @@ const Supa = (() => {
     return { ok: true, rows: Array.isArray(r) ? r.length : 0 };
   }
 
-  return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline };
+  return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline,
+    signIn, signOut, refresh, authed, myProfile };
 })();
 
 window.Supa = Supa;

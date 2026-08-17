@@ -45,6 +45,13 @@ const Store = (() => {
     sessionStorage.setItem(SES_KEY, u.id);
     return u;
   }
+  // ตั้ง session จาก username อย่างเดียว (ใช้หลังยืนยันตัวตนผ่าน Supabase Auth แล้ว — รหัสจริงอยู่ที่ Supabase)
+  function loginByUsername(username) {
+    const u = db.users.find(x => x.username === username);
+    if (!u) return null;
+    sessionStorage.setItem(SES_KEY, u.id);
+    return u;
+  }
   function logout() { sessionStorage.removeItem(SES_KEY); }
   function currentUser() {
     const id = sessionStorage.getItem(SES_KEY);
@@ -972,7 +979,7 @@ const Store = (() => {
   return {
     get db() { return db; },
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
-    login, logout, currentUser,
+    login, loginByUsername, logout, currentUser,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
     oversight, oversightUnit, childUnits, subtreeDeptCodes, subtreeDepartments, unitOfDept,
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,

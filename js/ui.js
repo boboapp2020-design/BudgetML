@@ -176,7 +176,7 @@ const UI = (() => {
 
   function bindShell(user) {
     document.getElementById('yearSel')?.addEventListener('change', e => { setYear(e.target.value); App.render(); });
-    document.getElementById('logoutBtn')?.addEventListener('click', () => { Store.logout(); location.hash = '#/login'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', () => { Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
     const btn = document.getElementById('notiBtn'), panel = document.getElementById('notiPanel');
     btn?.addEventListener('click', () => {
       panel.hidden = !panel.hidden;

@@ -6,6 +6,17 @@ const App = (() => {
   const root = () => document.getElementById('root');
   const homeFor = u => u.role === 'ACCOUNTING' ? '#/acc/dashboard' : u.role === 'MANAGER' ? '#/mgr/dashboard' : '#/budget';
 
+  // ---- Supabase Auth (login จริง) ----
+  const EMAIL_DOMAIN = 'mitrphol.com';
+  const authOn = () => (typeof Supa !== 'undefined' && Supa.enabled());
+  // แปลง username → อีเมล (ต้องตรงกับที่สร้างใน create-users.ps1)
+  function emailFor(username) {
+    const d = '@' + EMAIL_DOMAIN;
+    if (username === 'accounting') return 'accounting' + d;
+    if (username.indexOf('MGR:') === 0) return 'mgr-' + username.slice(4).toLowerCase() + d;
+    return username + d;
+  }
+
   const ROUTES = {
     '#/dashboard':       { role: 'USER',       page: () => PagesUser.dashboard,   bind: () => PagesUser.dashboardBind },
     '#/budget':          { role: 'USER',       page: () => PagesUser.budget,      bind: () => PagesUser.budgetBind },
@@ -63,8 +74,8 @@ const App = (() => {
               <optgroup label="👔 ผู้จัดการฝ่าย (ดูภาพรวมทั้งฝ่าย)">${mgrOpts}</optgroup>
               ${deptOpts}
             </select></label>
-          <label class="fld"><span>PIN <small class="muted">(ยังไม่บังคับใช้ในเวอร์ชันทดลอง)</small></span>
-            <input id="deptPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"></label>
+          <label class="fld"><span>${authOn() ? 'รหัสผ่าน' : 'PIN <small class="muted">(ยังไม่บังคับใช้ในเวอร์ชันทดลอง)</small>'}</span>
+            <input id="deptPin" type="password" ${authOn() ? 'placeholder="รหัสผ่าน" autocomplete="current-password"' : 'inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"'}></label>
           <button class="primary-btn big" id="deptLoginBtn" style="width:100%">เข้าสู่ระบบ</button>
         </div>
 
@@ -72,8 +83,8 @@ const App = (() => {
         <div id="adminLoginView" hidden>
           <div class="admin-head"><span class="uc-avatar acc">A</span>
             <span><b>ผู้ดูแลระบบ — แผนกบัญชี</b><br><small class="muted">Accounting / Admin · ดูทุกหน่วยงาน วิเคราะห์ ควบคุมรอบงบ</small></span></div>
-          <label class="fld"><span>PIN ผู้ดูแลระบบ <small class="muted">(ยังไม่บังคับใช้ในเวอร์ชันทดลอง)</small></span>
-            <input id="adminPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"></label>
+          <label class="fld"><span>${authOn() ? 'รหัสผ่านผู้ดูแลระบบ' : 'PIN ผู้ดูแลระบบ <small class="muted">(ยังไม่บังคับใช้ในเวอร์ชันทดลอง)</small>'}</span>
+            <input id="adminPin" type="password" ${authOn() ? 'placeholder="รหัสผ่าน" autocomplete="current-password"' : 'inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"'}></label>
           <button class="primary-btn big" id="adminLoginBtn" style="width:100%">เข้าสู่ระบบผู้ดูแล</button>
           <button class="admin-link" id="adminBack">← กลับไปเลือกหน่วยงาน</button>
         </div>
@@ -89,11 +100,31 @@ const App = (() => {
     const adminToggle = document.getElementById('adminToggle');
 
     const enter = user => { location.hash = homeFor(user); };
+
+    // login ผ่าน Supabase Auth: ยืนยันตัวตนที่ server → ตั้ง session ท้องถิ่น → ดึงข้อมูลตามสิทธิ์
+    async function authLogin(username, password, btn) {
+      if (!password) { UI.toast('กรุณากรอกรหัสผ่าน', 'err'); return; }
+      const old = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ…'; }
+      try {
+        await Supa.signIn(emailFor(username), password);
+        const user = Store.loginByUsername(username);
+        if (!user) { Supa.signOut(); throw new Error('ไม่พบบัญชีผู้ใช้ในระบบ (' + username + ')'); }
+        await Sync.pull().catch(() => {});         // โหลดข้อมูลด้วย JWT ผู้ใช้
+        enter(Store.currentUser() || user);
+      } catch (e) {
+        const m = /Invalid login/i.test(e.message) ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : e.message;
+        UI.toast('เข้าสู่ระบบไม่สำเร็จ: ' + m, 'err');
+        if (btn) { btn.disabled = false; btn.textContent = old; }
+      }
+    }
+
     const deptLogin = () => {
       const code = document.getElementById('deptSel').value;
       if (!code) { UI.toast('กรุณาเลือกหน่วยงานก่อน', 'err'); return; }
-      // หมายเหตุ: ระบบ PIN ยังไม่บังคับใช้ — ช่องนี้เตรียมไว้สำหรับเวอร์ชันถัดไป
-      const user = Store.login(code, '1234');
+      const pw = document.getElementById('deptPin').value;
+      if (authOn()) return authLogin(code, pw, document.getElementById('deptLoginBtn'));
+      const user = Store.login(code, '1234');   // โหมดทดลอง (ไม่มี Supabase) — PIN ยังไม่บังคับ
       if (!user) { UI.toast('ไม่พบบัญชีผู้ใช้ของหน่วยงานนี้', 'err'); return; }
       enter(user);
     };
@@ -101,7 +132,11 @@ const App = (() => {
     document.getElementById('deptPin').addEventListener('keydown', e => { if (e.key === 'Enter') deptLogin(); });
     document.getElementById('deptSel').addEventListener('keydown', e => { if (e.key === 'Enter') deptLogin(); });
 
-    const adminLogin = () => enter(Store.login('accounting', '1234'));
+    const adminLogin = () => {
+      const pw = document.getElementById('adminPin').value;
+      if (authOn()) return authLogin('accounting', pw, document.getElementById('adminLoginBtn'));
+      enter(Store.login('accounting', '1234'));
+    };
     document.getElementById('adminLoginBtn').addEventListener('click', adminLogin);
     document.getElementById('adminPin').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
     adminToggle.addEventListener('click', () => {
@@ -157,8 +192,11 @@ const App = (() => {
   window.addEventListener('DOMContentLoaded', () => {
     if (!location.hash) location.hash = '#/login';
     safeRender();
-    // ซิงค์กับ Google Sheet (ถ้าตั้งค่าไว้) — ถ้าได้ข้อมูลใหม่มา ให้วาดหน้าจอใหม่
-    Sync.init().then(adopted => { if (adopted) safeRender(); }).catch(() => {});
+    // เชื่อม Supabase: ต่ออายุ session เดิม + ดึงข้อมูล — ถ้า session หมดต้อง login ใหม่
+    Sync.init().then(res => {
+      if (res && res.needLogin) { Store.logout(); location.hash = '#/login'; safeRender(); }
+      else if (res && res.adopted) safeRender();
+    }).catch(() => {});
   });
 
   return { render };

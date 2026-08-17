@@ -126,9 +126,20 @@ const Sync = (() => {
 
   async function init() {
     Store.setAfterSave(schedulePush);
-    if (!enabled()) { setState('off'); return false; }
-    try { const r = await pull(); return r.adopted; }
-    catch (e) { return false; }
+    if (!enabled()) { setState('off'); return { adopted: false }; }
+    // Supabase + RLS: ต้องยืนยันตัวตนก่อนถึง pull ได้ — ลองต่ออายุ session เดิม
+    if (backend() === 'supa' && !Supa.authed()) {
+      const ok = await Supa.refresh();
+      if (!ok) { setState('off'); return { adopted: false, needLogin: !!Store.currentUser() }; }
+    }
+    try { const r = await pull(); return r; }
+    catch (e) {
+      if (String(e.message).includes('401') || String(e.message).includes('403')) {
+        if (typeof Supa !== 'undefined') Supa.signOut();
+        return { adopted: false, needLogin: true };
+      }
+      return { adopted: false };
+    }
   }
 
   return {

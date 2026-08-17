@@ -6,3 +6,7 @@
 .claude/
 Thumbs.db
 desktop.ini
+
+# รหัสผ่านผู้ใช้ (ห้ามขึ้น git เด็ดขาด)
+credentials.local.csv
+*.local.csv
