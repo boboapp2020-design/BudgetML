@@ -42,12 +42,23 @@ const App = (() => {
 
     root().innerHTML = `
     <div class="login-wrap">
-      <div class="login-card">
-        <div class="login-brand"><div class="login-applogo">${UI.APP_LOGO}</div>
+      <div class="login-orbs"><span></span><span></span><span></span></div>
+      <div class="login-card login-2col">
+        <!-- แผงแบรนด์ -->
+        <aside class="login-hero">
+          <div class="lh-logo">${UI.APP_LOGO}</div>
           <h1>งบประมาณประจำปี</h1>
-          <div class="login-sub">Annual Budget</div>
-          <div class="login-company">${UI.esc(Store.db.meta.company)} · ปีงบประมาณ ${Store.db.meta.yearCurrent}</div></div>
-
+          <div class="lh-sub">Annual Budget System</div>
+          <div class="lh-company">${UI.esc(Store.db.meta.company)}</div>
+          <ul class="lh-features">
+            <li>📊 ${Store.db.departments.length} หน่วยงาน · ผังกำกับดูแลหลายชั้น</li>
+            <li>☁️ ซิงค์เรียลไทม์ ทุกเครื่องเห็นข้อมูลตรงกัน</li>
+            <li>🔁 รอบ Revise กลางปี + เทียบงบเดิม</li>
+          </ul>
+          <div class="lh-year">📅 ปีงบประมาณ ${Store.db.meta.yearCurrent}</div>
+        </aside>
+        <!-- แผงฟอร์ม -->
+        <div class="login-form">
         <!-- เข้าใช้งานรายหน่วยงาน -->
         <div id="deptLoginView">
           <label class="fld"><span>เลือกหน่วยงาน / ฝ่ายของคุณ</span>
@@ -73,6 +84,7 @@ const App = (() => {
 
         <button class="admin-link" id="adminToggle">🔐 สำหรับผู้ดูแลระบบ (แผนกบัญชี)</button>
         <div class="login-powered"><img src="Logo%20iDash.png" alt="Powered by iDash"></div>
+        </div>
       </div>
     </div>`;
 
