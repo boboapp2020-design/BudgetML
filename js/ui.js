@@ -51,6 +51,7 @@ const UI = (() => {
     { hash: '#/acc/departments', icon: '🏢', label: 'หน่วยงาน & Drill-down', sub: 'Departments' },
     { hash: '#/acc/analysis',    icon: '📈', label: 'วิเคราะห์งบประมาณ',  sub: 'Analysis' },
     { hash: '#/acc/pnl',         icon: '📑', label: 'งบการเงินตามงบ',     sub: 'Budget P&L' },
+    { hash: '#/acc/variance',    icon: '🎯', label: 'ควบคุมงบ (เกิดจริง)', sub: 'Budget vs Actual' },
     { hash: '#/acc/control',     icon: '⚙️', label: 'Budget Control',      sub: 'จัดการระบบ' },
     { hash: '#/acc/audit',       icon: '📜', label: 'Audit Log',           sub: 'ประวัติการแก้ไข' },
   ];

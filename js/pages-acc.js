@@ -1135,5 +1135,60 @@ const PagesAcc = (() => {
   }
   function pnlBind() { UI.enableSort(document.getElementById('pnlTable')); }
 
-  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, audit, actuals, actualsBind, pnl, pnlBind };
+  /* ============ ควบคุมงบ (Budget vs Actual / Variance) ============ */
+  function variance(user) {
+    const year = UI.year();
+    const rv = Store.revisePhase(year);
+    const acts = (Store.db.actuals || []).filter(a => a.year === year);
+    const actByDept = {}, gById = {}; Store.db.glAccounts.forEach(g => { gById[g.id] = g; });
+    const actByGrp = {}; let actTotal = 0;
+    acts.forEach(a => { const s = a.months.reduce((x, v) => x + (v || 0), 0); actByDept[a.departmentId] = (actByDept[a.departmentId] || 0) + s; const grp = (gById[a.glId] || {}).glGroup || 'อื่นๆ'; actByGrp[grp] = (actByGrp[grp] || 0) + s; actTotal += s; });
+    const budTotal = Store.companyTotal(year);
+    const usedPct = budTotal > 0 ? actTotal / budTotal * 100 : 0;
+    const flag = (act, bud) => act > bud && bud > 0 ? { c: '#d03b3b', t: '🔴 เกินงบ' } : bud > 0 && act / bud >= 0.9 ? { c: '#eda100', t: '🟡 ใกล้เต็ม' } : act > 0 ? { c: '#0ca30c', t: '🟢 ปกติ' } : { c: '#c3c2b7', t: '—' };
+
+    const budByGrp = {};
+    Store.db.budgets.filter(b => b.year === year).forEach(b => { const grp = (gById[b.glId] || {}).glGroup || 'อื่นๆ'; budByGrp[grp] = (budByGrp[grp] || 0) + b.months.reduce((s, v) => s + (v || 0), 0); });
+
+    const deptRows = Store.activeDepartments().map(d => ({ d, bud: Store.deptTotal(year, d.id), act: actByDept[d.id] || 0 }))
+      .filter(x => x.bud > 0).sort((a, b) => (b.act / (b.bud || 1)) - (a.act / (a.bud || 1))).map(x => {
+        const rem = x.bud - x.act, pct = x.bud > 0 ? x.act / x.bud * 100 : 0, f = flag(x.act, x.bud);
+        return `<tr>
+          <td data-v="${esc(x.d.name)}"><b>${UI.deptIcon(x.d)} ${esc(x.d.name)}</b><div class="muted small">${x.d.code}</div></td>
+          <td class="num" data-v="${x.bud}">${fmt(x.bud)}</td>
+          <td class="num" data-v="${x.act}">${fmt(x.act)}</td>
+          <td class="num" data-v="${rem}" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
+          <td data-v="${pct}"><div class="comp-bar"><div class="comp-fill ${pct >= 100 ? '' : 'full'}" style="width:${Math.min(100, pct).toFixed(0)}%;background:${f.c}"></div></div>${pct.toFixed(1)}%</td>
+          <td data-v="${pct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
+      }).join('');
+    const grpRows = Object.keys(budByGrp).map(grp => ({ grp, bud: budByGrp[grp], act: actByGrp[grp] || 0 }))
+      .sort((a, b) => b.bud - a.bud).map(x => {
+        const rem = x.bud - x.act, pct = x.bud > 0 ? x.act / x.bud * 100 : 0, f = flag(x.act, x.bud);
+        return `<tr><td><b>${esc(x.grp)}</b></td><td class="num">${fmt(x.bud)}</td><td class="num">${fmt(x.act)}</td>
+          <td class="num" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
+          <td>${pct.toFixed(1)}%</td><td><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
+      }).join('');
+
+    const emptyNote = actTotal === 0
+      ? `<div class="anomaly-box warning" style="margin-bottom:14px">ℹ️ ยังไม่มีตัวเลขเกิดจริงปี ${year} — ${rv.on ? 'ใส่เกิดจริงที่เมนู "ใส่เกิดจริง" หรืออัปโหลดไฟล์ SAP' : 'เปิดรอบ Revise แล้วนำเข้าเกิดจริงก่อน'} · รายงานนี้จะคำนวณอัตโนมัติเมื่อมีข้อมูล</div>` : '';
+
+    return pageHead('🎯 ควบคุมงบ — งบ vs เกิดจริง', `เทียบงบที่ตั้งกับเกิดจริงสะสม${rv.on ? ` (ถึงเดือน ${rv.thru})` : ''} · ทั้งบริษัท ปี ${year} · ${asOf()}`,
+        `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
+      + emptyNote
+      + `<div class="kpi-grid kpi-grid-4">
+        ${kpiC('💰', '#e6f0fb', 'kpi-tint-blue', `งบทั้งปี ${year}`, `${UI.fmtShort(budTotal)} <small>กีบ</small>`, fmt(budTotal) + ' กีบ')}
+        ${kpiC('💸', '#e6f7f0', 'kpi-tint-teal', 'เกิดจริงสะสม', `${UI.fmtShort(actTotal)} <small>กีบ</small>`, fmt(actTotal) + ' กีบ')}
+        ${kpiC('🏦', '#eaf6ea', 'kpi-tint-green', 'คงเหลือ', `${UI.fmtShort(budTotal - actTotal)} <small>กีบ</small>`, fmt(budTotal - actTotal) + ' กีบ')}
+        ${kpiC('🎯', usedPct >= 100 ? '#fdecec' : '#fff7e6', usedPct >= 100 ? 'kpi-tint-red' : 'kpi-tint-amber', '% ใช้ไป', `${usedPct.toFixed(1)} <small>%</small>`, usedPct >= 100 ? 'เกินงบ ⚠' : 'ของงบทั้งปี')}
+      </div>`
+      + card(`ควบคุมงบรายแผนก — คลิกหัวคอลัมน์เพื่อเรียง`, `<div class="table-scroll" style="max-height:60vh"><table class="data-table sortable-table" id="varTable">
+          <thead><tr><th class="sortable">แผนก</th><th class="num sortable">งบทั้งปี (กีบ)</th><th class="num sortable">เกิดจริง (กีบ)</th><th class="num sortable">คงเหลือ (กีบ)</th><th class="sortable">% ใช้ไป</th><th class="sortable">สถานะ</th></tr></thead>
+          <tbody>${deptRows}</tbody></table></div>`, { cls: 'card-flush' })
+      + card(`ควบคุมงบตามกลุ่มบัญชี`, `<div class="table-scroll"><table class="data-table">
+          <thead><tr><th>กลุ่มบัญชี</th><th class="num">งบทั้งปี</th><th class="num">เกิดจริง</th><th class="num">คงเหลือ</th><th>% ใช้ไป</th><th>สถานะ</th></tr></thead>
+          <tbody>${grpRows}</tbody></table></div>`, { cls: 'card-flush' });
+  }
+  function varianceBind() { UI.enableSort(document.getElementById('varTable')); }
+
+  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind };
 })();
