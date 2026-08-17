@@ -1,0 +1,251 @@
+/* =============================================================
+ * supa.js — Supabase (PostgreSQL) backend adapter
+ *
+ * แทน Google Sheet: เก็บข้อมูลเป็นตาราง relational จริง
+ *  - loadAll()  : ดึงทุกตาราง → ประกอบกลับเป็น db object (รูปเดิมที่ store.js ใช้)
+ *  - pushDiff() : เทียบกับ baseline ครั้งก่อน → upsert เฉพาะแถวที่เปลี่ยน + ลบแถวที่หาย
+ *      → แต่ละแผนกแตะเฉพาะแถวของตัวเอง สองแผนกกรอกพร้อมกันไม่ชนกัน
+ *  - URL + key เก็บใน localStorage (ไม่อยู่ใน repo)
+ *
+ * mapping: DB ใช้ snake_case, แอปใช้ camelCase — แปลงผ่าน toRow/fromRow ต่อ table
+ * ============================================================= */
+
+const Supa = (() => {
+  const URL_KEY = 'abp_supa_url', KEY_KEY = 'abp_supa_key';
+  const CHUNK = 500;      // แถวต่อ 1 request upsert
+  const PAGE = 1000;      // แถวต่อ 1 request fetch (PostgREST cap)
+  const SEP = '~|~';      // ตัวคั่น key ที่ไม่โผล่ในข้อมูลจริง
+
+  const base = () => (localStorage.getItem(URL_KEY) || '').replace(/\/+$/, '');
+  const key  = () => localStorage.getItem(KEY_KEY) || '';
+  const enabled = () => !!(base() && key());
+  function setConfig(url, k) {
+    url = (url || '').trim(); k = (k || '').trim();
+    if (url && k) { localStorage.setItem(URL_KEY, url); localStorage.setItem(KEY_KEY, k); }
+    else { localStorage.removeItem(URL_KEY); localStorage.removeItem(KEY_KEY); }
+  }
+
+  /* ---------- HTTP ---------- */
+  async function req(method, path, body, prefer) {
+    const h = { apikey: key(), Authorization: 'Bearer ' + key() };
+    if (body) h['Content-Type'] = 'application/json';
+    if (prefer) h['Prefer'] = prefer;
+    const res = await fetch(base() + '/rest/v1/' + path, {
+      method, headers: h, body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error('Supabase ' + res.status + ': ' + (await res.text()).slice(0, 240));
+    if (res.status === 204) return null;
+    return (res.headers.get('content-type') || '').includes('json') ? res.json() : null;
+  }
+  async function fetchAll(table, select = '*') {
+    const out = [];
+    for (let from = 0; ; from += PAGE) {
+      const r = await req('GET', `${table}?select=${select}&limit=${PAGE}&offset=${from}`);
+      out.push(...r);
+      if (r.length < PAGE) break;
+    }
+    return out;
+  }
+  async function upsert(table, rows) {
+    for (let i = 0; i < rows.length; i += CHUNK)
+      await req('POST', table, rows.slice(i, i + CHUNK), 'resolution=merge-duplicates,return=minimal');
+  }
+  async function delMany(table, pkList) {
+    // ลบทีละแถวด้วย PK (จำกัด concurrency) — เคสลบเกิดไม่บ่อยและครั้งละไม่กี่แถว
+    const N = 6;
+    for (let i = 0; i < pkList.length; i += N) {
+      await Promise.all(pkList.slice(i, i + N).map(pk => {
+        const q = Object.entries(pk).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
+        return req('DELETE', `${table}?${q}`, null, 'return=minimal');
+      }));
+    }
+  }
+
+  const nz = v => (v === undefined ? null : v);
+
+  /* ---------- นิยามตาราง (เรียงตาม dependency: parent ก่อน child) ---------- */
+  const TABLES = [
+    { name: 'app_meta', pk: ['id'], single: true,
+      list: db => [db.meta],
+      toRow: m => ({ id: 'main', schema_version: nz(m.schemaVersion), rev: nz(m.rev) || 0,
+        company: nz(m.company), currency: nz(m.currency), year_current: nz(m.yearCurrent),
+        year_previous: nz(m.yearPrevious), app_name: nz(m.appName), sides: nz(m.sides) }),
+    },
+    { name: 'departments', pk: ['id'], assign: 'departments',
+      list: db => db.departments,
+      toRow: d => ({ id: d.id, code: d.code, name: d.name, name_en: nz(d.nameEn), side: nz(d.side), active: d.active !== false }),
+      fromRow: r => ({ id: r.id, code: r.code, name: r.name, nameEn: r.name_en || '', side: r.side, active: r.active !== false }),
+    },
+    { name: 'gl_accounts', pk: ['id'], assign: 'glAccounts',
+      list: db => db.glAccounts,
+      toRow: g => ({ id: g.id, code: g.code, name: g.name, gl_group: nz(g.glGroup), io_group: nz(g.ioGroup), active: g.active !== false }),
+      fromRow: r => ({ id: r.id, code: r.code, name: r.name, glGroup: r.gl_group || 'อื่นๆ', ioGroup: r.io_group || 'ไม่คุม', active: r.active !== false }),
+    },
+    { name: 'cct_master', pk: ['code'], assign: 'cctMaster',
+      list: db => db.cctMaster,
+      toRow: c => ({ code: c.code, name: nz(c.name), department_id: nz(c.departmentId) }),
+      fromRow: r => ({ code: r.code, name: r.name, departmentId: r.department_id }),
+    },
+    { name: 'department_rows', pk: ['department_id', 'cct', 'gl_id'], assign: 'departmentRows',
+      list: db => db.departmentRows || [],
+      toRow: x => ({ department_id: x.departmentId, cct: x.cct, gl_id: x.glId, io: nz(x.io), code_a: nz(x.codeA) }),
+      fromRow: r => ({ departmentId: r.department_id, cct: r.cct, glId: r.gl_id, io: r.io || '', codeA: r.code_a || '' }),
+    },
+    { name: 'budget_periods', pk: ['year'], assign: 'budgetPeriods',
+      list: db => db.budgetPeriods,
+      toRow: p => ({ year: p.year, status: nz(p.status), phase: nz(p.phase), actual_thru: nz(p.actualThru),
+        opened_at: nz(p.openedAt), locked_at: nz(p.lockedAt), locked_by: nz(p.lockedBy),
+        revise_opened_at: nz(p.reviseOpenedAt), revise_opened_by: nz(p.reviseOpenedBy) }),
+      fromRow: r => ({ year: r.year, status: r.status, phase: r.phase || undefined, actualThru: r.actual_thru || undefined,
+        openedAt: r.opened_at, lockedAt: r.locked_at, lockedBy: r.locked_by,
+        reviseOpenedAt: r.revise_opened_at || undefined, reviseOpenedBy: r.revise_opened_by || undefined }),
+    },
+    { name: 'budgets', pk: ['year', 'department_id', 'gl_id', 'cct'], assign: 'budgets',
+      list: db => db.budgets,
+      toRow: b => ({ year: b.year, department_id: b.departmentId, gl_id: b.glId, cct: b.cct,
+        months: b.months, mtp1: nz(b.mtp1), mtp2: nz(b.mtp2), not_used: !!b.notUsed,
+        updated_at: nz(b.updatedAt), updated_by: nz(b.updatedBy) }),
+      fromRow: r => ({ year: r.year, departmentId: r.department_id, glId: r.gl_id, cct: r.cct,
+        months: r.months, mtp1: r.mtp1, mtp2: r.mtp2, notUsed: !!r.not_used,
+        updatedAt: r.updated_at, updatedBy: r.updated_by }),
+    },
+    { name: 'gl_notes', pk: ['year', 'department_id', 'row_key'], assign: 'glNotes',
+      list: db => db.glNotes,
+      toRow: n => ({ year: n.year, department_id: n.departmentId, row_key: n.rowKey, reason: nz(n.reason), assumption: nz(n.assumption) }),
+      fromRow: r => ({ year: r.year, departmentId: r.department_id, rowKey: r.row_key, reason: r.reason || '', assumption: r.assumption || '' }),
+    },
+    { name: 'dept_status', pk: ['year', 'department_id'], assign: 'deptStatus',
+      list: db => db.deptStatus,
+      toRow: s => ({ year: s.year, department_id: s.departmentId, status: nz(s.status), submitted_at: nz(s.submittedAt), revision_note: nz(s.revisionNote) }),
+      fromRow: r => ({ year: r.year, departmentId: r.department_id, status: r.status, submittedAt: r.submitted_at, revisionNote: r.revision_note }),
+    },
+    { name: 'cell_details', pk: ['year', 'department_id', 'row_key', 'month'], assign: 'cellDetails',
+      list: db => db.cellDetails || [],
+      toRow: c => ({ year: c.year, department_id: c.departmentId, row_key: c.rowKey, month: c.month, items: nz(c.items), updated_at: nz(c.updatedAt), updated_by: nz(c.updatedBy) }),
+      fromRow: r => ({ year: r.year, departmentId: r.department_id, rowKey: r.row_key, month: r.month, items: r.items || [], updatedAt: r.updated_at, updatedBy: r.updated_by }),
+    },
+    { name: 'exchange_rates', pk: ['year', 'currency'], assign: 'exchangeRates',
+      list: db => db.exchangeRates,
+      toRow: r => ({ year: r.year, currency: r.currency, rate_to_lak: nz(r.rateToLAK) }),
+      fromRow: r => ({ year: r.year, currency: r.currency, rateToLAK: r.rate_to_lak }),
+    },
+    { name: 'fuel_prices', pk: ['year', 'fuel_type'], assign: 'fuelPrices',
+      list: db => db.fuelPrices,
+      toRow: f => ({ year: f.year, fuel_type: f.fuelType, price_per_liter: nz(f.pricePerLiter) }),
+      fromRow: r => ({ year: r.year, fuelType: r.fuel_type, pricePerLiter: r.price_per_liter }),
+    },
+    { name: 'actuals', pk: ['year', 'department_id', 'gl_id', 'cct'], assign: 'actuals',
+      list: db => db.actuals || [],
+      toRow: a => ({ year: a.year, department_id: a.departmentId, gl_id: a.glId, cct: a.cct, months: a.months, updated_at: nz(a.updatedAt), updated_by: nz(a.updatedBy) }),
+      fromRow: r => ({ year: r.year, departmentId: r.department_id, glId: r.gl_id, cct: r.cct, months: r.months, updatedAt: r.updated_at, updatedBy: r.updated_by }),
+    },
+    { name: 'audit_logs', pk: ['id'], assign: 'auditLogs', appendOnly: true,
+      list: db => db.auditLogs || [],
+      toRow: l => ({ id: l.id, ts: nz(l.ts), user_id: nz(l.userId), user_name: nz(l.userName), action: nz(l.action),
+        dept_id: nz(l.deptId), gl_code: nz(l.glCode), month: nz(l.month), old_value: nz(l.oldValue), new_value: nz(l.newValue) }),
+      fromRow: r => ({ id: r.id, ts: r.ts, userId: r.user_id, userName: r.user_name, action: r.action,
+        deptId: r.dept_id, glCode: r.gl_code, month: r.month, oldValue: r.old_value, newValue: r.new_value }),
+    },
+    { name: 'notifications', pk: ['id'], assign: 'notifications', appendOnly: true,
+      list: db => db.notifications || [],
+      toRow: n => ({ id: n.id, ts: nz(n.ts), target_role: nz(n.targetRole), target_dept_id: nz(n.targetDeptId), message: nz(n.message), read: !!n.read }),
+      fromRow: r => ({ id: r.id, ts: r.ts, targetRole: r.target_role, targetDeptId: r.target_dept_id, message: r.message, read: !!r.read }),
+    },
+    // snapshots (nested) — meta + rows แยกตาราง
+    { name: 'budget_snapshots', pk: ['year', 'label'],
+      list: db => (db.budgetSnapshots || []).map(s => ({ year: s.year, label: s.label, created_at: nz(s.createdAt) })),
+    },
+    { name: 'snapshot_rows', pk: ['year', 'label', 'department_id', 'gl_id', 'cct'],
+      list: db => (db.budgetSnapshots || []).flatMap(s => (s.rows || []).map(r =>
+        ({ year: s.year, label: s.label, department_id: r.departmentId, gl_id: r.glId, cct: r.cct, months: r.months }))),
+    },
+  ];
+
+  const keyOf = (row, pk) => pk.map(k => row[k]).join(SEP);
+  let baseline = {};  // name -> Map(key -> JSON(row)) จาก push/pull ครั้งล่าสุด
+
+  /* ---------- โหลดทั้งหมด → db object ---------- */
+  async function loadAll() {
+    const meta = await req('GET', 'app_meta?id=eq.main&select=*');
+    if (!meta || !meta.length) return null;  // เซิร์ฟเวอร์ยังว่าง → ให้ผู้เรียก push ขึ้นครั้งแรก
+
+    const fetched = {};
+    for (const t of TABLES) fetched[t.name] = await fetchAll(t.name);
+
+    const db = JSON.parse(JSON.stringify(SEED));   // เริ่มจาก seed เพื่อได้ users + โครง
+    const m = meta[0];
+    db.meta = { ...db.meta, schemaVersion: m.schema_version, rev: m.rev || 0, company: m.company,
+      currency: m.currency, yearCurrent: m.year_current, yearPrevious: m.year_previous,
+      appName: m.app_name, sides: m.sides };
+
+    for (const t of TABLES) {
+      if (t.assign) db[t.assign] = fetched[t.name].map(t.fromRow);
+    }
+    // snapshots ประกอบกลับ
+    const snapMeta = fetched['budget_snapshots'] || [];
+    const snapRows = fetched['snapshot_rows'] || [];
+    db.budgetSnapshots = snapMeta.map(s => ({
+      year: s.year, label: s.label, createdAt: s.created_at,
+      rows: snapRows.filter(r => r.year === s.year && r.label === s.label)
+        .map(r => ({ departmentId: r.department_id, glId: r.gl_id, cct: r.cct, months: r.months })),
+    }));
+    // departmentGL (derived)
+    const seen = new Set(); db.departmentGL = [];
+    (db.departmentRows || []).forEach(x => { const k = x.departmentId + '|' + x.glId;
+      if (!seen.has(k)) { seen.add(k); db.departmentGL.push({ departmentId: x.departmentId, glId: x.glId }); } });
+
+    primeBaseline(db);
+    return db;
+  }
+
+  /* ---------- ตั้ง baseline หลัง pull/push สำเร็จ ---------- */
+  function primeBaseline(db) {
+    baseline = {};
+    for (const t of TABLES) {
+      const map = new Map();
+      t.list(db).forEach(js => { const row = t.toRow ? t.toRow(js) : js; map.set(keyOf(row, t.pk), JSON.stringify(row)); });
+      baseline[t.name] = map;
+    }
+  }
+
+  /* ---------- push แบบ diff (เฉพาะแถวที่เปลี่ยน/หาย) ---------- */
+  async function pushDiff(db) {
+    const stash = [];
+    // upsert parent→child
+    for (const t of TABLES) {
+      const prev = baseline[t.name] || new Map();
+      const cur = new Map();
+      const toUpsert = [];
+      t.list(db).forEach(js => {
+        const row = t.toRow ? t.toRow(js) : js;
+        const k = keyOf(row, t.pk), j = JSON.stringify(row);
+        cur.set(k, j);
+        if (prev.get(k) !== j) toUpsert.push(row);
+      });
+      if (toUpsert.length) await upsert(t.name, toUpsert);
+      stash.push({ t, cur, prev });
+    }
+    // delete child→parent (ข้าม append-only) — ถอด PK จาก JSON ที่เก็บไว้
+    for (let i = stash.length - 1; i >= 0; i--) {
+      const { t, cur, prev } = stash[i];
+      if (!t.appendOnly) {
+        const dels = [];
+        for (const [k, j] of prev) if (!cur.has(k)) {
+          const row = JSON.parse(j);
+          dels.push(Object.fromEntries(t.pk.map(f => [f, row[f]])));
+        }
+        if (dels.length) await delMany(t.name, dels);
+      }
+      baseline[t.name] = cur;
+    }
+  }
+
+  async function ping() {
+    const r = await req('GET', 'app_meta?select=id&limit=1');
+    return { ok: true, rows: Array.isArray(r) ? r.length : 0 };
+  }
+
+  return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline };
+})();
+
+window.Supa = Supa;

@@ -575,6 +575,19 @@ const PagesAcc = (() => {
 
     const syncOn = Sync.enabled();
     return pageHead('Budget Control', `จัดการรอบงบประมาณ หน่วยงาน GL และ Budget Rate · Admin เท่านั้น`)
+      + card(`🗄️ ฐานข้อมูล Supabase ${Sync.backend() === 'supa' ? '<span class="pill-on">● กำลังใช้งาน</span>' : ''}`, `
+          <p style="margin-bottom:8px">${Sync.backend() === 'supa'
+            ? `สถานะ: ${Sync.chipHtml()} — ทุกการแก้ไขซิงค์ขึ้น Supabase อัตโนมัติ · แต่ละแผนกกรอกพร้อมกันไม่ชนกัน`
+            : `เก็บข้อมูลเป็นตาราง PostgreSQL จริง (แก้ปัญหาชนกันเวลาหลายแผนกกรอกพร้อมกัน) — ตั้งค่าตามไฟล์ <code>supabase/README.md</code>`}</p>
+          <div class="inline-form" style="flex-wrap:wrap">
+            <input id="supaUrl" placeholder="https://xxxx.supabase.co" value="${esc(Supa.url())}" style="flex:1;min-width:280px">
+            <input id="supaKey" type="password" placeholder="${Supa.hasKey() ? '•••• (ตั้งไว้แล้ว — วางใหม่เพื่อเปลี่ยน)' : 'anon public key (sb_publishable_… หรือ eyJ…)'}" style="flex:1;min-width:280px">
+            <button class="primary-btn" id="supaSave">บันทึก & ทดสอบ</button>
+            ${Sync.backend() === 'supa' ? `<button class="ghost-btn" id="supaPull">⬇ ดึงจาก Supabase</button>
+            <button class="ghost-btn" id="supaPush">⬆ ส่งขึ้นเดี๋ยวนี้</button>
+            <button class="ghost-btn" id="supaOff">ยกเลิก</button>` : ''}
+          </div>
+          <p class="muted small" style="margin-top:6px">🔒 URL และ key เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่อยู่ในโค้ดสาธารณะ</p>`)
       + card('🔗 เชื่อมต่อ Google Sheet (Apps Script Backend)', `
           <p style="margin-bottom:8px">${syncOn
             ? `สถานะ: ${Sync.chipHtml()} — ข้อมูลทุกการแก้ไขจะซิงค์ขึ้น Google Sheet อัตโนมัติ`
@@ -633,6 +646,38 @@ const PagesAcc = (() => {
             ↺ = คืนข้อมูลจำลองทั้งหมดกลับมาเหมือนเดิม (สำหรับทดลอง/ออกแบบ)</p>`);
   }
   function controlBind(user) {
+    /* ---------- Supabase ---------- */
+    document.getElementById('supaSave')?.addEventListener('click', async () => {
+      const url = document.getElementById('supaUrl').value.trim();
+      let key = document.getElementById('supaKey').value.trim();
+      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) { toast('URL ไม่ถูกต้อง — ต้องเป็น https://xxxx.supabase.co', 'err'); return; }
+      if (!key) { if (Supa.hasKey()) key = localStorage.getItem('abp_supa_key'); else { toast('วาง anon public key ก่อน', 'err'); return; } }
+      if (!/^(sb_|eyJ)/.test(key)) { toast('anon key ไม่ถูกต้อง (ขึ้นต้น sb_ หรือ eyJ)', 'err'); return; }
+      Supa.setConfig(url, key);
+      toast('กำลังทดสอบการเชื่อมต่อ…');
+      try {
+        await Sync.ping();
+        toast('เชื่อมต่อ Supabase สำเร็จ ✓ — กำลังซิงค์…');
+        await Sync.pull();
+        toast(Sync.state.mode === 'ok' ? 'ซิงค์กับ Supabase แล้ว ✓' : 'ซิงค์ไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
+        App.render();
+      } catch (e) { toast('เชื่อมต่อไม่สำเร็จ: ' + e.message, 'err'); }
+    });
+    document.getElementById('supaPull')?.addEventListener('click', async () => {
+      toast('กำลังดึงข้อมูลจาก Supabase…');
+      try { await Sync.pull(); toast('ดึงข้อมูลล่าสุดแล้ว ✓'); App.render(); }
+      catch (e) { toast('ดึงไม่สำเร็จ: ' + e.message, 'err'); }
+    });
+    document.getElementById('supaPush')?.addEventListener('click', async () => {
+      toast('กำลังส่งขึ้น Supabase…');
+      await Sync.push();
+      toast(Sync.state.mode === 'ok' ? 'ส่งขึ้น Supabase แล้ว ✓' : 'ส่งไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
+    });
+    document.getElementById('supaOff')?.addEventListener('click', () => {
+      UI.confirm2('ยกเลิกการเชื่อมต่อ Supabase?', 'แอปจะกลับไปเก็บข้อมูลในเบราว์เซอร์เครื่องนี้ (หรือใช้ Google Sheet ถ้าตั้งไว้)', 'ข้อมูลบน Supabase ไม่ถูกลบ เชื่อมต่อใหม่ได้ทุกเมื่อ',
+        () => { Supa.setConfig('', ''); toast('ยกเลิกการเชื่อมต่อ Supabase แล้ว'); App.render(); });
+    });
+
     document.getElementById('gasSave')?.addEventListener('click', async () => {
       const u = document.getElementById('gasUrl').value.trim();
       if (!u) { toast('วาง Web app URL ก่อน (ลงท้าย /exec)', 'err'); return; }
