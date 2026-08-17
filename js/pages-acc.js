@@ -534,7 +534,8 @@ const PagesAcc = (() => {
     const year = UI.year();
     const periods = Store.db.budgetPeriods.slice().sort((a, b) => b.year - a.year);
     const pRows = periods.map(p => {
-      const phase = p.phase === 'REVISE' ? `<span class="status-badge st-revision">🔁 REVISE · เกิดจริงถึง ด.${p.actualThru}</span> ` : '';
+      const phase = p.phase === 'REVISE' ? `<span class="status-badge st-revision">🔁 Revise กลางปี · เกิดจริงถึง ด.${p.actualThru}</span> `
+        : p.phase === 'LANDING' ? `<span class="status-badge st-endorsed">🎯 ปิดยอด (Landing) · เกิดจริงถึง ด.${p.actualThru}</span> ` : '';
       return `<tr>
       <td><b>ปีงบ ${p.year}</b></td>
       <td>${phase}${p.status === 'OPEN' ? '<span class="status-badge st-progress">OPEN · เปิดรับข้อมูล</span>' : '<span class="status-badge st-locked">CLOSED · ปิดรอบแล้ว</span>'}</td>
@@ -543,10 +544,10 @@ const PagesAcc = (() => {
         ${p.status === 'OPEN'
           ? `<button class="danger-btn small" data-lock="${p.year}">🔒 ปิดรอบ & Lock</button>`
           : `<button class="ghost-btn small" data-unlock="${p.year}">🔓 Unlock (สิทธิ์พิเศษ)</button>`}
-        ${p.status === 'CLOSED' && p.phase !== 'REVISE' && p.year >= Store.db.meta.yearCurrent
-          ? `<button class="primary-btn small" data-revise-open="${p.year}" style="padding:4px 10px;font-size:12px">🔁 เปิดรอบ Revise</button>`
+        ${p.status === 'CLOSED' && !Store.revisePhase(p.year).on && p.year >= Store.db.meta.yearCurrent
+          ? `<button class="primary-btn small" data-revise-open="${p.year}" style="padding:4px 10px;font-size:12px">🔁 Revise กลางปี</button>`
           : (p.year < Store.db.meta.yearCurrent ? '<span class="muted small" title="ปีฐาน/ปิดปีแล้ว — Revise ใช้กับปีงบปัจจุบันเท่านั้น">🔒 ปีฐาน</span>' : '')}
-        ${p.phase === 'REVISE'
+        ${Store.revisePhase(p.year).on
           ? `<a class="ghost-btn small" href="#/acc/actuals?y=${p.year}">📥 ใส่เกิดจริง</a>` : ''}
       </td></tr>`;
     }).join('');
@@ -847,8 +848,8 @@ const PagesAcc = (() => {
     }));
     document.querySelectorAll('[data-revise-open]').forEach(b => b.addEventListener('click', () => {
       const y = b.dataset.reviseOpen;
-      UI.modal(`🔁 เปิดรอบ Revise งบประมาณปี ${y}`, `
-        <p>ระบบจะ <b>เก็บงบเดิมทั้งปีไว้เป็นหลักฐานถาวร (snapshot)</b> แล้วเปิดให้ทุกหน่วยงานปรับคาดการณ์อีกครั้ง</p>
+      UI.modal(`🔁 Revise กลางปี — งบประมาณปี ${y}`, `
+        <p>รอบ Revise กลางปี (ปกติ ~เม.ย.) — เทียบกับ<b>แผน ORIGINAL</b> ที่อนุมัติไว้ แล้วเปิดให้ทุกหน่วยงานปรับคาดการณ์</p>
         <label class="fld"><span>มีตัวเลขเกิดจริงถึงเดือนที่</span>
           <select id="revThru">${Store.MONTH_TH.map((m, i) => `<option value="${i + 1}" ${i + 1 === 4 ? 'selected' : ''}>เดือน ${i + 1} — ${m}</option>`).join('')}</select></label>
         <p class="muted small">เดือน 1 ถึงเดือนก่อนหน้า = ล็อกสนิทเป็นเกิดจริง · เดือนสุดท้ายที่เลือก = หน่วยงานเพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือนที่เหลือ = ปรับคาดการณ์ได้</p>
@@ -856,8 +857,8 @@ const PagesAcc = (() => {
         { label: 'ยกเลิก', cls: 'ghost-btn' },
         { label: '🔁 ยืนยันเปิดรอบ Revise', cls: 'primary-btn', onClick: close => {
             try {
-              Store.openRevise(user, y, Number(document.getElementById('revThru').value));
-              toast(`เปิดรอบ Revise ปี ${y} แล้ว — ไปใส่ตัวเลขเกิดจริงต่อได้เลย`); close();
+              Store.openRevise(user, y, Number(document.getElementById('revThru').value), 'REVISE');
+              toast(`เปิดรอบ Revise กลางปี ${y} แล้ว — ไปใส่ตัวเลขเกิดจริงต่อได้เลย`); close();
               location.hash = '#/acc/actuals?y=' + y;
             } catch (e) { toast(e.message, 'err'); }
           } },

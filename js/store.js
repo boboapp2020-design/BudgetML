@@ -182,10 +182,23 @@ const Store = (() => {
   /* ---------- รอบ Revise: งบเดิม (snapshot) + เกิดจริง ---------- */
   function revisePhase(year) {
     const p = period(year);
-    return { on: p?.phase === 'REVISE', thru: p?.actualThru || 0 }; // thru = มีเกิดจริงถึงเดือนที่ N
+    const on = p?.phase === 'REVISE' || p?.phase === 'LANDING';
+    return { on, thru: p?.actualThru || 0, kind: on ? p.phase : null }; // kind: REVISE (เม.ย.) | LANDING (ก.ย. ปิดยอด)
   }
   function snapshotFor(year) {
     return (db.budgetSnapshots || []).find(s => s.year === Number(year) && s.label === 'ORIGINAL') || null;
+  }
+  // freeze แผน ORIGINAL "ครั้งเดียว" (ตอนอนุมัติ/Lock) — คงที่ทั้งปี ใช้เทียบทั้ง Revise และ Landing
+  function ensureOriginal(year, actor) {
+    if (snapshotFor(year)) return false;
+    if (!db.budgetSnapshots) db.budgetSnapshots = [];
+    db.budgetSnapshots.push({
+      year: Number(year), label: 'ORIGINAL', takenAt: new Date().toISOString(), takenBy: actor ? actor.name : 'system',
+      rows: db.budgets.filter(b => b.year === Number(year)).map(b => ({
+        departmentId: b.departmentId, glId: b.glId, cct: b.cct, months: b.months.slice(), mtp1: b.mtp1, mtp2: b.mtp2,
+      })),
+    });
+    return true;
   }
   function originalMonths(year, deptId, rowKey) {
     const s = snapshotFor(year);
@@ -214,32 +227,26 @@ const Store = (() => {
     return r ? r.months : Array(12).fill(null);
   }
 
-  function openRevise(actor, year, actualThru) {
+  // เปิดรอบแก้กลางปี · kind='REVISE' (เม.ย. thru=4) หรือ 'LANDING' (ก.ย. ปิดยอด thru=9)
+  // ทั้งคู่เทียบกับ ORIGINAL เดิม (แผนที่อนุมัติ) — ไม่ freeze ใหม่
+  function openRevise(actor, year, actualThru, kind) {
     assertAccounting(actor);
+    kind = kind === 'LANDING' ? 'LANDING' : 'REVISE';
+    const label = kind === 'LANDING' ? 'ปิดยอด (Landing)' : 'Revise กลางปี';
     const p = period(year);
     if (!p) throw new Error('ไม่พบรอบงบประมาณ');
-    if (Number(year) < db.meta.yearCurrent) throw new Error(`ปี ${year} เป็นปีฐาน (ปิดปีแล้ว) — เปิดรอบ Revise ได้เฉพาะปีงบปัจจุบัน (${db.meta.yearCurrent})`);
-    if (p.phase === 'REVISE') throw new Error(`ปี ${year} เปิดรอบ Revise อยู่แล้ว`);
+    if (Number(year) < db.meta.yearCurrent) throw new Error(`ปี ${year} เป็นปีฐาน (ปิดปีแล้ว) — เปิดรอบได้เฉพาะปีงบปัจจุบัน (${db.meta.yearCurrent})`);
+    if (revisePhase(year).on) throw new Error(`ปี ${year} เปิดรอบ ${p.phase === 'LANDING' ? 'ปิดยอด' : 'Revise'} อยู่แล้ว`);
     const n = Number(actualThru);
     if (!(n >= 1 && n <= 12)) throw new Error('เดือนที่มีเกิดจริงต้องอยู่ระหว่าง 1-12');
-    // 1) snapshot งบเดิมทั้งปี → freeze ถาวร
-    if (!db.budgetSnapshots) db.budgetSnapshots = [];
-    db.budgetSnapshots = db.budgetSnapshots.filter(s => !(s.year === Number(year) && s.label === 'ORIGINAL'));
-    db.budgetSnapshots.push({
-      year: Number(year), label: 'ORIGINAL', takenAt: new Date().toISOString(), takenBy: actor.name,
-      rows: db.budgets.filter(b => b.year === Number(year)).map(b => ({
-        departmentId: b.departmentId, glId: b.glId, cct: b.cct,
-        months: b.months.slice(), mtp1: b.mtp1, mtp2: b.mtp2,
-      })),
-    });
-    // 2) เปิดรอบแก้ไข
-    p.status = 'OPEN'; p.phase = 'REVISE'; p.actualThru = n;
+    ensureOriginal(year, actor); // freeze แผนถ้ายังไม่มี (ปกติ freeze ตอน Lock แล้ว → reuse)
+    p.status = 'OPEN'; p.phase = kind; p.actualThru = n;
     p.reviseOpenedAt = new Date().toISOString(); p.reviseOpenedBy = actor.name;
     activeDepartments().forEach(d => {
       setStatusInternal(year, d.id, 'IN_PROGRESS', { submittedAt: null, revisionNote: null });
-      notify({ deptId: d.id }, `เปิดรอบ Revise งบประมาณปี ${year} — เดือน 1-${n - 1} เป็นเกิดจริง (ล็อก) · เดือน ${n} กรอกได้ไม่ต่ำกว่าเกิดจริง · ปรับคาดการณ์เดือนที่เหลือแล้วส่งอีกครั้ง`);
+      notify({ deptId: d.id }, `เปิดรอบ ${label} ปี ${year} — เดือน 1-${n - 1} เป็นเกิดจริง (ล็อก) · เดือน ${n} เพิ่มได้ไม่ต่ำกว่าเกิดจริง · ปรับคาดการณ์เดือนที่เหลือแล้วส่งอีกครั้ง (เทียบกับแผน ORIGINAL)`);
     });
-    audit(actor, 'เปิดรอบ Revise', { newValue: `ปี ${year} เกิดจริงถึงเดือน ${n}` });
+    audit(actor, `เปิดรอบ ${label}`, { newValue: `ปี ${year} เกิดจริงถึงเดือน ${n}` });
     save();
   }
 
@@ -746,12 +753,14 @@ const Store = (() => {
     assertAccounting(actor);
     const p = period(year);
     if (!p) throw new Error('ไม่พบรอบงบประมาณ');
+    const froze = ensureOriginal(year, actor); // freeze แผน ORIGINAL ณ อนุมัติ (ครั้งแรกเท่านั้น)
     p.status = 'CLOSED'; p.lockedAt = new Date().toISOString(); p.lockedBy = actor.name;
+    delete p.phase; delete p.actualThru; // ปิดโหมด Revise/Landing — ตัวเลขถูกอนุมัติแล้ว (ORIGINAL คงไว้)
     activeDepartments().forEach(d => {
       setStatusInternal(year, d.id, 'LOCKED');
       notify({ deptId: d.id }, `รอบงบประมาณปี ${year} ถูกปิดและ Lock แล้ว ไม่สามารถแก้ไขข้อมูลได้`);
     });
-    audit(actor, 'Lock รอบงบประมาณ', { newValue: `ปี ${year}` });
+    audit(actor, 'Lock รอบงบประมาณ', { newValue: `ปี ${year}${froze ? ' (freeze แผน ORIGINAL)' : ''}` });
     save();
   }
   function unlockPeriod(actor, year) {
@@ -781,8 +790,8 @@ const Store = (() => {
     assertAccounting(actor);
     curYear = Number(curYear); nextYear = Number(nextYear); thru = Number(thru);
     if (nextYear <= curYear) throw new Error('ปีใหม่ต้องมากกว่าปีปัจจุบัน');
-    // (A) ปิดยอดปีปัจจุบัน
-    if (!revisePhase(curYear).on) openRevise(actor, curYear, thru);
+    // (A) ปิดยอดปีปัจจุบัน = phase LANDING (เกิดจริง N เดือน + คาดการณ์ที่เหลือ, เทียบ ORIGINAL)
+    if (!revisePhase(curYear).on) openRevise(actor, curYear, thru, 'LANDING');
     // (B) รอบปีใหม่
     if (!period(nextYear)) { db.budgetPeriods.push({ year: nextYear, status: 'OPEN', openedAt: new Date().toISOString(), lockedAt: null, lockedBy: null }); db.budgetPeriods.sort((a, b) => a.year - b.year); }
     const p = period(nextYear); p.status = 'OPEN'; delete p.phase; delete p.actualThru;

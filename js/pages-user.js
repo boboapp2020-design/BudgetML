@@ -138,8 +138,11 @@ const PagesUser = (() => {
     const basePrev = rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId);
     const cur = Store.deptTotal(c.year, c.deptId), prev = basePrev;
     const cmp = Store.compare(cur, prev);
+    const rvKind = c.revise.kind;
+    const rvTitle = rvKind === 'LANDING' ? 'รอบปิดยอด (Landing) ปลายปี' : 'รอบ Revise กลางปี';
+    const rvIcon = rvKind === 'LANDING' ? '🎯' : '🔁';
     const reviseMsg = rvOn
-      ? `<div class="lock-banner revise-banner">🔁 <b>รอบ Revise กลางปี</b> — เดือน 1–${thru - 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) · เดือน ${thru} เพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือน ${thru + 1}–12 ปรับคาดการณ์ได้ · แถวที่ยอดต่างจากงบเดิมต้องระบุเหตุผลก่อนส่ง</div>` : '';
+      ? `<div class="lock-banner revise-banner">${rvIcon} <b>${rvTitle}</b> — เดือน 1–${thru - 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) · เดือน ${thru} เพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือน ${thru + 1}–12 ปรับคาดการณ์ได้ · แถวที่ยอดต่างจากแผน ORIGINAL ต้องระบุเหตุผลก่อนส่ง</div>` : '';
     const lockMsg = !c.editable
       ? `<div class="lock-banner">🔒 ${['SUBMITTED'].includes(c.state.status) ? 'ส่งข้อมูลแล้ว — แก้ไขได้เมื่อถูกตีกลับ (Need Revision)' : 'รอบงบประมาณนี้ถูกปิด/Lock แล้ว — อ่านได้อย่างเดียว'}</div>` : '';
 
