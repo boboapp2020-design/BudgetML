@@ -4,12 +4,14 @@
 
 const App = (() => {
   const root = () => document.getElementById('root');
+  const homeFor = u => u.role === 'ACCOUNTING' ? '#/acc/dashboard' : u.role === 'MANAGER' ? '#/mgr/dashboard' : '#/budget';
 
   const ROUTES = {
     '#/dashboard':       { role: 'USER',       page: () => PagesUser.dashboard,   bind: () => PagesUser.dashboardBind },
     '#/budget':          { role: 'USER',       page: () => PagesUser.budget,      bind: () => PagesUser.budgetBind },
     '#/review':          { role: 'USER',       page: () => PagesUser.review,      bind: () => PagesUser.reviewBind },
     '#/calculators':     { role: 'USER',       page: () => PagesUser.calculators, bind: () => PagesUser.calculatorsBind },
+    '#/mgr/dashboard':   { role: 'MANAGER',    page: () => PagesMgr.dashboard,    bind: () => PagesMgr.dashboardBind },
     '#/acc/dashboard':   { role: 'ACCOUNTING', page: () => PagesAcc.dashboard,    bind: () => PagesAcc.dashboardBind },
     '#/acc/departments': { role: 'ACCOUNTING', page: () => PagesAcc.departments,  bind: () => PagesAcc.departmentsBind },
     '#/acc/analysis':    { role: 'ACCOUNTING', page: () => PagesAcc.analysis,     bind: () => PagesAcc.analysisBind },
@@ -29,6 +31,10 @@ const App = (() => {
         .map(d => `<option value="${d.code}">${UI.deptIcon(d)} ${UI.esc(d.name)} (${d.code})</option>`).join('');
       return `<optgroup label="${UI.esc(sides[s] || 'อื่นๆ')}">${opts}</optgroup>`;
     }).join('');
+    // ผู้จัดการฝ่าย (ดูภาพรวมฝ่าย)
+    const mgrOpts = Store.db.users.filter(u => u.role === 'MANAGER')
+      .sort((a, b) => a.division.localeCompare(b.division, 'th'))
+      .map(m => `<option value="${UI.esc(m.username)}">👔 ${UI.esc(m.division)}</option>`).join('');
 
     root().innerHTML = `
     <div class="login-wrap">
@@ -40,9 +46,10 @@ const App = (() => {
 
         <!-- เข้าใช้งานรายหน่วยงาน -->
         <div id="deptLoginView">
-          <label class="fld"><span>เลือกหน่วยงานของคุณ</span>
+          <label class="fld"><span>เลือกหน่วยงาน / ฝ่ายของคุณ</span>
             <select id="deptSel">
-              <option value="">— เลือกหน่วยงาน —</option>
+              <option value="">— เลือกหน่วยงาน หรือ ฝ่าย —</option>
+              <optgroup label="👔 ผู้จัดการฝ่าย (ดูภาพรวมทั้งฝ่าย)">${mgrOpts}</optgroup>
               ${deptOpts}
             </select></label>
           <label class="fld"><span>PIN <small class="muted">(ยังไม่บังคับใช้ในเวอร์ชันทดลอง)</small></span>
@@ -69,7 +76,7 @@ const App = (() => {
     const adminView = document.getElementById('adminLoginView');
     const adminToggle = document.getElementById('adminToggle');
 
-    const enter = user => { location.hash = user.role === 'ACCOUNTING' ? '#/acc/dashboard' : '#/budget'; };
+    const enter = user => { location.hash = homeFor(user); };
     const deptLogin = () => {
       const code = document.getElementById('deptSel').value;
       if (!code) { UI.toast('กรุณาเลือกหน่วยงานก่อน', 'err'); return; }
@@ -102,11 +109,8 @@ const App = (() => {
     if (base === '#/login' || !user) { loginPage(); return; }
 
     const route = ROUTES[base];
-    if (!route) { location.hash = user.role === 'ACCOUNTING' ? '#/acc/dashboard' : '#/dashboard'; return; }
-    if (route.role !== user.role) {
-      location.hash = user.role === 'ACCOUNTING' ? '#/acc/dashboard' : '#/budget';
-      return;
-    }
+    if (!route) { location.hash = homeFor(user); return; }
+    if (route.role !== user.role) { location.hash = homeFor(user); return; }
     const html = route.page()(user);
     root().innerHTML = UI.shell(user, html, base);
     UI.bindShell(user);

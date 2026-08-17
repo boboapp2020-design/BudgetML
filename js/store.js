@@ -23,12 +23,19 @@ const Store = (() => {
       db.meta.seededAt = new Date().toISOString();
       save();
     }
+    reconcileConfig();
+  }
+  // รายชื่อผู้ใช้ + ฝ่าย = config ฝั่ง client (static ไม่ซิงค์) → รีเฟรชจาก SEED เสมอ
+  // ให้ผู้จัดการฝ่าย/ผู้ใช้ใหม่โผล่โดยไม่ต้อง reseed (ไม่แตะข้อมูลงบ)
+  function reconcileConfig() {
+    if (!db) return;
+    db.users = JSON.parse(JSON.stringify(SEED.users));
   }
   let afterSave = null; // hook สำหรับ Sync (ตั้งค่าโดย sync.js)
   function setAfterSave(fn) { afterSave = fn; }
   function saveSilent() { try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) { /* storage เต็ม/ปิดใช้งาน */ } }
   function save() { saveSilent(); if (afterSave) afterSave(); }
-  function adoptDb(newDb) { db = newDb; saveSilent(); } // รับข้อมูลจาก Google Sheet มาแทนที่
+  function adoptDb(newDb) { db = newDb; reconcileConfig(); saveSilent(); } // รับข้อมูลจาก backend มาแทนที่
   function resetDemo() { localStorage.removeItem(DB_KEY); load(); save(); }
 
   /* ---------- auth / session ---------- */
@@ -77,6 +84,10 @@ const Store = (() => {
   const glByCode = code => db.glAccounts.find(g => g.code === code);
   const period = year => db.budgetPeriods.find(p => p.year === Number(year));
   const activeDepartments = () => db.departments.filter(d => d.active);
+  // ---------- ฝ่าย (Division) ----------
+  const divisionOf = code => (SEED.divisions && SEED.divisions[code]) || '(ยังไม่จัดฝ่าย)';
+  const divisionDepartments = division => activeDepartments().filter(d => divisionOf(d.code) === division);
+  const allDivisions = () => [...new Set(db.departments.map(d => divisionOf(d.code)))];
 
   function deptGLs(deptId) {
     return db.departmentGL.filter(x => x.departmentId === deptId)
@@ -739,6 +750,7 @@ const Store = (() => {
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
     login, logout, currentUser,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
+    divisionOf, divisionDepartments, allDivisions,
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,
     months, glTotal, deptTotal, companyTotal, deptMonthly, companyMonthly,
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,

@@ -42,6 +42,9 @@ const UI = (() => {
     { hash: '#/review',    icon: '✅', label: 'ตรวจสอบงบประมาณ', sub: 'Review & Submit' },
     { hash: '#/dashboard', icon: '📊', label: 'Dashboard',        sub: 'ภาพรวมหน่วยงาน' },
   ];
+  const NAV_MGR = [
+    { hash: '#/mgr/dashboard', icon: '📊', label: 'ภาพรวมฝ่าย', sub: 'Division Overview' },
+  ];
   const NAV_ACC = [
     { hash: '#/acc/dashboard',   icon: '📊', label: 'Executive Dashboard', sub: 'ภาพรวมทั้งบริษัท' },
     { hash: '#/acc/departments', icon: '🏢', label: 'หน่วยงาน & Drill-down', sub: 'Departments' },
@@ -105,7 +108,7 @@ const UI = (() => {
   function setYear(y) { selectedYear = Number(y); }
 
   function shell(user, contentHtml, activeHash) {
-    const nav = (user.role === 'ACCOUNTING' ? NAV_ACC : NAV_USER)
+    const nav = (user.role === 'ACCOUNTING' ? NAV_ACC : user.role === 'MANAGER' ? NAV_MGR : NAV_USER)
       .map(n => `<a href="${n.hash}" class="nav-item ${activeHash.startsWith(n.hash) ? 'active' : ''}">
         <span class="nav-ic">${n.icon}</span>
         <span class="nav-tx">${n.label}<small>${n.sub || ''}</small></span></a>`).join('');
@@ -140,7 +143,7 @@ const UI = (() => {
         <div class="sidebar-foot">
           ${periodCard}
           <div class="sf-company">${esc(Store.db.meta.company)}</div>
-          <div class="sf-role">${user.role === 'ACCOUNTING' ? 'Accounting / Admin' : esc(Store.dept(user.departmentId)?.name || '')} · เวอร์ชัน 1.0.0</div>
+          <div class="sf-role">${user.role === 'ACCOUNTING' ? 'Accounting / Admin' : user.role === 'MANAGER' ? esc(user.division || '') : esc(Store.dept(user.departmentId)?.name || '')} · เวอร์ชัน 1.0.0</div>
         </div>
       </aside>
       <div class="main">
@@ -152,7 +155,7 @@ const UI = (() => {
           </div>
           <div class="topbar-right">
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
-            <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : deptIcon(Store.dept(user.departmentId))}</span>
+            <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : user.role === 'MANAGER' ? esc(user.division || '') : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId))}</span>
               <span class="uc-name">${esc(user.name)}</span></div>
             <button id="logoutBtn" class="ghost-btn">ออกจากระบบ</button>
           </div>
