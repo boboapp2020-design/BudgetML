@@ -893,7 +893,8 @@ const PagesAcc = (() => {
       + card('📤 อัปโหลดไฟล์งบ Revise (Excel / CSV) — จับคู่เข้า GL อัตโนมัติ', `
           <p class="muted small">อัปโหลดไฟล์งบ Revise (โครงเดียวกับไฟล์งบต้นปี: <code>code a · IO · CCT · GL · 12 เดือน</code>) — ระบบจับคู่แต่ละแถวเข้า GL ด้วย code a → IO → CCT+GL แล้วเติมงบทั้ง 12 เดือนให้อัตโนมัติทุกหน่วยงานในไฟล์</p>
           <input type="file" id="reviseFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
-          <span id="reviseFileMsg" class="muted small" style="margin-left:10px"></span>`)
+          <span id="reviseFileMsg" class="muted small" style="margin-left:10px"></span>
+          <label class="muted small" style="display:block;margin-top:8px"><input type="checkbox" id="reviseAuto" checked style="vertical-align:-2px"> สร้างแผนก / GL / CCT ใหม่อัตโนมัติ ถ้ายังไม่มีในระบบ (จะได้ 0 แถวจับคู่ไม่ได้)</label>`)
       + card('📋 วางจาก Excel ทีเดียว (ทุกหน่วยงาน)', `
           <p class="muted small">รูปแบบต่อบรรทัด: <code>code a</code> ตามด้วยตัวเลขเดือน 1–${rv.thru} (คั่นด้วย Tab) — หรือ <code>CCT [Tab] รหัส GL</code> ตามด้วยตัวเลข</p>
           <textarea id="actPaste" rows="6" placeholder="8003310100635202a\t45000000\t120000000\t8000000\t65000000" style="font-family:monospace;font-size:12px"></textarea>
@@ -937,18 +938,23 @@ const PagesAcc = (() => {
         const grid = await fileToGrid(file);
         const recs = gridToRecords(grid);
         if (!recs.length) throw new Error('ไม่พบแถวข้อมูลในไฟล์');
+        const auto = document.getElementById('reviseAuto')?.checked;
         const willMatch = recs.filter(r => Store.actualRowRef(r)).length;
-        msg.textContent = `พบ ${recs.length} แถว · จับคู่เข้า GL ได้ ${willMatch} แถว`;
+        const willCreate = auto ? recs.length - willMatch : 0;
+        msg.textContent = `พบ ${recs.length} แถว · จับคู่ได้ ${willMatch} แถว${willCreate ? ` · สร้างใหม่ ${willCreate}` : ''}`;
         UI.modal('📤 นำเข้างบ Revise จากไฟล์', `
           <p>ไฟล์: <b>${esc(file.name)}</b></p>
-          <p>พบ <b>${recs.length}</b> แถว · จับคู่เข้า GL ได้ <b>${willMatch}</b> แถว${recs.length - willMatch ? ` · จับคู่ไม่ได้ ${recs.length - willMatch} แถว` : ''}</p>
-          <p class="muted small">ระบบจะเติมงบ 12 เดือนให้ทุกแถวที่จับคู่ได้ (ตาม code a / IO / CCT+GL) แล้วซิงค์ขึ้นฐานข้อมูล</p>`, [
+          <p>พบ <b>${recs.length}</b> แถว · จับคู่เข้า GL ที่มีอยู่ <b>${willMatch}</b> แถว${recs.length - willMatch ? ` · เป็นแถวใหม่ ${recs.length - willMatch} แถว` : ''}</p>
+          <p class="muted small">${auto ? 'แถวใหม่จะถูก<b>สร้างแผนก/GL/CCT ให้อัตโนมัติ</b> แล้วเติมงบ' : 'แถวที่จับคู่ไม่ได้จะถูกข้าม (ติ๊ก "สร้างใหม่อัตโนมัติ" เพื่อให้นำเข้าครบ)'} · เติมงบ 12 เดือน แล้วซิงค์ขึ้นฐานข้อมูล</p>`, [
           { label: 'ยกเลิก', cls: 'ghost-btn', onClick: close => { close(); document.getElementById('reviseFile').value = ''; msg.textContent = ''; } },
-          { label: `📥 นำเข้า ${willMatch} แถว`, cls: 'primary-btn', onClick: close => {
+          { label: `📥 นำเข้า`, cls: 'primary-btn', onClick: close => {
               try {
-                const r = Store.importBudgetFile(user, year, recs);
-                toast(`นำเข้างบ Revise แล้ว ${r.matched} แถว · ${r.cells} ช่อง${r.unmatched.length ? ` · จับคู่ไม่ได้ ${r.unmatched.length}` : ''}`, r.unmatched.length ? 'err' : 'ok');
-                close(); App.render();
+                const r = Store.importBudgetFile(user, year, recs, { autoCreate: auto });
+                close();
+                const c = r.created || {};
+                const createdTxt = (c.rows ? `สร้างแถวใหม่ ${c.rows}` + (c.depts ? ` (แผนกใหม่ ${c.depts})` : '') + (c.gls ? ` · GL ใหม่ ${c.gls}` : '') + (c.ccts ? ` · CCT ใหม่ ${c.ccts}` : '') : '');
+                const unTxt = r.unmatched.length ? `<div class="warn-text" style="margin-top:8px">⚠ จับคู่ไม่ได้ ${r.unmatched.length} แถว:</div><div class="table-scroll" style="max-height:180px"><table class="data-table small"><thead><tr><th>code a</th><th>CCT</th><th>GL</th><th>รหัสแผนก</th></tr></thead><tbody>${r.unmatched.slice(0, 50).map(u => `<tr><td class="mono">${esc(u.codeA || '—')}</td><td class="mono">${esc(u.cct)}</td><td class="mono">${esc(u.gl)}</td><td>${esc(u.deptCode || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<p style="color:#0ca30c;margin-top:8px">✓ นำเข้าครบทุกแถว</p>';
+                UI.modal('✅ ผลการนำเข้างบ Revise', `<p>เติมงบ <b>${r.matched}</b> แถว · <b>${r.cells}</b> ช่อง${createdTxt ? '<br>' + createdTxt : ''}</p>${unTxt}`, [{ label: 'ปิด', cls: 'primary-btn', onClick: cl => { cl(); App.render(); } }]);
               } catch (err) { toast(err.message, 'err'); }
             } },
         ]);
@@ -1001,7 +1007,8 @@ const PagesAcc = (() => {
     if (hi < 0) throw new Error('ไม่พบหัวตาราง (ต้องมีคอลัมน์ code a / IO / CCT / GL)');
     const H = grid[hi].map(c => String(c).trim());
     const find = re => H.findIndex(c => re.test(c));
-    const idx = { codeA: find(/code\s*a/i), io: find(/IO/), cct: find(/CCT/i), gl: find(/รหัสบัญชี|\/GL|\bGL\b/), glName: find(/ชื่อบัญชี/) };
+    const idx = { codeA: find(/code\s*a/i), io: find(/IO/), cct: find(/CCT/i), gl: find(/รหัสบัญชี|\/GL|\bGL\b/), glName: find(/ชื่อบัญชี/),
+      deptCode: find(/รหัสแผนก/), deptName: H.findIndex(c => c.trim() === 'แผนก'), cctName: find(/ชื่อหน่วยงาน/) };
     const totalCol = find(/งบประมาณ.*เดือน|12\s*เดือน|รวม.*ปี/i);
     const mStart = idx.glName >= 0 ? idx.glName + 1 : (idx.gl >= 0 ? idx.gl + 2 : -1);
     const monthCols = [];
@@ -1016,7 +1023,9 @@ const PagesAcc = (() => {
       const io = idx.io >= 0 ? String(row[idx.io] || '').trim() : '';
       const cct = idx.cct >= 0 ? String(row[idx.cct] || '').trim() : '';
       if (!/^\d{6,7}$/.test(glc) && !codeA && !io) continue;
+      const S = i => i >= 0 ? String(row[i] || '').trim() : '';
       recs.push({ codeA, io, cct, glCode: glc, months: monthCols.map(ci => num(row[ci])),
+        deptCode: S(idx.deptCode), deptName: S(idx.deptName), cctName: S(idx.cctName), glName: S(idx.glName),
         mtp1: y1 >= 0 ? num(row[y1]) : null, mtp2: y2 >= 0 ? num(row[y2]) : null });
     }
     return recs;

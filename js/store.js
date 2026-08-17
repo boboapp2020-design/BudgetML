@@ -327,30 +327,56 @@ const Store = (() => {
   }
 
   // นำเข้า "งบ Revise" จากไฟล์ Excel: ตั้งค่างบ 12 เดือน (+MTP) ให้แถวที่จับคู่ได้ (authoritative)
-  // records = [{io,codeA,cct,glCode, months:[12], mtp1, mtp2}]
-  function importBudgetFile(actor, year, records) {
+  // records = [{io,codeA,cct,glCode,glName,deptCode,deptName,cctName, months:[12], mtp1, mtp2}]
+  // opts.autoCreate = true → สร้างแผนก/GL/CCT/แถว ที่ยังไม่มีอัตโนมัติ (0 จับคู่ไม่ได้)
+  function importBudgetFile(actor, year, records, opts = {}) {
     assertAccounting(actor);
     const y = Number(year);
-    let matched = 0, cells = 0; const unmatched = [];
-    records.forEach(rec => {
-      const ref = actualRowRef(rec);
-      if (!ref) { unmatched.push(rec.io || rec.codeA || ((rec.cct || '') + '/' + (rec.glCode || '')) || '?'); return; }
-      const row = ensureRow(y, ref.departmentId, ref.glId + '@' + ref.cct);
-      const mm = rec.months || [];
+    let matched = 0, cells = 0;
+    const unmatched = [];
+    const created = { depts: 0, gls: 0, ccts: 0, rows: 0 };
+    const writeMonths = (row, mm) => {
       for (let mi = 0; mi < 12 && mi < mm.length; mi++) {
         const v = mm[mi];
         if (v === null || v === undefined || !isFinite(v)) continue;
         row.months[mi] = v; cells++;
       }
+    };
+    records.forEach(rec => {
+      let ref = actualRowRef(rec);
+      // ---- ไม่พบแถว: สร้างใหม่ถ้าเปิด autoCreate และระบุแผนกได้ ----
+      if (!ref && opts.autoCreate && /^\d{6,7}$/.test(rec.glCode || '') && (rec.cct || '')) {
+        // หาแผนก: จากรหัสแผนกในไฟล์ → จาก CCT ที่มีอยู่ → (ถ้ารหัสแผนกใช้ได้) สร้างใหม่
+        let dept = rec.deptCode ? db.departments.find(d => d.code === rec.deptCode) : null;
+        if (!dept) { const c = (db.cctMaster || []).find(x => x.code === rec.cct); if (c) dept = db.departments.find(d => d.id === c.departmentId); }
+        if (!dept && /^\d{3,4}$/.test(rec.deptCode || '')) {
+          dept = { id: 'd' + rec.deptCode, code: rec.deptCode, name: rec.deptName || ('แผนก ' + rec.deptCode), nameEn: '', side: rec.deptCode[0], active: true };
+          db.departments.push(dept); created.depts++;
+        }
+        if (dept) {
+          const glId = 'g' + rec.glCode;
+          if (!gl(glId)) { db.glAccounts.push({ id: glId, code: rec.glCode, name: rec.glName || rec.glCode, glGroup: 'อื่นๆ', ioGroup: 'ไม่คุม', active: true }); created.gls++; }
+          if (!(db.cctMaster || []).some(c => c.code === rec.cct)) { (db.cctMaster = db.cctMaster || []).push({ code: rec.cct, name: rec.cctName || '', departmentId: dept.id }); created.ccts++; }
+          if (!(db.departmentRows || []).some(x => x.departmentId === dept.id && x.cct === rec.cct && x.glId === glId)) {
+            (db.departmentRows = db.departmentRows || []).push({ departmentId: dept.id, cct: rec.cct, glId, io: rec.io || '', codeA: rec.codeA || '' });
+            if (!db.departmentGL.some(x => x.departmentId === dept.id && x.glId === glId)) db.departmentGL.push({ departmentId: dept.id, glId });
+            created.rows++;
+          }
+          ref = { departmentId: dept.id, cct: rec.cct, glId };
+        }
+      }
+      if (!ref) { unmatched.push({ codeA: rec.codeA || '', io: rec.io || '', cct: rec.cct || '', gl: rec.glCode || '', deptCode: rec.deptCode || '' }); return; }
+      const row = ensureRow(y, ref.departmentId, ref.glId + '@' + ref.cct);
+      writeMonths(row, rec.months || []);
       if (rec.mtp1 != null && isFinite(rec.mtp1)) row.mtp1 = rec.mtp1;
       if (rec.mtp2 != null && isFinite(rec.mtp2)) row.mtp2 = rec.mtp2;
       row.updatedAt = new Date().toISOString();
       row.updatedBy = 'นำเข้าจากไฟล์ Revise';
       matched++;
     });
-    audit(actor, 'นำเข้างบ Revise จากไฟล์', { newValue: `ปี ${y}: ${matched} แถว · ${cells} ช่อง` });
+    audit(actor, 'นำเข้างบ Revise จากไฟล์', { newValue: `ปี ${y}: ${matched} แถว · ${cells} ช่อง · สร้างใหม่ ${created.rows} แถว` });
     save();
-    return { matched, unmatched, cells };
+    return { matched, unmatched, cells, created };
   }
 
   /* ---------- เปรียบเทียบ + Anomaly (rule-based) ---------- */
