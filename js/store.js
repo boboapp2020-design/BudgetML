@@ -880,6 +880,17 @@ const Store = (() => {
     });
     download(`budget_departments_${year}.csv`, csv(rows));
   }
+  function exportPnl(year) {
+    const gById = {}; db.glAccounts.forEach(g => { gById[g.id] = g; });
+    const agg = {};
+    const bk = grp => (agg[grp] = agg[grp] || { cur: 0, prev: 0, mtp1: 0, mtp2: 0 });
+    db.budgets.filter(b => b.year === Number(year)).forEach(b => { const g = gById[b.glId]; if (!g) return; const a = bk(g.glGroup || 'อื่นๆ'); a.cur += sum(b.months); a.mtp1 += (b.mtp1 || 0); a.mtp2 += (b.mtp2 || 0); });
+    db.budgets.filter(b => b.year === Number(year) - 1).forEach(b => { const g = gById[b.glId]; if (!g) return; bk(g.glGroup || 'อื่นๆ').prev += sum(b.months); });
+    const rows = [['กลุ่มบัญชี', `งบปี ${year - 1}`, `งบปี ${year}`, 'ผลต่าง', '% เปลี่ยนแปลง', `MTP ปี ${Number(year) + 1}`, `MTP ปี ${Number(year) + 2}`]];
+    Object.entries(agg).sort((a, b) => b[1].cur - a[1].cur).forEach(([grp, v]) =>
+      rows.push([grp, v.prev, v.cur, v.cur - v.prev, v.prev !== 0 ? ((v.cur - v.prev) / Math.abs(v.prev) * 100).toFixed(1) + '%' : '-', v.mtp1, v.mtp2]));
+    download(`budget_pnl_${year}.csv`, csv(rows));
+  }
 
   load();
 
@@ -900,7 +911,7 @@ const Store = (() => {
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod,
     addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,
-    exportDetail, exportDeptSummary,
+    exportDetail, exportDeptSummary, exportPnl,
     MONTH_TH, MONTH_S,
   };
 })();

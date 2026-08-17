@@ -1054,5 +1054,54 @@ const PagesAcc = (() => {
         <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
   }
 
-  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, audit, actuals, actualsBind };
+  /* ============ งบการเงินตามงบ (Budget P&L by กลุ่มบัญชี) ============ */
+  function pnl(user) {
+    const year = UI.year(), prevYear = year - 1;
+    const gById = {}; Store.db.glAccounts.forEach(g => { gById[g.id] = g; });
+    const agg = {};
+    const bucket = grp => (agg[grp] = agg[grp] || { cur: 0, prev: 0, mtp1: 0, mtp2: 0, gls: new Set() });
+    Store.db.budgets.filter(b => b.year === year).forEach(b => {
+      const g = gById[b.glId]; if (!g) return; const a = bucket(g.glGroup || 'อื่นๆ');
+      a.cur += b.months.reduce((s, v) => s + (v || 0), 0);
+      a.mtp1 += (typeof b.mtp1 === 'number' ? b.mtp1 : 0);
+      a.mtp2 += (typeof b.mtp2 === 'number' ? b.mtp2 : 0);
+      a.gls.add(b.glId);
+    });
+    Store.db.budgets.filter(b => b.year === prevYear).forEach(b => {
+      const g = gById[b.glId]; if (!g) return; bucket(g.glGroup || 'อื่นๆ').prev += b.months.reduce((s, v) => s + (v || 0), 0);
+    });
+    const groups = Object.entries(agg).sort((a, b) => b[1].cur - a[1].cur);
+    const grand = groups.reduce((t, [, v]) => ({ cur: t.cur + v.cur, prev: t.prev + v.prev, mtp1: t.mtp1 + v.mtp1, mtp2: t.mtp2 + v.mtp2 }), { cur: 0, prev: 0, mtp1: 0, mtp2: 0 });
+    const rows = groups.map(([grp, v]) => {
+      const cmp = Store.compare(v.cur, v.prev);
+      const share = grand.cur > 0 ? v.cur / grand.cur * 100 : 0;
+      return `<tr>
+        <td data-v="${esc(grp)}"><b>${esc(grp)}</b><div class="muted small">${v.gls.size} GL</div></td>
+        <td class="num" data-v="${v.prev}">${fmt(v.prev)}</td>
+        <td class="num" data-v="${v.cur}"><b>${fmt(v.cur)}</b></td>
+        <td data-v="${cmp.diff}">${deltaBadge(cmp.diff, cmp.pct)}</td>
+        <td data-v="${share}"><div class="comp-bar"><div class="comp-fill" style="width:${share.toFixed(0)}%"></div></div>${share.toFixed(1)}%</td>
+        <td class="num" data-v="${v.mtp1}">${v.mtp1 ? fmt(v.mtp1) : '—'}</td>
+        <td class="num" data-v="${v.mtp2}">${v.mtp2 ? fmt(v.mtp2) : '—'}</td></tr>`;
+    }).join('');
+    const gcmp = Store.compare(grand.cur, grand.prev);
+
+    return pageHead('📑 งบการเงินตามงบ (Budget P&L)', `สรุปงบตามกลุ่มบัญชี (ธรรมชาติค่าใช้จ่าย) · ทั้งบริษัท ปี ${year} · ${asOf()}`,
+        `<button class="ghost-btn" onclick="Store.exportPnl(${year})">⬇ Export CSV</button>
+         <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
+      + `<div class="kpi-grid kpi-grid-4">
+        ${kpiC('📑', '#e6f0fb', 'kpi-tint-blue', `งบรวมปี ${year}`, `${UI.fmtShort(grand.cur)} <small>กีบ</small>`, fmt(grand.cur) + ' กีบ')}
+        ${kpiC('🗓️', '#e6f7f0', 'kpi-tint-teal', `ปี ${prevYear}`, `${UI.fmtShort(grand.prev)} <small>กีบ</small>`, fmt(grand.prev) + ' กีบ')}
+        ${kpiC(gcmp.diff >= 0 ? '📈' : '📉', gcmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', 'เพิ่ม/ลด', `<span>${deltaBadge(gcmp.diff, gcmp.pct)}</span>`, (gcmp.diff >= 0 ? '+' : '') + fmt(gcmp.diff) + ' กีบ')}
+        ${kpiC('🎯', '#fff7e6', 'kpi-tint-amber', `MTP ปี ${year + 1}`, `${UI.fmtShort(grand.mtp1)} <small>กีบ</small>`, grand.mtp1 && grand.cur ? ((grand.mtp1 - grand.cur) / grand.cur * 100).toFixed(1) + '% จากปีนี้' : '—')}
+      </div>`
+      + card(`งบตามกลุ่มบัญชี (${groups.length} กลุ่ม) — คลิกหัวคอลัมน์เพื่อเรียง`, `<div class="table-scroll"><table class="data-table sortable-table" id="pnlTable">
+          <thead><tr><th class="sortable">กลุ่มบัญชี</th><th class="num sortable">ปี ${prevYear} (กีบ)</th><th class="num sortable">ปี ${year} (กีบ)</th><th class="sortable">%Δ</th><th class="sortable">สัดส่วน</th><th class="num sortable">MTP ปี ${year + 1}</th><th class="num sortable">MTP ปี ${year + 2}</th></tr></thead>
+          <tbody>${rows}
+          <tr class="tr-sum"><td><b>รวมทั้งหมด</b></td><td class="num"><b>${fmt(grand.prev)}</b></td><td class="num"><b>${fmt(grand.cur)}</b></td><td>${deltaBadge(gcmp.diff, gcmp.pct)}</td><td><b>100%</b></td><td class="num"><b>${fmt(grand.mtp1)}</b></td><td class="num"><b>${fmt(grand.mtp2)}</b></td></tr>
+          </tbody></table></div>`, { cls: 'card-flush' });
+  }
+  function pnlBind() { UI.enableSort(document.getElementById('pnlTable')); }
+
+  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, audit, actuals, actualsBind, pnl, pnlBind };
 })();
