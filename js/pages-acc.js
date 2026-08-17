@@ -589,23 +589,25 @@ const PagesAcc = (() => {
             <button class="ghost-btn" id="supaOff">ยกเลิก</button>` : ''}
           </div>
           <p class="muted small" style="margin-top:6px">🔒 URL และ key เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่อยู่ในโค้ดสาธารณะ</p>`)
-      + card('🔗 เชื่อมต่อ Google Sheet (Apps Script Backend)', `
-          <p style="margin-bottom:8px">${syncOn
-            ? `สถานะ: ${Sync.chipHtml()} — ข้อมูลทุกการแก้ไขจะซิงค์ขึ้น Google Sheet อัตโนมัติ`
-            : `ยังไม่ได้เชื่อมต่อ — ติดตั้งตามขั้นตอนนี้ (ทำครั้งเดียว ~2 นาที):`}</p>
-          ${syncOn ? '' : `<ol class="setup-steps">
-            <li>เปิดชีท <a class="link" href="https://docs.google.com/spreadsheets/d/1KiE6hk3FJTF4QSk_nYgUwYXynCFFE__J3pcTBdeRhDo/edit" target="_blank">บัญชี (ดาต้าเบสหลัก)</a> → เมนู <b>ส่วนขยาย → Apps Script</b></li>
-            <li>ลบโค้ดเดิม แล้ววางโค้ดจากไฟล์ <code>apps-script\\Code.gs</code> (ในโฟลเดอร์แอปนี้) → กด Save</li>
-            <li>กด <b>Deploy → New deployment → Web app</b> · Execute as: <b>Me</b> · Who has access: <b>Anyone</b> → Deploy → อนุญาตสิทธิ์</li>
-            <li>คัดลอก <b>Web app URL</b> (ลงท้าย /exec) มาวางด้านล่าง → กด "บันทึก & ทดสอบ"</li>
-          </ol>`}
+      + (() => {
+          const gasActive = Sync.backend() === 'gas';
+          const supaActive = Sync.backend() === 'supa';
+          return card('🔗 Google Sheet (Apps Script) — ทางเลือกสำรอง (ไม่บังคับ)', `
+          <p style="margin-bottom:8px">${
+            supaActive ? '<span class="muted">ℹ️ ระบบกำลังใช้ <b>Supabase</b> เป็นฐานข้อมูลหลักอยู่ — ส่วนนี้เป็นวิธีเดิม (Google Sheet) <b>ไม่ต้องตั้งค่า</b> เว้นแต่ต้องการสลับกลับไปใช้ Google Sheet</span>'
+            : gasActive ? `สถานะ: ${Sync.chipHtml()} — ข้อมูลซิงค์ขึ้น Google Sheet อัตโนมัติ`
+            : '<span class="muted">ยังไม่ได้เชื่อมต่อ (วิธีเดิมก่อนย้ายมา Supabase) — แนะนำใช้ Supabase ด้านบนแทน</span>'}</p>
+          ${(!supaActive && !gasActive) ? `<ol class="setup-steps">
+            <li>เปิดชีท <a class="link" href="https://docs.google.com/spreadsheets/d/1KiE6hk3FJTF4QSk_nYgUwYXynCFFE__J3pcTBdeRhDo/edit" target="_blank">บัญชี</a> → เมนู <b>ส่วนขยาย → Apps Script</b> → วางโค้ด <code>apps-script/Code.gs</code> → Deploy Web app → คัดลอก URL /exec</li>
+          </ol>` : ''}
           <div class="inline-form">
             <input id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(Sync.url())}" style="flex:1;min-width:320px">
-            <button class="primary-btn" id="gasSave">บันทึก & ทดสอบ</button>
-            ${syncOn ? `<button class="ghost-btn" id="gasPull">⬇ ดึงจากชีท</button>
+            <button class="ghost-btn" id="gasSave">${supaActive ? 'สลับไปใช้ Google Sheet' : 'บันทึก & ทดสอบ'}</button>
+            ${gasActive ? `<button class="ghost-btn" id="gasPull">⬇ ดึงจากชีท</button>
             <button class="ghost-btn" id="gasPush">⬆ ส่งขึ้นชีทเดี๋ยวนี้</button>
             <button class="ghost-btn" id="gasOff">ยกเลิกการเชื่อมต่อ</button>` : ''}
-          </div>`)
+          </div>`);
+        })()
       + card('รอบงบประมาณ (Budget Periods)', `
           <div class="table-scroll"><table class="data-table"><thead><tr><th>ปีงบ</th><th>สถานะ</th><th>ประวัติ</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
           <div class="inline-form"><input id="newPeriodYear" inputmode="numeric" placeholder="เช่น ${Math.max(...periods.map(p => p.year)) + 1}" style="width:120px">
