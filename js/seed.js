@@ -60,7 +60,7 @@ const SEED = (() => {
     { id: 'prod',  name: 'ฝ่ายผลิต', parent: 'md', deptCodes: ['3221', '3222', '3223', '3224', '3311', '3312', '3313', '3315', '3314', '3411'] },
     { id: 'factdir', name: 'สำนักผู้จัดการโรงงาน', parent: 'prod', deptCodes: ['3111', '3122'] },
     // ── ด้านบริหารสำนักงาน ──
-    { id: 'adminoffice', name: 'ด้านบริหารสำนักงาน', parent: 'md', deptCodes: ['1171', '4471', '3371', '1144', '1143', '1227', '1142', '1141', '1155', '1146', '1172', '1181'] },
+    { id: 'adminoffice', name: 'ด้านบริหารสำนักงาน', parent: 'md', deptCodes: ['1171', '4471', '3371', '1144', '1143', '1145', '1227', '1142', '1141', '1155', '1146', '1172', '1181'] },
     { id: 'acct', name: 'ฝ่ายบัญชีและการเงิน', parent: 'adminoffice', deptCodes: ['1194', '1161', '1162', '1164'] },
   ];
   // ผู้ดูแล/ผู้จัดการ 1 คน/หน่วยกำกับดูแล — เห็น rollup เฉพาะ subtree ของตน
@@ -140,7 +140,7 @@ const SEED = (() => {
 
   return {
     meta: {
-      schemaVersion: 9, seededAt: null, appName: 'Annual Budget Planner',
+      schemaVersion: 10, seededAt: null, appName: 'Annual Budget Planner',
       company: 'บริษัท น้ำตาลมิตรลาว จำกัด', currency: 'LAK',
       yearCurrent: Y_CUR, yearPrevious: Y_PREV,
       sides: SEED_DATA.sides, // ชื่อด้าน: {'1':'ด้านสนับสนุน',...}
