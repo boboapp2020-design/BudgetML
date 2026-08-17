@@ -542,8 +542,9 @@ const PagesAcc = (() => {
         ${p.status === 'OPEN'
           ? `<button class="danger-btn small" data-lock="${p.year}">🔒 ปิดรอบ & Lock</button>`
           : `<button class="ghost-btn small" data-unlock="${p.year}">🔓 Unlock (สิทธิ์พิเศษ)</button>`}
-        ${p.status === 'CLOSED' && p.phase !== 'REVISE'
-          ? `<button class="primary-btn small" data-revise-open="${p.year}" style="padding:4px 10px;font-size:12px">🔁 เปิดรอบ Revise</button>` : ''}
+        ${p.status === 'CLOSED' && p.phase !== 'REVISE' && p.year >= Store.db.meta.yearCurrent
+          ? `<button class="primary-btn small" data-revise-open="${p.year}" style="padding:4px 10px;font-size:12px">🔁 เปิดรอบ Revise</button>`
+          : (p.year < Store.db.meta.yearCurrent ? '<span class="muted small" title="ปีฐาน/ปิดปีแล้ว — Revise ใช้กับปีงบปัจจุบันเท่านั้น">🔒 ปีฐาน</span>' : '')}
         ${p.phase === 'REVISE'
           ? `<a class="ghost-btn small" href="#/acc/actuals?y=${p.year}">📥 ใส่เกิดจริง</a>` : ''}
       </td></tr>`;

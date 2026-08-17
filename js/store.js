@@ -218,6 +218,7 @@ const Store = (() => {
     assertAccounting(actor);
     const p = period(year);
     if (!p) throw new Error('ไม่พบรอบงบประมาณ');
+    if (Number(year) < db.meta.yearCurrent) throw new Error(`ปี ${year} เป็นปีฐาน (ปิดปีแล้ว) — เปิดรอบ Revise ได้เฉพาะปีงบปัจจุบัน (${db.meta.yearCurrent})`);
     if (p.phase === 'REVISE') throw new Error(`ปี ${year} เปิดรอบ Revise อยู่แล้ว`);
     const n = Number(actualThru);
     if (!(n >= 1 && n <= 12)) throw new Error('เดือนที่มีเกิดจริงต้องอยู่ระหว่าง 1-12');
