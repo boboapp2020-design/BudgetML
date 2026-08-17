@@ -1,15 +1,16 @@
 # =============================================================
-# create-users.ps1 — สร้างผู้ใช้ทั้งหมดใน Supabase Auth + map เข้า profiles
+# create-users.ps1 - create all Supabase Auth users + map to profiles
 #
-# ใช้ครั้งเดียว (หรือรันซ้ำได้ — คนที่มีอยู่แล้วจะข้าม แล้ว upsert profile ให้)
-# ต้องมี: users-src.json (อยู่โฟลเดอร์เดียวกัน) + service_role key ของโปรเจกต์
+# Run once (re-runnable: existing users are skipped, profile is upserted).
+# Needs: users-src.json (same folder) + project service_role key.
 #
-# วิธีรัน (ใน PowerShell ที่โฟลเดอร์ supabase):
+# Usage (PowerShell, in the supabase folder):
 #   .\create-users.ps1 -SupabaseUrl "https://xxxx.supabase.co"
-#   (จะถาม service_role key แบบซ่อน แล้วเริ่มสร้าง)
+#   (prompts for service_role key, then creates users)
 #
-# ผลลัพธ์: credentials.local.csv (อีเมล/รหัสผ่านทุกคน) — เก็บในเครื่อง ไม่ขึ้น git
-# ⚠ service_role key มีสิทธิ์เต็ม — อย่าแชร์ อย่าใส่ในโค้ดฝั่ง client
+# Output: credentials.local.csv (email/password for everyone) - local only, gitignored
+# WARNING: service_role key has full access - never share, never put in client code.
+# NOTE: ASCII-only script (PowerShell 5.1 reads .ps1 as ANSI). Thai names come from JSON.
 # =============================================================
 param(
   [Parameter(Mandatory = $true)] [string] $SupabaseUrl,
@@ -19,16 +20,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SupabaseUrl = $SupabaseUrl.TrimEnd("/")
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
 if (-not $ServiceRoleKey) {
-  $sec = Read-Host "วาง service_role key (Settings > API > service_role)" -AsSecureString
+  $sec = Read-Host "Paste service_role key (Settings > API > service_role)" -AsSecureString
   $ServiceRoleKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
 }
-if (-not $ServiceRoleKey) { throw "ไม่มี service_role key" }
+if (-not $ServiceRoleKey) { throw "No service_role key provided" }
 
 $srcPath = Join-Path $PSScriptRoot "users-src.json"
-if (-not (Test-Path $srcPath)) { throw "ไม่พบ users-src.json ที่ $srcPath" }
+if (-not (Test-Path $srcPath)) { throw "users-src.json not found at $srcPath" }
 $users = Get-Content $srcPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 $hdr = @{ apikey = $ServiceRoleKey; Authorization = "Bearer $ServiceRoleKey" }
@@ -52,7 +54,6 @@ function New-Password {
   foreach ($s in $sets) { $pw += $s[(Get-Random -Max $s.Length)] }
   $all = ($sets -join "")
   while ($pw.Length -lt 12) { $pw += $all[(Get-Random -Max $all.Length)] }
-  # สลับตำแหน่ง
   return -join ($pw.ToCharArray() | Sort-Object { Get-Random })
 }
 
@@ -79,17 +80,16 @@ foreach ($u in $users) {
     }
     $uid = $res.id
     $created++
-    Write-Host ("[+] {0,-28} {1}" -f $email, $u.name)
+    Write-Host ("[+] {0,-30} created" -f $email)
   } catch {
-    # มีอยู่แล้ว → หา id เพื่อ upsert profile (ไม่รู้รหัสผ่านเดิม)
     try {
       $look = Invoke-Sb -Method Get -Path ("/auth/v1/admin/users?email=" + [uri]::EscapeDataString($email))
       $uid  = ($look.users | Select-Object -First 1).id
       if (-not $uid -and $look.id) { $uid = $look.id }
-      $existed++; $pw = "(มีอยู่แล้ว)"
-      Write-Host ("[=] {0,-28} มีอยู่แล้ว — ข้าม" -f $email)
+      $existed++; $pw = "(exists)"
+      Write-Host ("[=] {0,-30} exists - skip" -f $email)
     } catch {
-      $failed++; Write-Host ("[x] {0,-28} ล้มเหลว: {1}" -f $email, $_.Exception.Message) -ForegroundColor Red
+      $failed++; Write-Host ("[x] {0,-30} FAILED: {1}" -f $email, $_.Exception.Message) -ForegroundColor Red
       continue
     }
   }
@@ -101,13 +101,13 @@ foreach ($u in $users) {
         department_id = $u.departmentId; org_unit = $u.orgUnit
       } | Out-Null
     } catch {
-      Write-Host ("    (profile ล้มเหลว: {0})" -f $_.Exception.Message) -ForegroundColor Yellow
+      Write-Host ("    (profile failed: {0})" -f $_.Exception.Message) -ForegroundColor Yellow
     }
   }
   ('"{0}","{1}","{2}","{3}","{4}"' -f $email, $u.username, ($u.name -replace '"',''), $u.role, $pw) | Add-Content $csv -Encoding UTF8
 }
 
 Write-Host ""
-Write-Host ("เสร็จ: สร้างใหม่ {0} · มีอยู่แล้ว {1} · ล้มเหลว {2}" -f $created, $existed, $failed) -ForegroundColor Cyan
-Write-Host ("รหัสผ่านทั้งหมดอยู่ใน: {0}" -f $csv) -ForegroundColor Cyan
-Write-Host "⚠ เก็บไฟล์นี้เป็นความลับ แล้วแจกรหัสให้แต่ละแผนก จากนั้นลบทิ้ง"
+Write-Host ("Done: created {0}, existed {1}, failed {2}" -f $created, $existed, $failed) -ForegroundColor Cyan
+Write-Host ("Passwords saved to: {0}" -f $csv) -ForegroundColor Cyan
+Write-Host "Keep this file secret, distribute per department, then delete it."
