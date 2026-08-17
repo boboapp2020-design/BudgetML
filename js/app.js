@@ -50,12 +50,6 @@ const App = (() => {
           <h1>งบประมาณประจำปี</h1>
           <div class="lh-sub">Annual Budget System</div>
           <div class="lh-company">${UI.esc(Store.db.meta.company)}</div>
-          <ul class="lh-features">
-            <li>📊 ${Store.db.departments.length} หน่วยงาน · ผังกำกับดูแลหลายชั้น</li>
-            <li>☁️ ซิงค์เรียลไทม์ ทุกเครื่องเห็นข้อมูลตรงกัน</li>
-            <li>🔁 รอบ Revise กลางปี + เทียบงบเดิม</li>
-          </ul>
-          <div class="lh-year">📅 ปีงบประมาณ ${Store.db.meta.yearCurrent}</div>
         </aside>
         <!-- แผงฟอร์ม -->
         <div class="login-form">

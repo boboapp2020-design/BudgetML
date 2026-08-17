@@ -888,3 +888,9 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
   .login-hero h1 { font-size: 23px; }
   .login-form { padding: 28px 28px 32px; }
 }
+
+/* ---------- v5.9: landing hero — โลโก้ใหญ่ขึ้น + จัดกึ่งกลางแนวตั้ง ---------- */
+.login-hero { justify-content: center; gap: 16px; }
+.lh-logo { width: 120px; height: 120px; border-radius: 28px; }
+.lh-logo svg { width: 82px; height: 82px; }
+.login-hero h1 { font-size: 30px; }
