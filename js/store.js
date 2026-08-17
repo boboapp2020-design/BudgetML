@@ -666,6 +666,29 @@ const Store = (() => {
     return cleared;
   }
 
+  // ล้าง mock ให้เป็นฟอร์มเปล่าทั้งหมด: งบ 12 เดือน→ว่าง + ปิด revise + ลบเกิดจริง/snapshot/เหตุผล → พร้อมกรอกจริง
+  function clearMock(actor, year) {
+    assertAccounting(actor);
+    const y = Number(year);
+    const p = period(y);
+    if (p) { delete p.phase; delete p.actualThru; delete p.reviseOpenedAt; delete p.reviseOpenedBy; p.status = 'OPEN'; }
+    let cleared = 0;
+    db.budgets.filter(b => b.year === y).forEach(row => {
+      row.months = Array(12).fill(null);
+      row.mtp1 = null; row.mtp2 = null; row.notUsed = false; delete row.stash;
+      row.updatedAt = new Date().toISOString(); row.updatedBy = actor.name;
+      cleared++;
+    });
+    db.glNotes = db.glNotes.filter(n => n.year !== y);
+    db.cellDetails = (db.cellDetails || []).filter(x => x.year !== y);
+    db.actuals = (db.actuals || []).filter(a => a.year !== y);
+    db.budgetSnapshots = (db.budgetSnapshots || []).filter(s => s.year !== y);
+    db.departments.forEach(d => setStatusInternal(y, d.id, 'DRAFT', { submittedAt: null, revisionNote: null }));
+    audit(actor, 'ล้าง mock เป็นฟอร์มเปล่าทั้งหมด', { newValue: `ปี ${y} (${cleared} รายการ)` });
+    save();
+    return cleared;
+  }
+
   /* ---------- mutations: ACCOUNTING ---------- */
   function needRevision(actor, year, deptId, noteMsg) {
     assertAccounting(actor);
@@ -852,7 +875,7 @@ const Store = (() => {
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
-    cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear,
+    cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, lockPeriod, unlockPeriod, openPeriod,
     addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,

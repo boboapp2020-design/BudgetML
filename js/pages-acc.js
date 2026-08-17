@@ -639,14 +639,14 @@ const PagesAcc = (() => {
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
-      + card('ข้อมูลจำลอง (Demo)', `
+      + card('🧹 ล้างข้อมูล mock (เครื่องมือชั่วคราวสำหรับตั้งค่าก่อนใช้จริง)', `
           <div class="td-actions">
-            <button class="danger-btn" id="clearAllBtn">🧹 ล้างข้อมูลจำลองปี ${year} ทุกหน่วยงาน</button>
-            <button class="ghost-btn" id="resetDemoBtn">↺ รีเซ็ตกลับข้อมูลจำลองตั้งต้น</button>
+            <button class="danger-btn" id="clearMockBtn">🧹 ล้าง mock ทั้งหมด → ฟอร์มเปล่า (ปี ${year})</button>
+            <button class="ghost-btn" id="resetDemoBtn">↺ รีเซ็ตกลับข้อมูลตั้งต้นจากไฟล์</button>
           </div>
           <p class="muted small" style="margin-top:8px">
-            🧹 = ล้างตัวเลข/เหตุผล/รายละเอียดปี ${year} ของทุกหน่วยงาน → ฟอร์มเปล่า สถานะ Draft (ใช้ก่อนเปิดกรอกจริง · งบปี ${year - 1} baseline ไม่ถูกแตะ)<br>
-            ↺ = คืนข้อมูลจำลองทั้งหมดกลับมาเหมือนเดิม (สำหรับทดลอง/ออกแบบ)</p>`);
+            🧹 = ล้าง<b>งบ 12 เดือน + MTP + เหตุผล + เกิดจริง + snapshot</b> ของ<b>ทุกแผนกปี ${year}</b> → ฟอร์มเปล่า สถานะ Draft + ปิดรอบ Revise ให้พร้อมกรอกงบจริงใหม่<br>
+            (งบปี ${year - 1} baseline ไม่ถูกแตะ · ซิงค์ Supabase ทันที · <b>ย้อนกลับไม่ได้</b>)</p>`);
   }
   function controlBind(user) {
     /* ---------- Supabase ---------- */
@@ -833,19 +833,19 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
-    document.getElementById('clearAllBtn')?.addEventListener('click', () => {
+    document.getElementById('clearMockBtn')?.addEventListener('click', () => {
       const y = UI.year();
-      UI.modal(`🧹 ล้างข้อมูลจำลองปี ${y} ทุกหน่วยงาน`, `
-        <p>ตัวเลขทุกเดือน, MTP, เหตุผล/สมมติฐาน และรายละเอียดค่าใช้จ่าย <b>ของทั้ง ${Store.activeDepartments().length} หน่วยงาน</b>
-        จะถูกล้างเป็นฟอร์มเปล่า สถานะกลับเป็น Draft (งบปี ${y - 1} ไม่ถูกแตะ)</p>
-        <p class="warn-text">⚠ การกระทำนี้ย้อนกลับไม่ได้ และมีผลกับ Google Sheet ทันที</p>
+      UI.modal(`🧹 ล้าง mock ปี ${y} → ฟอร์มเปล่าทั้งหมด`, `
+        <p>งบ 12 เดือน, MTP, เหตุผล/สมมติฐาน, ตัวเลขเกิดจริง และ snapshot <b>ของทั้ง ${Store.activeDepartments().length} แผนก</b>
+        จะถูกล้างเป็นฟอร์มเปล่า · ปิดรอบ Revise · สถานะกลับเป็น Draft (งบปี ${y - 1} ไม่ถูกแตะ)</p>
+        <p class="warn-text">⚠ การกระทำนี้ย้อนกลับไม่ได้ และซิงค์ขึ้น Supabase ทันที</p>
         <p>พิมพ์ <b>CLEAR</b> เพื่อยืนยัน:</p><input id="clearAllConfirm" placeholder="CLEAR" autocomplete="off">`, [
         { label: 'ยกเลิก', cls: 'ghost-btn' },
-        { label: '🧹 ยืนยันล้างทุกหน่วยงาน', cls: 'danger-btn', onClick: close => {
+        { label: '🧹 ยืนยันล้างเป็นฟอร์มเปล่า', cls: 'danger-btn', onClick: close => {
             if (document.getElementById('clearAllConfirm').value.trim().toUpperCase() !== 'CLEAR') { toast('กรุณาพิมพ์ CLEAR เพื่อยืนยัน', 'err'); return; }
             try {
-              const n = Store.clearAllDeptYear(user, y);
-              toast(`ล้างข้อมูลปี ${y} แล้ว (${n} รายการ GL ทั้ง ${Store.activeDepartments().length} หน่วยงาน) — พร้อมเปิดกรอกจริง`);
+              const n = Store.clearMock(user, y);
+              toast(`ล้าง mock ปี ${y} แล้ว (${n} รายการ ทั้ง ${Store.activeDepartments().length} แผนก) — ฟอร์มเปล่า พร้อมกรอกจริง`);
               close(); App.render();
             } catch (e) { toast(e.message, 'err'); }
           } },
