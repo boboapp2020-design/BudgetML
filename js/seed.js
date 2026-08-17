@@ -65,11 +65,9 @@ const SEED = (() => {
     { id: 'survey', name: 'ฝ่ายสำรวจและชลประทาน', parent: null, deptCodes: ['2611'] },
     { id: 'caneit', name: 'ฝ่ายบริการและสารสนเทศไร่', parent: null, deptCodes: ['2712', '2713', '2714'] },
     // ── ด้านโรงงาน ──
-    { id: 'factdir', name: 'สำนักผู้จัดการโรงงาน', parent: null, deptCodes: ['3111', '3122', '3371'] },
-    { id: 'prod',  name: 'ฝ่ายผลิต', parent: null, deptCodes: ['3221', '3222', '3223', '3224'] },
-    { id: 'power', name: 'ฝ่ายพลังงานและไฟฟ้า', parent: null, deptCodes: ['3311', '3312', '3313', '3314'] },
-    { id: 'maint', name: 'ฝ่ายซ่อมบำรุงเครื่องกล', parent: null, deptCodes: ['3315'] },
-    { id: 'tpm',   name: 'ฝ่าย TPM', parent: null, deptCodes: ['3411'] },
+    { id: 'prod',  name: 'ฝ่ายผลิต', parent: null, deptCodes: ['3221', '3222', '3223', '3224', '3313', '3311', '3315', '3314', '3411'] },
+    { id: 'factdir', name: 'สำนักผู้จัดการโรงงาน', parent: 'prod', deptCodes: ['3111', '3122', '3371'] },
+    // ยังไม่จัดผัง: 3312 (แผนกไฟฟ้าผลิต)
     // ── ด้านบริหารสำนักงาน ──
     { id: 'adminoffice', name: 'ฝ่ายบริหารสำนักงาน (ด้านบริหาร)', parent: null, deptCodes: ['4471'] },
     // ยังไม่จัดผัง: 1181, 1227
