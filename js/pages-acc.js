@@ -611,8 +611,12 @@ const PagesAcc = (() => {
         })()
       + card('รอบงบประมาณ (Budget Periods)', `
           <div class="table-scroll"><table class="data-table"><thead><tr><th>ปีงบ</th><th>สถานะ</th><th>ประวัติ</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
-          <div class="inline-form"><input id="newPeriodYear" inputmode="numeric" placeholder="เช่น ${Math.max(...periods.map(p => p.year)) + 1}" style="width:120px">
-          <button class="primary-btn" id="openPeriodBtn">＋ เปิดรอบงบประมาณปีใหม่</button></div>`)
+          <div class="inline-form" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:6px">
+            <button class="primary-btn btn-grad" id="openRoundBtn">🗓️ เปิดรอบตั้งงบปีใหม่ (ปิดยอดปีนี้ + งบปีหน้า)</button>
+          </div>
+          <p class="muted small" style="margin-top:6px">เปิดพร้อมกัน: <b>ปิดยอดปี ${year}</b> (เกิดจริง N เดือน + คาดการณ์ที่เหลือ) และ <b>งบปี ${year + 1}</b> (12 เดือน) — แผนกกรอกทั้ง 2 ปีได้จากตัวเลือกปีมุมบน</p>
+          <div class="inline-form" style="margin-top:10px"><input id="newPeriodYear" inputmode="numeric" placeholder="เช่น ${Math.max(...periods.map(p => p.year)) + 1}" style="width:120px">
+          <button class="ghost-btn" id="openPeriodBtn">＋ เปิดรอบเปล่าปีใหม่ (ไม่ปิดยอด)</button></div>`)
       + card(`หน่วยงาน (Departments) — เปิดใช้งาน ${nActive} / ${depts.length} หน่วยงาน (ตามฟอร์ม ML_Form 2026)`, `
           <div class="table-scroll"><table class="data-table"><thead><tr><th>หน่วยงาน</th><th>สถานะ</th><th>จำนวน</th><th>GL ที่มอบหมาย</th><th></th></tr></thead><tbody>${dRows}</tbody></table></div>
           <div class="inline-form"><input id="newDeptCode" placeholder="รหัส เช่น 1133" style="width:110px">
@@ -732,6 +736,34 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
+    document.getElementById('openRoundBtn')?.addEventListener('click', () => {
+      const cur = UI.year(), next = cur + 1;
+      UI.modal(`🗓️ เปิดรอบตั้งงบปี ${next}`, `
+        <p>ระบบจะทำ 2 อย่างพร้อมกัน:</p>
+        <ol class="setup-steps">
+          <li><b>ปิดยอดปี ${cur}</b> — ล็อกเกิดจริงถึงเดือนที่เลือก (นำเข้าไฟล์ SAP ทีหลัง) แล้วให้แผนกคาดการณ์เดือนที่เหลือ</li>
+          <li><b>เปิดงบปี ${next}</b> — กริด 12 เดือนสำหรับกรอกงบใหม่</li>
+        </ol>
+        <label class="fld"><span>เกิดจริงปี ${cur} ถึงเดือนที่</span>
+          <select id="roundThru">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===9?'selected':''}>เดือน ${i+1} (${Store.MONTH_TH[i]})</option>`).join('')}</select></label>
+        <label class="fld"><span>ตั้งต้นงบปี ${next}</span>
+          <select id="roundPrefill">
+            <option value="blank">ฟอร์มเปล่า (กรอกใหม่ทั้งหมด)</option>
+            <option value="landing" selected>คัดลอกจากยอดปิดปี ${cur} (แก้ต่อได้)</option>
+          </select></label>
+        <p class="warn-text">⚠ สถานะทุกแผนกจะกลับเป็น "กำลังจัดทำ" · ปี ${next} จะกลายเป็นปีงบปัจจุบัน</p>`, [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: `🗓️ เปิดรอบตั้งงบปี ${next}`, cls: 'primary-btn', onClick: close => {
+            try {
+              const thru = Number(document.getElementById('roundThru').value);
+              const prefill = document.getElementById('roundPrefill').value;
+              const r = Store.openBudgetRound(user, cur, thru, next, prefill);
+              toast(`เปิดรอบตั้งงบปี ${next} แล้ว (สร้าง ${r.created} แถว) — เลือกปีที่มุมบนเพื่อสลับระหว่างปิดยอด ${cur} กับงบ ${next}`);
+              UI.setYear(next); close(); App.render();
+            } catch (e) { toast(e.message, 'err'); }
+          } },
+      ]);
+    });
     document.getElementById('openPeriodBtn')?.addEventListener('click', () => {
       const y = Number(document.getElementById('newPeriodYear').value);
       if (!y || y < 2000 || y > 2100) { toast('กรุณาระบุปี ค.ศ. ให้ถูกต้อง', 'err'); return; }

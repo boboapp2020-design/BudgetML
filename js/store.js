@@ -751,6 +751,35 @@ const Store = (() => {
     activeDepartments().forEach(d => notify({ deptId: d.id }, `เปิดรอบจัดทำงบประมาณปี ${year} แล้ว เริ่มกรอกข้อมูลได้`));
     save();
   }
+  // เปิดรอบตั้งงบปีใหม่: (A) ปิดยอดปีปัจจุบัน = revise (เกิดจริง N เดือน + คาดการณ์ที่เหลือ)
+  //                     (B) เปิดรอบงบปีใหม่ 12 เดือน (pre-fill: 'landing' คัดลอกจากปิดยอดปีปัจจุบัน หรือ 'blank')
+  function openBudgetRound(actor, curYear, thru, nextYear, prefill) {
+    assertAccounting(actor);
+    curYear = Number(curYear); nextYear = Number(nextYear); thru = Number(thru);
+    if (nextYear <= curYear) throw new Error('ปีใหม่ต้องมากกว่าปีปัจจุบัน');
+    // (A) ปิดยอดปีปัจจุบัน
+    if (!revisePhase(curYear).on) openRevise(actor, curYear, thru);
+    // (B) รอบปีใหม่
+    if (!period(nextYear)) { db.budgetPeriods.push({ year: nextYear, status: 'OPEN', openedAt: new Date().toISOString(), lockedAt: null, lockedBy: null }); db.budgetPeriods.sort((a, b) => a.year - b.year); }
+    const p = period(nextYear); p.status = 'OPEN'; delete p.phase; delete p.actualThru;
+    let created = 0;
+    (db.departmentRows || []).forEach(x => {
+      let b = db.budgets.find(bb => bb.year === nextYear && bb.departmentId === x.departmentId && bb.glId === x.glId && bb.cct === x.cct);
+      if (!b) { b = { year: nextYear, departmentId: x.departmentId, glId: x.glId, cct: x.cct, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: null }; db.budgets.push(b); created++; }
+      if (prefill === 'landing') {
+        const cur = db.budgets.find(bb => bb.year === curYear && bb.departmentId === x.departmentId && bb.glId === x.glId && bb.cct === x.cct);
+        if (cur) { b.months = cur.months.map(v => v); b.updatedBy = 'pre-fill จากปิดยอด ' + curYear; }
+      }
+    });
+    activeDepartments().forEach(d => setStatusInternal(nextYear, d.id, 'DRAFT', { submittedAt: null, revisionNote: null }));
+    // ปีใหม่กลายเป็นปีงบปัจจุบัน
+    db.meta.yearPrevious = curYear;
+    db.meta.yearCurrent = nextYear;
+    audit(actor, 'เปิดรอบตั้งงบปีใหม่', { newValue: `ปิดยอด ${curYear} (เกิดจริงถึง ด.${thru}) + เปิดงบ ${nextYear} (สร้าง ${created} แถว · pre-fill: ${prefill || 'ว่าง'})` });
+    activeDepartments().forEach(d => notify({ deptId: d.id }, `เปิดรอบตั้งงบปี ${nextYear} — กรุณา (1) คาดการณ์ปิดยอดปี ${curYear} เดือน ${thru}-12 และ (2) กรอกงบปี ${nextYear} ทั้ง 12 เดือน`));
+    save();
+    return { created };
+  }
   function toggleDepartment(actor, deptId, active) {
     assertAccounting(actor);
     const d = dept(deptId);
@@ -908,7 +937,7 @@ const Store = (() => {
     actualRowRef, importActuals, importBudgetFile,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
-    needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod,
+    needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound,
     addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary, exportPnl,
