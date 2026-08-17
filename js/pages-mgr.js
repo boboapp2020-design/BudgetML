@@ -148,7 +148,8 @@ const PagesMgr = (() => {
         <td class="num"><b>${fmt(tot)}</b></td></tr>`;
     }).join('');
 
-    return pageHead(`${UI.deptIcon(d)} ${esc(d.name)}`, `รายย่อยงบปี ${year} · 🔒 อ่านอย่างเดียว · ${asOf()}`)
+    return pageHead(`${UI.deptIcon(d)} ${esc(d.name)}`, `รายย่อยงบปี ${year} · 🔒 อ่านอย่างเดียว · ${asOf()}`,
+        `<a class="ghost-btn" href="#/mgr/dashboard">← กลับภาพรวมฝ่าย</a>`)
       + `<div class="breadcrumb"><a href="#/mgr/dashboard">← กลับภาพรวม${esc(unitName)}</a> › <b>${esc(d.name)}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">
         ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', `งบปี ${year}`, `${fmtShort(cur)} <small>กีบ</small>`, fmt(cur) + ' กีบ')}
@@ -156,7 +157,7 @@ const PagesMgr = (() => {
         ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', 'เพิ่ม/ลด', `<span>${deltaBadge(cmp.diff, cmp.pct)}</span>`, (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
         ${kpiC('📋', '#fff7e6', 'kpi-tint-amber', 'จำนวนรายการ', `${rows.length} <small>รายการ</small>`, 'GL × CCT')}
       </div>`
-      + card('', `<div class="mgr-toolbar"><button id="mgrFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶ ขยายตาราง</button></div>
+      + card('', `<div class="mgr-toolbar"><button id="mgrFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button></div>
           <div class="table-scroll fs-scroll"><table class="data-table small">
           <thead><tr><th>รายการ (GL · CCT)</th>${Store.MONTH_S.map(mo => `<th class="num">${mo}</th>`).join('')}<th class="num">รวมทั้งปี</th></tr></thead>
           <tbody>${body}
@@ -170,7 +171,8 @@ const PagesMgr = (() => {
     const setFs = on => {
       fsCard.classList.toggle('fullscreen', on);
       document.body.classList.toggle('no-scroll', on);
-      fsBtn.textContent = on ? '✕ ย่อกลับ' : '⛶ ขยายตาราง';
+      fsBtn.textContent = on ? '✕' : '⛶';
+      fsBtn.title = on ? 'ย่อกลับ (Esc)' : 'ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)';
     };
     fsBtn.addEventListener('click', () => setFs(!fsCard.classList.contains('fullscreen')));
     document.addEventListener('keydown', function esc(e) {
