@@ -143,7 +143,7 @@ const UI = (() => {
         <div class="sidebar-foot">
           ${periodCard}
           <div class="sf-company">${esc(Store.db.meta.company)}</div>
-          <div class="sf-role">${user.role === 'ACCOUNTING' ? 'Accounting / Admin' : user.role === 'MANAGER' ? esc(user.division || '') : esc(Store.dept(user.departmentId)?.name || '')} · เวอร์ชัน 1.0.0</div>
+          <div class="sf-role">${user.role === 'ACCOUNTING' ? 'Accounting / Admin' : user.role === 'MANAGER' ? 'หน่วยกำกับดูแล · ' + esc(user.name || '') : esc(Store.dept(user.departmentId)?.name || '')} · เวอร์ชัน 1.0.0</div>
         </div>
       </aside>
       <div class="main">
@@ -155,7 +155,7 @@ const UI = (() => {
           </div>
           <div class="topbar-right">
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
-            <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : user.role === 'MANAGER' ? esc(user.division || '') : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId))}</span>
+            <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : user.role === 'MANAGER' ? esc(user.name || '') : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId))}</span>
               <span class="uc-name">${esc(user.name)}</span></div>
             <button id="logoutBtn" class="ghost-btn">ออกจากระบบ</button>
           </div>

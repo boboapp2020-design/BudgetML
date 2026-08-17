@@ -31,10 +31,13 @@ const App = (() => {
         .map(d => `<option value="${d.code}">${UI.deptIcon(d)} ${UI.esc(d.name)} (${d.code})</option>`).join('');
       return `<optgroup label="${UI.esc(sides[s] || 'อื่นๆ')}">${opts}</optgroup>`;
     }).join('');
-    // ผู้จัดการฝ่าย (ดูภาพรวมฝ่าย)
-    const mgrOpts = Store.db.users.filter(u => u.role === 'MANAGER')
-      .sort((a, b) => a.division.localeCompare(b.division, 'th'))
-      .map(m => `<option value="${UI.esc(m.username)}">👔 ${UI.esc(m.division)}</option>`).join('');
+    // หน่วยกำกับดูแล (ผู้บริหาร/ผู้จัดการ ดู rollup) — เรียงแบบต้นไม้ เยื้องตามชั้น
+    const units = Store.oversight();
+    const ordered = [];
+    const walk = (u, d) => { ordered.push({ u, d }); units.filter(c => c.parent === u.id).forEach(c => walk(c, d + 1)); };
+    units.filter(u => !u.parent).forEach(u => walk(u, 0));
+    const mgrOpts = ordered.map(({ u, d }) =>
+      `<option value="MGR:${UI.esc(u.id)}">${' '.repeat(d)}${d ? '└ ' : '👔 '}${UI.esc(u.name)}</option>`).join('');
 
     root().innerHTML = `
     <div class="login-wrap">

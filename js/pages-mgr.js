@@ -19,8 +19,10 @@ const PagesMgr = (() => {
 
   function dashboard(user) {
     const year = UI.year(), prevYear = year - 1;
-    const div = user.division;
-    const depts = Store.divisionDepartments(div);
+    const unit = Store.oversightUnit(user.orgUnit) || { name: '(หน่วยงาน)' };
+    const div = unit.name;
+    const depts = Store.subtreeDepartments(user.orgUnit);
+    const kids = Store.childUnits(user.orgUnit);
     const rv = Store.revisePhase(year);
 
     const cur = depts.reduce((s, d) => s + Store.deptTotal(year, d.id), 0);
@@ -57,8 +59,9 @@ const PagesMgr = (() => {
         <td><span class="anomaly" style="background:${ST_META[st].color}22;color:${ST_META[st].color}">${ST_META[st].label}</span></td></tr>`;
     }).join('');
 
+    const kidNote = kids.length ? ` · ครอบคลุมหน่วย: ${kids.map(k => esc(k.name)).join(', ')}` : '';
     return pageHead(`ภาพรวม${esc(div)} 📊`,
-        `ผู้จัดการฝ่าย · ${depts.length} แผนก · งบปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
+        `หน่วยกำกับดูแล · ${depts.length} แผนกที่มีงบ${kidNote} · งบปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
         `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
 
       + `<div class="kpi-grid kpi-grid-4">
@@ -75,15 +78,14 @@ const PagesMgr = (() => {
       + card(`🏆 Top GL ค่าใช้จ่ายสูงสุดในฝ่าย (กีบ)`, `<div id="chMgrTopGL"></div>`)
       + `</div>`
 
-      + card(`🏢 แผนกในฝ่าย ${esc(div)} (${depts.length})`, `<div class="table-scroll"><table class="data-table">
+      + card(`🏢 แผนกภายใต้ ${esc(div)} (${depts.length})`, `<div class="table-scroll"><table class="data-table">
           <thead><tr><th>แผนก</th><th class="num">${rv.on ? 'งบเดิม' : 'ปี ' + prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th><th>%Δ</th><th>สัดส่วนในฝ่าย</th><th>สถานะ</th></tr></thead>
           <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
   }
 
   function dashboardBind(user) {
     const year = UI.year();
-    const div = user.division;
-    const depts = Store.divisionDepartments(div);
+    const depts = Store.subtreeDepartments(user.orgUnit);
     const rv = Store.revisePhase(year);
 
     // รายเดือน: ปีนี้ (+ งบเดิม ช่วง revise + เกิดจริง)

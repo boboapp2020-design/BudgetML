@@ -84,10 +84,20 @@ const Store = (() => {
   const glByCode = code => db.glAccounts.find(g => g.code === code);
   const period = year => db.budgetPeriods.find(p => p.year === Number(year));
   const activeDepartments = () => db.departments.filter(d => d.active);
-  // ---------- ฝ่าย (Division) ----------
-  const divisionOf = code => (SEED.divisions && SEED.divisions[code]) || '(ยังไม่จัดฝ่าย)';
-  const divisionDepartments = division => activeDepartments().filter(d => divisionOf(d.code) === division);
-  const allDivisions = () => [...new Set(db.departments.map(d => divisionOf(d.code)))];
+  // ---------- ผังกำกับดูแล (Oversight tree) ----------
+  const oversight = () => (SEED.oversight || []);
+  const oversightUnit = id => oversight().find(u => u.id === id) || null;
+  const childUnits = unitId => oversight().filter(c => c.parent === unitId);
+  function subtreeDeptCodes(unitId) {                    // แผนกที่มีงบทั้งหมดใต้หน่วยนี้ (รวม subtree)
+    const u = oversightUnit(unitId); if (!u) return [];
+    const codes = [...(u.deptCodes || [])];
+    childUnits(unitId).forEach(c => codes.push(...subtreeDeptCodes(c.id)));
+    return [...new Set(codes)];
+  }
+  const subtreeDepartments = unitId => subtreeDeptCodes(unitId)
+    .map(code => db.departments.find(d => d.code === code)).filter(d => d && d.active);
+  // หน่วยกำกับดูแลที่แผนกนี้สังกัด (สำหรับแสดงผล)
+  const unitOfDept = code => oversight().find(u => (u.deptCodes || []).includes(code)) || null;
 
   function deptGLs(deptId) {
     return db.departmentGL.filter(x => x.departmentId === deptId)
@@ -750,7 +760,7 @@ const Store = (() => {
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
     login, logout, currentUser,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
-    divisionOf, divisionDepartments, allDivisions,
+    oversight, oversightUnit, childUnits, subtreeDeptCodes, subtreeDepartments, unitOfDept,
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,
     months, glTotal, deptTotal, companyTotal, deptMonthly, companyMonthly,
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,
