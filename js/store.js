@@ -380,6 +380,30 @@ const Store = (() => {
     return { matched, unmatched, cells, created };
   }
 
+  // กระทบยอดไฟล์กับงบในระบบ (ไม่แก้ข้อมูล) — records = [{io,codeA,cct,glCode,deptCode,months}]
+  function reconcileFile(year, records) {
+    const y = Number(year);
+    const res = { matched: 0, mismatch: [], fileOnly: [], appOnly: [], fileTotal: 0, appMatchedTotal: 0, appYearTotal: companyTotal(y) };
+    const seenKeys = new Set();
+    records.forEach(rec => {
+      const fileTot = (rec.months || []).reduce((s, v) => s + (v || 0), 0);
+      res.fileTotal += fileTot;
+      const ref = actualRowRef(rec);
+      if (!ref) { res.fileOnly.push({ id: rec.codeA || rec.io || ((rec.cct || '') + '/' + (rec.glCode || '')), dept: rec.deptCode || '', fileTot }); return; }
+      const b = db.budgets.find(bb => bb.year === y && bb.departmentId === ref.departmentId && bb.glId === ref.glId && bb.cct === ref.cct);
+      const appTot = b ? sum(b.months) : 0;
+      res.appMatchedTotal += appTot;
+      seenKeys.add(ref.departmentId + '|' + ref.glId + '|' + ref.cct);
+      if (Math.abs(appTot - fileTot) < 0.5) res.matched++;
+      else res.mismatch.push({ dept: dept(ref.departmentId)?.name || ref.departmentId, gl: gl(ref.glId)?.code, cct: ref.cct, app: appTot, file: fileTot, diff: fileTot - appTot });
+    });
+    // งบในระบบที่ไม่มีในไฟล์ (เฉพาะแถวที่มีตัวเลข)
+    db.budgets.filter(b => b.year === y && b.months.some(v => v)).forEach(b => {
+      if (!seenKeys.has(b.departmentId + '|' + b.glId + '|' + b.cct)) res.appOnly.push({ dept: dept(b.departmentId)?.name || b.departmentId, gl: gl(b.glId)?.code, cct: b.cct, app: sum(b.months) });
+    });
+    return res;
+  }
+
   /* ---------- เปรียบเทียบ + Anomaly (rule-based) ---------- */
   function compare(cur, prev) {
     const diff = cur - prev;
@@ -947,7 +971,7 @@ const Store = (() => {
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,
     revisePhase, snapshotFor, originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
-    actualRowRef, importActuals, importBudgetFile,
+    actualRowRef, importActuals, importBudgetFile, reconcileFile,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound,

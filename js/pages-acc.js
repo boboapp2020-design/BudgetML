@@ -644,6 +644,10 @@ const PagesAcc = (() => {
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
+      + card('🔍 ตรวจกระทบยอดกับไฟล์ (Reconciliation)', `
+          <p class="muted small">อัปโหลดไฟล์งบ (Excel/CSV) เพื่อ<b>เทียบกับงบปี ${year} ในระบบ</b> — ดูว่าตรง/ต่าง/ขาดแถวไหน (จับคู่ด้วย code a / IO / CCT+GL) โดย<b>ไม่แก้ไขข้อมูล</b></p>
+          <input type="file" id="reconFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
+          <span id="reconMsg" class="muted small" style="margin-left:10px"></span>`)
       + card('💾 สำรอง / กู้คืนข้อมูล (Backup)', `
           <div class="td-actions">
             <button class="primary-btn" id="backupBtn">⬇ ดาวน์โหลดสำรองทั้งหมด (JSON)</button>
@@ -872,6 +876,30 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
+    document.getElementById('reconFile')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const msg = document.getElementById('reconMsg'); msg.textContent = 'กำลังอ่านและกระทบยอด…';
+      try {
+        const grid = await fileToGrid(file);
+        const recs = gridToRecords(grid);
+        const r = Store.reconcileFile(UI.year(), recs);
+        const money = n => Math.round(n).toLocaleString();
+        const mtbl = r.mismatch.length ? `<div style="margin-top:10px"><b class="txt-warn">ตัวเลขต่างกัน (${r.mismatch.length})</b><div class="table-scroll" style="max-height:200px"><table class="data-table small"><thead><tr><th>แผนก</th><th>GL</th><th>CCT</th><th class="num">ในระบบ</th><th class="num">ในไฟล์</th><th class="num">ต่าง</th></tr></thead><tbody>${r.mismatch.slice(0, 100).map(m => `<tr><td class="small">${esc(m.dept)}</td><td><span class="gl-code">${m.gl}</span></td><td class="mono small">${m.cct}</td><td class="num">${money(m.app)}</td><td class="num">${money(m.file)}</td><td class="num" style="color:${m.diff >= 0 ? '#d03b3b' : '#0ca30c'}">${(m.diff >= 0 ? '+' : '') + money(m.diff)}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+        const fotbl = r.fileOnly.length ? `<div style="margin-top:10px"><b>มีในไฟล์ แต่ไม่มีในระบบ (${r.fileOnly.length})</b><div class="muted small">${r.fileOnly.slice(0, 20).map(x => esc(x.id)).join(' · ')}${r.fileOnly.length > 20 ? ' …' : ''}</div></div>` : '';
+        const aotbl = r.appOnly.length ? `<div style="margin-top:8px"><b>มีในระบบ แต่ไม่มีในไฟล์ (${r.appOnly.length})</b><div class="muted small">${r.appOnly.slice(0, 20).map(x => x.gl + '@' + x.cct).join(' · ')}${r.appOnly.length > 20 ? ' …' : ''}</div></div>` : '';
+        UI.modal(`🔍 ผลกระทบยอด — งบปี ${UI.year()} vs ไฟล์`, `
+          <div class="kpi-grid kpi-grid-4" style="margin-bottom:10px">
+            ${kpiC('✓', '#eaf6ea', 'kpi-tint-green', 'ตรงกัน', `${r.matched} <small>แถว</small>`, '')}
+            ${kpiC('≠', '#fff7e6', 'kpi-tint-amber', 'ตัวเลขต่าง', `${r.mismatch.length} <small>แถว</small>`, '')}
+            ${kpiC('📄', '#e6f0fb', 'kpi-tint-blue', 'ไฟล์เกิน', `${r.fileOnly.length} <small>แถว</small>`, 'ไม่มีในระบบ')}
+            ${kpiC('🗄️', '#fdecec', 'kpi-tint-red', 'ระบบเกิน', `${r.appOnly.length} <small>แถว</small>`, 'ไม่มีในไฟล์')}
+          </div>
+          <p>ยอดรวมไฟล์: <b>${money(r.fileTotal)}</b> กีบ · ยอดในระบบ (เฉพาะแถวจับคู่ได้): <b>${money(r.appMatchedTotal)}</b> กีบ · ผลต่าง: <b style="color:${Math.abs(r.fileTotal - r.appMatchedTotal) < 0.5 ? '#0ca30c' : '#d03b3b'}">${money(r.fileTotal - r.appMatchedTotal)}</b> กีบ</p>
+          ${mtbl}${fotbl}${aotbl}`, [{ label: 'ปิด', cls: 'primary-btn' }]);
+        msg.textContent = `ตรง ${r.matched} · ต่าง ${r.mismatch.length} · ไฟล์เกิน ${r.fileOnly.length} · ระบบเกิน ${r.appOnly.length}`;
+        document.getElementById('reconFile').value = '';
+      } catch (err) { msg.textContent = ''; toast('กระทบยอดไม่สำเร็จ: ' + err.message, 'err'); document.getElementById('reconFile').value = ''; }
+    });
     document.getElementById('backupBtn')?.addEventListener('click', () => {
       try { Store.exportBackup(); toast('ดาวน์โหลดไฟล์สำรองแล้ว ✓'); } catch (e) { toast(e.message, 'err'); }
     });
@@ -1000,7 +1028,8 @@ const PagesAcc = (() => {
         UI.modal('📤 นำเข้างบ Revise จากไฟล์', `
           <p>ไฟล์: <b>${esc(file.name)}</b></p>
           <p>พบ <b>${recs.length}</b> แถว · จับคู่เข้า GL ที่มีอยู่ <b>${willMatch}</b> แถว${recs.length - willMatch ? ` · เป็นแถวใหม่ ${recs.length - willMatch} แถว` : ''}</p>
-          <p class="muted small">${auto ? 'แถวใหม่จะถูก<b>สร้างแผนก/GL/CCT ให้อัตโนมัติ</b> แล้วเติมงบ' : 'แถวที่จับคู่ไม่ได้จะถูกข้าม (ติ๊ก "สร้างใหม่อัตโนมัติ" เพื่อให้นำเข้าครบ)'} · เติมงบ 12 เดือน แล้วซิงค์ขึ้นฐานข้อมูล</p>`, [
+          <p class="muted small">${auto ? 'แถวใหม่จะถูก<b>สร้างแผนก/GL/CCT ให้อัตโนมัติ</b> แล้วเติมงบ' : 'แถวที่จับคู่ไม่ได้จะถูกข้าม (ติ๊ก "สร้างใหม่อัตโนมัติ" เพื่อให้นำเข้าครบ)'} · เติมงบ 12 เดือน แล้วซิงค์ขึ้นฐานข้อมูล</p>
+          <p class="warn-text">⚠ การนำเข้าจะ<b>เขียนทับตัวเลขที่แผนกกรอก</b> — ระบบบันทึก audit log ว่าค่ามาจากไฟล์ (ผู้กรอกล่าสุด = "นำเข้าจากไฟล์ Revise")</p>`, [
           { label: 'ยกเลิก', cls: 'ghost-btn', onClick: close => { close(); document.getElementById('reviseFile').value = ''; msg.textContent = ''; } },
           { label: `📥 นำเข้า`, cls: 'primary-btn', onClick: close => {
               try {
