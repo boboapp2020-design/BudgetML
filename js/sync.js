@@ -128,7 +128,7 @@ const Sync = (() => {
     Store.setAfterSave(schedulePush);
     if (!enabled()) { setState('off'); return { adopted: false }; }
     // Supabase + RLS: ต้องยืนยันตัวตนก่อนถึง pull ได้ — ลองต่ออายุ session เดิม
-    if (backend() === 'supa' && !Supa.authed()) {
+    if (backend() === 'supa' && Supa.authRequired() && !Supa.authed()) {
       const ok = await Supa.refresh();
       if (!ok) { setState('off'); return { adopted: false, needLogin: !!Store.currentUser() }; }
     }

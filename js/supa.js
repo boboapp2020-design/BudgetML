@@ -11,6 +11,10 @@
  * ============================================================= */
 
 const Supa = (() => {
+  // ⚙ สวิตช์บังคับ login จริง (Supabase Auth) — ตั้ง false = ปิด login ชั่วคราว (ใช้ anon เหมือนเดิม)
+  //   เปิดกลับ: ตั้ง true แล้วรัน supabase/auth-setup.sql อีกครั้ง (users 73 คนยังอยู่ครบ)
+  const AUTH_REQUIRED = false;
+
   const URL_KEY = 'abp_supa_url', KEY_KEY = 'abp_supa_key';
   const CHUNK = 500;      // แถวต่อ 1 request upsert
   const PAGE = 1000;      // แถวต่อ 1 request fetch (PostgREST cap)
@@ -74,7 +78,7 @@ const Supa = (() => {
 
   /* ---------- HTTP ---------- */
   async function req(method, path, body, prefer) {
-    const bearer = token || key();               // มี JWT ผู้ใช้ → ใช้ก่อน (RLS ตามบทบาท) · ไม่มี → anon key
+    const bearer = (AUTH_REQUIRED && token) ? token : key();  // ปิด auth → ใช้ anon key เสมอ · เปิด → JWT ผู้ใช้ (RLS ตามบทบาท)
     const h = { apikey: key(), Authorization: 'Bearer ' + bearer };
     if (body) h['Content-Type'] = 'application/json';
     if (prefer) h['Prefer'] = prefer;
@@ -302,7 +306,7 @@ const Supa = (() => {
   }
 
   return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline,
-    signIn, signOut, refresh, authed, myProfile };
+    signIn, signOut, refresh, authed, myProfile, authRequired: () => AUTH_REQUIRED };
 })();
 
 window.Supa = Supa;

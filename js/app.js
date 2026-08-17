@@ -8,7 +8,7 @@ const App = (() => {
 
   // ---- Supabase Auth (login จริง) ----
   const EMAIL_DOMAIN = 'mitrphol.com';
-  const authOn = () => (typeof Supa !== 'undefined' && Supa.enabled());
+  const authOn = () => (typeof Supa !== 'undefined' && Supa.enabled() && Supa.authRequired());
   // แปลง username → อีเมล (ต้องตรงกับที่สร้างใน create-users.ps1)
   function emailFor(username) {
     const d = '@' + EMAIL_DOMAIN;
