@@ -296,6 +296,63 @@ const Store = (() => {
     return { matched, unmatched };
   }
 
+  // จับคู่แถวงบจากไฟล์เกิดจริง: ลำดับความสำคัญ IO → code a → CCT+GL
+  function actualRowRef({ io, codeA, cct, glCode }) {
+    const rows = db.departmentRows || [];
+    if (io) { const r = rows.find(x => x.io && x.io === io); if (r) return r; }
+    if (codeA) { const r = rows.find(x => x.codeA && x.codeA === codeA); if (r) return r; }
+    if (cct && glCode) { const r = rows.find(x => x.cct === cct && gl(x.glId)?.code === glCode); if (r) return r; }
+    return null;
+  }
+  // นำเข้าเกิดจริงจากไฟล์: records = [{io,codeA,cct,glCode, months:[..]}]
+  function importActuals(actor, year, records) {
+    assertAccounting(actor);
+    const rv = revisePhase(year);
+    if (!rv.on) throw new Error('ต้องเปิดรอบ Revise ก่อน');
+    let matched = 0; const unmatched = [];
+    records.forEach(rec => {
+      const ref = actualRowRef(rec);
+      if (!ref) { unmatched.push(rec.io || rec.codeA || ((rec.cct || '') + '/' + (rec.glCode || '')) || '?'); return; }
+      const key = ref.glId + '@' + ref.cct;
+      const mm = rec.months || [];
+      for (let mi = 0; mi < Math.min(rv.thru, mm.length); mi++) {
+        const v = mm[mi];
+        if (v !== null && v !== undefined && isFinite(v)) setActual(actor, year, ref.departmentId, key, mi, v);
+      }
+      matched++;
+    });
+    audit(actor, 'นำเข้าเกิดจริงจากไฟล์', { newValue: `ปี ${year}: ${matched} แถว` });
+    save();
+    return { matched, unmatched };
+  }
+
+  // นำเข้า "งบ Revise" จากไฟล์ Excel: ตั้งค่างบ 12 เดือน (+MTP) ให้แถวที่จับคู่ได้ (authoritative)
+  // records = [{io,codeA,cct,glCode, months:[12], mtp1, mtp2}]
+  function importBudgetFile(actor, year, records) {
+    assertAccounting(actor);
+    const y = Number(year);
+    let matched = 0, cells = 0; const unmatched = [];
+    records.forEach(rec => {
+      const ref = actualRowRef(rec);
+      if (!ref) { unmatched.push(rec.io || rec.codeA || ((rec.cct || '') + '/' + (rec.glCode || '')) || '?'); return; }
+      const row = ensureRow(y, ref.departmentId, ref.glId + '@' + ref.cct);
+      const mm = rec.months || [];
+      for (let mi = 0; mi < 12 && mi < mm.length; mi++) {
+        const v = mm[mi];
+        if (v === null || v === undefined || !isFinite(v)) continue;
+        row.months[mi] = v; cells++;
+      }
+      if (rec.mtp1 != null && isFinite(rec.mtp1)) row.mtp1 = rec.mtp1;
+      if (rec.mtp2 != null && isFinite(rec.mtp2)) row.mtp2 = rec.mtp2;
+      row.updatedAt = new Date().toISOString();
+      row.updatedBy = 'นำเข้าจากไฟล์ Revise';
+      matched++;
+    });
+    audit(actor, 'นำเข้างบ Revise จากไฟล์', { newValue: `ปี ${y}: ${matched} แถว · ${cells} ช่อง` });
+    save();
+    return { matched, unmatched, cells };
+  }
+
   /* ---------- เปรียบเทียบ + Anomaly (rule-based) ---------- */
   function compare(cur, prev) {
     const diff = cur - prev;
@@ -766,6 +823,7 @@ const Store = (() => {
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,
     revisePhase, snapshotFor, originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
+    actualRowRef, importActuals, importBudgetFile,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear,
     needRevision, lockPeriod, unlockPeriod, openPeriod,

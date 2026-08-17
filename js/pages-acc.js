@@ -890,6 +890,10 @@ const PagesAcc = (() => {
             <th class="sticky-col th-gl">GL / บัญชี</th>
             ${monthCols.map(mi => `<th class="num th-m">${Store.MONTH_S[mi]}<div class="th-yr">เกิดจริง ${year}</div></th>`).join('')}
             <th>ครบ</th></tr></thead><tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' })
+      + card('📤 อัปโหลดไฟล์งบ Revise (Excel / CSV) — จับคู่เข้า GL อัตโนมัติ', `
+          <p class="muted small">อัปโหลดไฟล์งบ Revise (โครงเดียวกับไฟล์งบต้นปี: <code>code a · IO · CCT · GL · 12 เดือน</code>) — ระบบจับคู่แต่ละแถวเข้า GL ด้วย code a → IO → CCT+GL แล้วเติมงบทั้ง 12 เดือนให้อัตโนมัติทุกหน่วยงานในไฟล์</p>
+          <input type="file" id="reviseFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
+          <span id="reviseFileMsg" class="muted small" style="margin-left:10px"></span>`)
       + card('📋 วางจาก Excel ทีเดียว (ทุกหน่วยงาน)', `
           <p class="muted small">รูปแบบต่อบรรทัด: <code>code a</code> ตามด้วยตัวเลขเดือน 1–${rv.thru} (คั่นด้วย Tab) — หรือ <code>CCT [Tab] รหัส GL</code> ตามด้วยตัวเลข</p>
           <textarea id="actPaste" rows="6" placeholder="8003310100635202a\t45000000\t120000000\t8000000\t65000000" style="font-family:monospace;font-size:12px"></textarea>
@@ -925,6 +929,97 @@ const PagesAcc = (() => {
         App.render();
       } catch (e) { toast(e.message, 'err'); }
     });
+    document.getElementById('reviseFile')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const msg = document.getElementById('reviseFileMsg');
+      msg.textContent = 'กำลังอ่านไฟล์…';
+      try {
+        const grid = await fileToGrid(file);
+        const recs = gridToRecords(grid);
+        if (!recs.length) throw new Error('ไม่พบแถวข้อมูลในไฟล์');
+        const willMatch = recs.filter(r => Store.actualRowRef(r)).length;
+        msg.textContent = `พบ ${recs.length} แถว · จับคู่เข้า GL ได้ ${willMatch} แถว`;
+        UI.modal('📤 นำเข้างบ Revise จากไฟล์', `
+          <p>ไฟล์: <b>${esc(file.name)}</b></p>
+          <p>พบ <b>${recs.length}</b> แถว · จับคู่เข้า GL ได้ <b>${willMatch}</b> แถว${recs.length - willMatch ? ` · จับคู่ไม่ได้ ${recs.length - willMatch} แถว` : ''}</p>
+          <p class="muted small">ระบบจะเติมงบ 12 เดือนให้ทุกแถวที่จับคู่ได้ (ตาม code a / IO / CCT+GL) แล้วซิงค์ขึ้นฐานข้อมูล</p>`, [
+          { label: 'ยกเลิก', cls: 'ghost-btn', onClick: close => { close(); document.getElementById('reviseFile').value = ''; msg.textContent = ''; } },
+          { label: `📥 นำเข้า ${willMatch} แถว`, cls: 'primary-btn', onClick: close => {
+              try {
+                const r = Store.importBudgetFile(user, year, recs);
+                toast(`นำเข้างบ Revise แล้ว ${r.matched} แถว · ${r.cells} ช่อง${r.unmatched.length ? ` · จับคู่ไม่ได้ ${r.unmatched.length}` : ''}`, r.unmatched.length ? 'err' : 'ok');
+                close(); App.render();
+              } catch (err) { toast(err.message, 'err'); }
+            } },
+        ]);
+      } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); document.getElementById('reviseFile').value = ''; }
+    });
+  }
+
+  /* ---------- ตัวอ่านไฟล์งบ Revise (Excel/CSV) ---------- */
+  function loadXLSX() {
+    return new Promise((res, rej) => {
+      if (window.XLSX) return res(window.XLSX);
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = () => res(window.XLSX);
+      s.onerror = () => rej(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ (ต้องต่ออินเทอร์เน็ต) — หรือบันทึกไฟล์เป็น .csv แล้วอัปโหลดแทน'));
+      document.head.appendChild(s);
+    });
+  }
+  function splitCSV(line, delim) {
+    const out = []; let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === delim) { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur); return out;
+  }
+  async function fileToGrid(file) {
+    const name = file.name.toLowerCase();
+    if (/\.(csv|tsv|txt)$/.test(name)) {
+      const text = await file.text();
+      const ti = text.indexOf('\t'), ci = text.indexOf(',');
+      const delim = (ti >= 0 && (ci < 0 || ti < ci)) ? '\t' : ',';
+      return text.replace(/\r/g, '').split('\n').map(l => splitCSV(l, delim));
+    }
+    const XLSX = await loadXLSX();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    let best = wb.SheetNames[0], bestN = -1;
+    wb.SheetNames.forEach(n => { const g = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '' }); if (g.length > bestN) { bestN = g.length; best = n; } });
+    return XLSX.utils.sheet_to_json(wb.Sheets[best], { header: 1, raw: true, defval: '' });
+  }
+  function gridToRecords(grid) {
+    let hi = -1;
+    for (let i = 0; i < Math.min(grid.length, 25); i++) {
+      const cells = grid[i].map(c => String(c).trim().toLowerCase());
+      if (cells.some(c => /code\s*a/.test(c)) || (cells.some(c => c.includes('gl')) && cells.some(c => c.includes('cct')))) { hi = i; break; }
+    }
+    if (hi < 0) throw new Error('ไม่พบหัวตาราง (ต้องมีคอลัมน์ code a / IO / CCT / GL)');
+    const H = grid[hi].map(c => String(c).trim());
+    const find = re => H.findIndex(c => re.test(c));
+    const idx = { codeA: find(/code\s*a/i), io: find(/IO/), cct: find(/CCT/i), gl: find(/รหัสบัญชี|\/GL|\bGL\b/), glName: find(/ชื่อบัญชี/) };
+    const totalCol = find(/งบประมาณ.*เดือน|12\s*เดือน|รวม.*ปี/i);
+    const mStart = idx.glName >= 0 ? idx.glName + 1 : (idx.gl >= 0 ? idx.gl + 2 : -1);
+    const monthCols = [];
+    if (mStart >= 0) for (let k = 0; k < 12; k++) monthCols.push(mStart + k);
+    const y1 = find(/2027/), y2 = find(/2028/);
+    const num = v => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/[, ]/g, '')); return isFinite(n) ? n : null; };
+    const recs = [];
+    for (let r = hi + 1; r < grid.length; r++) {
+      const row = grid[r]; if (!row) continue;
+      const glc = idx.gl >= 0 ? String(row[idx.gl] || '').trim() : '';
+      const codeA = idx.codeA >= 0 ? String(row[idx.codeA] || '').trim() : '';
+      const io = idx.io >= 0 ? String(row[idx.io] || '').trim() : '';
+      const cct = idx.cct >= 0 ? String(row[idx.cct] || '').trim() : '';
+      if (!/^\d{6,7}$/.test(glc) && !codeA && !io) continue;
+      recs.push({ codeA, io, cct, glCode: glc, months: monthCols.map(ci => num(row[ci])),
+        mtp1: y1 >= 0 ? num(row[y1]) : null, mtp2: y2 >= 0 ? num(row[y2]) : null });
+    }
+    return recs;
   }
 
   /* ============ Audit Log ============ */
