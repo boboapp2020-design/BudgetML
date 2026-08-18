@@ -943,28 +943,33 @@ const Store = (() => {
       glName: (f.glName || '').trim(), unitName: (f.unitName || '').trim(),
       deptName: (f.deptName || '').trim(), deptCode: (f.deptCode || '').trim(),
     };
-    if (!g.gl || !g.cct || !g.deptCode) throw new Error('ต้องกรอกอย่างน้อย: GL, CCT และ รหัสแผนก');
-    const glId = 'g' + g.gl, deptId = 'd' + g.deptCode;
-    if (db.departmentRows.some(x => x.departmentId === deptId && x.glId === glId && x.cct === g.cct))
-      throw new Error(`แถวนี้มีอยู่แล้ว (แผนก ${g.deptCode} · GL ${g.gl} · CCT ${g.cct})`);
-    // GL master
-    if (!gl(glId)) db.glAccounts.push({ id: glId, code: g.gl, name: g.glName || g.gl, glGroup: 'อื่นๆ', glGroupSap: '', glType: '', ioGroup: 'ไม่คุม', active: true });
+    if (!g.gl) throw new Error('ต้องกรอกอย่างน้อย: รหัส GL');
+    if ((g.cct && !g.deptCode) || (!g.cct && g.deptCode))
+      throw new Error('ถ้าจะมอบหมายเลย ต้องกรอกทั้ง CCT และ รหัสแผนก (หรือเว้นทั้งคู่ = เพิ่มเข้าทะเบียน GL เฉยๆ)');
+    const glId = 'g' + g.gl;
+    // 1) เพิ่มเข้าทะเบียน GL Master เสมอ (ถ้ายังไม่มี)
+    const isNewGL = !gl(glId);
+    if (isNewGL) db.glAccounts.push({ id: glId, code: g.gl, name: g.glName || g.gl, glGroup: 'อื่นๆ', glGroupSap: '', glType: '', ioGroup: 'ไม่คุม', active: true });
     else if (g.glName) gl(glId).name = g.glName;
-    // แผนก (F)
-    if (!dept(deptId)) db.departments.push({ id: deptId, code: g.deptCode, name: g.deptName || g.deptCode, nameEn: '', active: true });
-    // หน่วยงาน (CCT)
-    if (!(db.cctMaster || []).some(c => c.code === g.cct)) db.cctMaster.push({ code: g.cct, name: g.unitName || g.cct, departmentId: deptId });
-    // แถว + GL distinct
-    db.departmentRows.push({ departmentId: deptId, cct: g.cct, glId, io: g.io, codeA: g.codeA });
-    if (!db.departmentGL.some(x => x.departmentId === deptId && x.glId === glId)) db.departmentGL.push({ departmentId: deptId, glId });
-    // budget ว่าง (ปีปัจจุบัน + ปีก่อน) — ค่าจะซิงค์ขึ้น Supabase
-    [db.meta.yearCurrent, db.meta.yearPrevious].forEach(y => {
-      if (y && !db.budgets.some(b => b.year === y && b.departmentId === deptId && b.glId === glId && b.cct === g.cct))
-        db.budgets.push({ year: y, departmentId: deptId, glId, cct: g.cct, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: actor.name });
-    });
-    audit(actor, 'เพิ่มแถวงบ (GL)', { deptId, glCode: g.gl, newValue: `CCT ${g.cct} · ${g.glName || ''}` });
+    // 2) ถ้าระบุ CCT + รหัสแผนก → มอบหมายเป็นแถวงบด้วย
+    let assigned = false, deptId = null;
+    if (g.cct && g.deptCode) {
+      deptId = 'd' + g.deptCode;
+      if (db.departmentRows.some(x => x.departmentId === deptId && x.glId === glId && x.cct === g.cct))
+        throw new Error(`แถวนี้มีอยู่แล้ว (แผนก ${g.deptCode} · GL ${g.gl} · CCT ${g.cct})`);
+      if (!dept(deptId)) db.departments.push({ id: deptId, code: g.deptCode, name: g.deptName || g.deptCode, nameEn: '', active: true });
+      if (!(db.cctMaster || []).some(c => c.code === g.cct)) db.cctMaster.push({ code: g.cct, name: g.unitName || g.cct, departmentId: deptId });
+      db.departmentRows.push({ departmentId: deptId, cct: g.cct, glId, io: g.io, codeA: g.codeA });
+      if (!db.departmentGL.some(x => x.departmentId === deptId && x.glId === glId)) db.departmentGL.push({ departmentId: deptId, glId });
+      [db.meta.yearCurrent, db.meta.yearPrevious].forEach(y => {
+        if (y && !db.budgets.some(b => b.year === y && b.departmentId === deptId && b.glId === glId && b.cct === g.cct))
+          db.budgets.push({ year: y, departmentId: deptId, glId, cct: g.cct, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: actor.name });
+      });
+      assigned = true;
+    }
+    audit(actor, assigned ? 'เพิ่ม GL + มอบหมาย' : 'เพิ่ม GL (ทะเบียน)', { deptId, glCode: g.gl, newValue: assigned ? `CCT ${g.cct} → แผนก ${g.deptCode}` : (g.glName || '') });
     save();
-    return { deptId, glId, cct: g.cct };
+    return { glId, isNewGL, assigned, deptId };
   }
   function unassignGL(actor, deptId, glId) {
     assertAccounting(actor);
