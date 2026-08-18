@@ -786,6 +786,7 @@ const Store = (() => {
     const p = period(year);
     if (!p) throw new Error('ไม่พบรอบงบประมาณ');
     p.status = 'OPEN'; p.lockedAt = null; p.lockedBy = null;
+    delete p.phase; delete p.actualThru;   // ออกจากโหมด Revise/Landing ด้วย — กลับสู่รอบเปิดปกติ (เทียบปีก่อน)
     // เปิดให้ทุกหน่วยงานกลับมาแก้ไขได้ (LOCKED/SUBMITTED/ENDORSED → กำลังจัดทำ) แล้วส่งใหม่
     activeDepartments().forEach(d => {
       const s = deptState(year, d.id);

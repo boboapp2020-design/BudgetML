@@ -355,7 +355,7 @@ const PagesUser = (() => {
       pBtn.classList.toggle('btn-purple', on);
       pBtn.textContent = on ? '🔀 ปีก่อน: เปิด' : '🔀 ปีก่อน';
     };
-    applyPrevMode(localStorage.getItem(SHOW_PREV_KEY) === '1');
+    applyPrevMode(localStorage.getItem(SHOW_PREV_KEY) !== '0');   // default = เปิด (เห็นเทียบปีก่อนทุกช่อง) — กดปุ่มเพื่อซ่อนได้
     pBtn?.addEventListener('click', () => {
       const on = !(localStorage.getItem(SHOW_PREV_KEY) === '1');
       localStorage.setItem(SHOW_PREV_KEY, on ? '1' : '0');
