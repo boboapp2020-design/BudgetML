@@ -1,40 +1,52 @@
 /* =============================================================
- * seed.js — ข้อมูลตั้งต้นของระบบ (schema v9: ทั้งบริษัท 62 แผนก)
+ * seed.js — ข้อมูลตั้งต้นของระบบ (schema v11)
  *
- * แหล่งข้อมูล: ML_งบค่าใช้จ่ายต้นปี_2026-แจ้งหน่วยงาน.xlsx (ผ่าน SEED_DATA)
- *  - งบปี 2026 = งบอนุมัติจริงทั้งบริษัท 1,812 แถว CCT × GL (checksum ตรงไฟล์ 100%)
- *  - ทุกแผนกอยู่สถานะ LOCKED และรอบปี 2026 ปิดแล้ว (ตามจริง: แจ้งหน่วยงานแล้ว)
- *    → ขั้นถัดไปของระบบคือ "เปิดรอบ Revise กลางปี" จาก Budget Control
- *  - งบปี 2025 รายเดือนจริง เฉพาะฝ่ายสนับสนุน 17 หน่วยเดิม (ผูกผ่านรหัส CCT)
- *  - สมมติฐาน / สาเหตุเพิ่ม-ลด / MTP 2027-2028 มาจากไฟล์จริง
- *  - rowKey ของแถว = glId + '@' + cct  เช่น "g635100@8003303000"
+ * แหล่งข้อมูล: ตัวอย่างการทำงบค่าใช้จ่าย.xlsx (งบต้นปี 2026 ทั้งบริษัท @680)
+ *  ผ่าน SEED_DATA (js/seed-data.js — auto-generated, checksum 1,444,780,372,591)
+ *
+ * โมเดลใหม่ (จำแนกตามไฟล์จริง):
+ *  - "department" ของแอป = หน่วยงาน (คอลัมน์ D) = leaf ที่ล็อกอินเข้ามากรอกงบ (152 บัญชี)
+ *    · ล็อกอินด้วยรหัส CCT (คอลัมน์ C)  · 1 หน่วยงานอาจมีหลาย CCT (ชื่อเดียวกันรวมเป็นบัญชีเดียว)
+ *  - ผังกำกับดูแล (Oversight) เหนือขึ้นไป: บริษัท → ด้าน(CR) → ฝ่าย(CP) → แผนก(F) → [หน่วยงาน]
+ *  - งบปี 2026 = งบต้นปีอนุมัติจริง (LOCKED) · ปีก่อน 2025 = ฐานว่าง (ไฟล์นี้ไม่มี 2025)
+ *  - rowKey ของแถว = glId + '@' + cct
  * ============================================================= */
 
 const SEED = (() => {
-  const Y_PREV = 2025;  // ปีก่อน (ข้อมูลจริงเฉพาะฝ่ายสนับสนุน, ล็อกแล้ว)
-  const Y_CUR  = 2026;  // ปีงบอนุมัติปัจจุบัน (ล็อกแล้ว รอรอบ Revise)
+  const Y_PREV = 2025;  // ปีก่อน (ไม่มีข้อมูลในไฟล์นี้ → ฐานว่าง)
+  const Y_CUR  = 2026;  // ปีงบอนุมัติปัจจุบัน (งบต้นปี 2026, ล็อกแล้ว รอรอบ Revise)
+  const U = SEED_DATA.units;
+  const COMPANY = 'บริษัท น้ำตาลมิตรลาว จำกัด';
 
-  const departments = SEED_DATA.departments.map(d => ({
-    id: d.id, code: d.code, name: d.name, nameEn: '',
-    side: d.side, // '1'=สนับสนุน '2'=อ้อย '3'=โรงงาน '4'=บริหารสำนักงาน
-    active: true,
+  // ---------- app department = หน่วยงาน (หน่วยกรอกจริง) ----------
+  const departments = U.map(u => ({
+    id: u.id, code: u.code, name: u.name, nameEn: '',
+    side: u.side, active: true,
+    // บริบทลำดับชั้น (ใช้แสดงผล/จัดกลุ่ม) — แผนก(F) / ฝ่าย(CP) / ด้าน(CR)
+    deptCode: u.deptCode, deptName: u.deptName, div: u.div, area: u.area,
+    ccts: u.ccts,
   }));
 
+  // ---------- GL master (173 บัญชี + Type + Group PPT/Sap) ----------
   const glAccounts = SEED_DATA.glMaster.map(g => ({
-    id: 'g' + g.code, code: g.code, name: g.name, glGroup: g.group || 'อื่นๆ',
-    ioGroup: g.ioGroup || 'ไม่คุม', // รหัสกลุ่ม IO 2 หลัก หรือ 'ไม่คุม' (จากชีท ML&SF_รหัสควบคุมงบ)
+    id: 'g' + g.code, code: g.code, name: g.name,
+    glGroup: g.group || 'อื่นๆ',      // Group GL PPT
+    glGroupSap: g.grpSap || '',        // Group Sap
+    glType: g.type || '',              // Type (VC-Exp / FC / SAL / ...)
+    ioGroup: 'ไม่คุม',
     active: true,
   }));
 
-  // หน่วยงานย่อย (Cost Center) ทั้งบริษัท
-  const cctMaster = SEED_DATA.cctMaster.map(c => ({ code: c.code, name: c.name, departmentId: c.deptId }));
+  // ---------- หน่วยงานย่อย (Cost Center) — mapping CCT → หน่วยงาน ----------
+  const cctMaster = [];
+  U.forEach(u => u.ccts.forEach(c => cctMaster.push({ code: c, name: u.name, departmentId: u.id })));
 
-  // การมอบหมายระดับแถว: CCT × GL (+ IO / code a) — หน่วยกรอกจริง
+  // ---------- การมอบหมายระดับแถว: CCT × GL (+ IO / code a) ----------
   const departmentRows = [];
-  SEED_DATA.departments.forEach(d => d.rows.forEach(r =>
-    departmentRows.push({ departmentId: d.id, cct: r.cct, glId: 'g' + r.gl, io: r.io || '', codeA: r.codeA || '' })));
+  U.forEach(u => u.rows.forEach(r =>
+    departmentRows.push({ departmentId: u.id, cct: r.cct, glId: 'g' + r.gl, io: r.io || '', codeA: r.codeA || '' })));
 
-  // มุมมองระดับ GL (distinct) — สำหรับ dashboard/วิเคราะห์
+  // ---------- มุมมองระดับ GL (distinct) ----------
   const departmentGL = [];
   const seenDG = new Set();
   departmentRows.forEach(x => {
@@ -42,79 +54,78 @@ const SEED = (() => {
     if (!seenDG.has(k)) { seenDG.add(k); departmentGL.push({ departmentId: x.departmentId, glId: x.glId }); }
   });
 
-  /* ---------- ผังกำกับดูแล (Oversight tree) — หลายชั้น ให้ผู้บริหารดู rollup ----------
-   * แต่ละหน่วย: { id, name, parent, deptCodes[], budget }
-   *  - deptCodes = แผนกที่มีงบ "ใต้ตรง" หน่วยนี้ (rollup รวม subtree ทั้งหมด)
-   *  - parent = อยู่ใต้หน่วยกำกับดูแลใด (null = ระดับบนสุดของด้าน)
-   *  - budget:false = หน่วยกำกับดูแลไม่มีงบของตัวเอง (เช่น ศูนย์ประกันคุณภาพ)
-   * ⚠ แก้ผังทั้งหมดที่นี่ที่เดียว ทุกอย่าง (login/ผู้จัดการ/dashboard) ปรับตาม */
-  const OVERSIGHT = [
-    // ── สายกรรมการผู้จัดการ ──
-    { id: 'md',    name: 'กจ. บจ.น้ำตาลมิตรลาว', parent: null, deptCodes: ['1111'] },
-    { id: 'qa',    name: 'ศูนย์ประกันคุณภาพ', parent: 'md', budget: false, deptCodes: ['1131', '1132', '1133'] },
-    // ── ด้านอ้อย ──
-    { id: 'cane', name: 'ด้านอ้อย', parent: 'md', deptCodes: ['2211', '2711', '2712', '2713', '1122', '2111', '2122', '2223', '2271', '2511', '2512', '2513', '2514', '2611', '2714'] },
-    { id: 'canecommunity', name: 'ไร่ชุมชน (ส่งเสริมอ้อย)', parent: 'cane', deptCodes: ['2400', '2411', '2422', '2433', '2444', '2455', '2466', '2477', '2488', '2499'] },
-    { id: 'canecompany', name: 'ไร่บริษัท', parent: 'cane', deptCodes: ['2311', '2322', '2333', '2344', '2366'] },
-    // ── ด้านโรงงาน ──
-    { id: 'prod',  name: 'ฝ่ายผลิต', parent: 'md', deptCodes: ['3221', '3222', '3223', '3224', '3311', '3312', '3313', '3315', '3314', '3411'] },
-    { id: 'factdir', name: 'สำนักผู้จัดการโรงงาน', parent: 'prod', deptCodes: ['3111', '3122'] },
-    // ── ด้านบริหารสำนักงาน ──
-    { id: 'adminoffice', name: 'ด้านบริหารสำนักงาน', parent: 'md', deptCodes: ['1171', '4471', '3371', '1144', '1143', '1145', '1227', '1142', '1141', '1155', '1146', '1172', '1181'] },
-    { id: 'acct', name: 'ฝ่ายบัญชีและการเงิน', parent: 'adminoffice', deptCodes: ['1194', '1161', '1162', '1164'] },
-  ];
-  // ผู้ดูแล/ผู้จัดการ 1 คน/หน่วยกำกับดูแล — เห็น rollup เฉพาะ subtree ของตน
+  /* ---------- ผังกำกับดูแล (Oversight tree) — สร้างอัตโนมัติจากไฟล์จริง ----------
+   * บริษัท(co) → ด้าน(area) → ฝ่าย(div) → แผนก(deptf, leaf: deptCodes = รหัสหน่วยงานใต้แผนก)
+   * โครงสร้าง node: { id, name, parent, deptCodes?[], budget? }  (Store helpers ใช้รูปแบบนี้)
+   */
+  const OVERSIGHT = [];
+  OVERSIGHT.push({ id: 'co', name: COMPANY, parent: null });
+
+  // ด้าน (area) — parent = บริษัท
+  const areaId = {}; // area name → node id
+  SEED_DATA.areas.forEach(a => {
+    const id = 'area_' + a.side;
+    areaId[a.name] = id;
+    OVERSIGHT.push({ id, name: a.name, parent: 'co' });
+  });
+
+  // ฝ่าย (div) — key ด้วย area+div (ชื่อฝ่ายซ้ำข้ามด้านได้) — parent = ด้าน
+  const divId = {}; // (area '~' div) → node id
+  let dvi = 0;
+  SEED_DATA.divisions.forEach(d => {
+    const key = d.area + '~' + d.name;
+    if (divId[key]) return;
+    const id = 'div_' + (++dvi);
+    divId[key] = id;
+    OVERSIGHT.push({ id, name: d.name, parent: areaId[d.area] || 'co' });
+  });
+
+  // แผนก (dept F) — parent = ฝ่าย · deptCodes = รหัสหน่วยงาน (unit.code) ที่สังกัดแผนกนี้
+  SEED_DATA.depts.forEach(dp => {
+    const codes = U.filter(u => u.deptCode === dp.code).map(u => u.code);
+    OVERSIGHT.push({
+      id: 'deptf_' + dp.code,
+      name: dp.name + ' (' + dp.code + ')',
+      parent: divId[dp.area + '~' + dp.div] || areaId[dp.area] || 'co',
+      deptCodes: codes,
+    });
+  });
+
+  // ผู้จัดการ/ผู้ดูแล 1 คน/หน่วยกำกับดูแลทุกระดับ — เห็น rollup เฉพาะ subtree ของตน
   const managers = OVERSIGHT.map(u => ({
     id: 'mgr_' + u.id, username: 'MGR:' + u.id, password: '1234',
     name: u.name, role: 'MANAGER', departmentId: null, orgUnit: u.id,
   }));
 
+  // ---------- ผู้ใช้ ----------
   const users = [
     { id: 'u2', username: 'accounting', password: '1234', name: 'แผนกบัญชี (Admin)', role: 'ACCOUNTING', departmentId: null },
     ...managers,
-    ...SEED_DATA.departments.map(d => ({
-      id: 'u_' + d.id, username: d.code, password: '1234',
-      name: 'ผู้ใช้งาน ' + d.name, role: 'USER', departmentId: d.id,
+    ...U.map(u => ({
+      id: 'user_' + u.id, username: u.code, password: '1234',
+      name: u.name, role: 'USER', departmentId: u.id,
     })),
   ];
 
+  // ---------- รอบงบประมาณ ----------
   const budgetPeriods = [
-    { year: Y_PREV, status: 'CLOSED', openedAt: '2024-08-15T08:00:00', lockedAt: '2024-10-20T17:00:00', lockedBy: 'แผนกบัญชี (Admin)' },
-    // ปี 2026: งบอนุมัติแจ้งหน่วยงานแล้ว → ปิดรอบตั้งงบ รอเปิดรอบ Revise กลางปี
+    { year: Y_PREV, status: 'CLOSED', openedAt: '2024-08-15T08:00:00', lockedAt: '2024-10-20T17:00:00', lockedBy: COMPANY },
     { year: Y_CUR,  status: 'CLOSED', openedAt: '2025-08-20T08:00:00', lockedAt: '2025-11-28T17:00:00', lockedBy: 'แผนกบัญชี (Admin)' },
   ];
 
+  // ---------- งบปี 2026 อนุมัติจริง ทั้งบริษัท (LOCKED) ----------
   const budgets = [];
   const glNotes = [];
   const deptStatus = [];
-
-  // ---------- งบปี 2025 รายเดือนจริง (ฝ่ายสนับสนุน — ผูกผ่าน CCT) ----------
-  SEED_DATA.budgets2025.forEach(b => {
-    budgets.push({
-      year: Y_PREV, departmentId: b.deptId, glId: 'g' + b.gl, cct: b.cct,
-      months: b.m.map(Number), mtp1: null, mtp2: null,
-      updatedAt: '2024-09-20T10:00:00', updatedBy: 'ข้อมูลจากไฟล์ ML_Form 2026',
-    });
-  });
-
-  // ---------- งบปี 2026 อนุมัติจริง ทั้งบริษัท (LOCKED) ----------
-  SEED_DATA.departments.forEach(d => {
-    d.rows.forEach(r => {
+  U.forEach(u => {
+    u.rows.forEach(r => {
       budgets.push({
-        year: Y_CUR, departmentId: d.id, glId: 'g' + r.gl, cct: r.cct,
-        months: r.m.map(Number),
-        mtp1: (typeof r.y1 === 'number') ? r.y1 : null,  // MTP ปี 2027 จากไฟล์
-        mtp2: (typeof r.y2 === 'number') ? r.y2 : null,  // MTP ปี 2028 จากไฟล์
-        updatedAt: '2025-11-25T16:00:00', updatedBy: 'ไฟล์งบอนุมัติ 2026 (แจ้งหน่วยงาน)',
+        year: Y_CUR, departmentId: u.id, glId: 'g' + r.gl, cct: r.cct,
+        months: r.m.map(Number), mtp1: null, mtp2: null,
+        updatedAt: '2025-11-25T16:00:00', updatedBy: 'ไฟล์งบต้นปี 2026',
       });
-      // สมมติฐาน / สาเหตุเพิ่ม-ลด จากไฟล์จริง
-      if (r.a || r.rs) {
-        glNotes.push({ year: Y_CUR, departmentId: d.id, rowKey: 'g' + r.gl + '@' + r.cct,
-          reason: r.rs || '', assumption: r.a || '' });
-      }
     });
-    deptStatus.push({ year: Y_PREV, departmentId: d.id, status: 'LOCKED', submittedAt: '2024-09-22T16:40:00', revisionNote: null });
-    deptStatus.push({ year: Y_CUR, departmentId: d.id, status: 'LOCKED', submittedAt: '2025-11-20T16:40:00', revisionNote: null });
+    deptStatus.push({ year: Y_CUR, departmentId: u.id, status: 'LOCKED', submittedAt: '2025-11-20T16:40:00', revisionNote: null });
   });
 
   const cellDetails = [];
@@ -125,31 +136,29 @@ const SEED = (() => {
     { year: Y_CUR, currency: 'CNY', rateToLAK: 3060 },
     { year: Y_CUR, currency: 'EUR', rateToLAK: 25976 },
   ];
-
   const fuelPrices = [
     { year: Y_CUR, fuelType: 'ดีเซล',  pricePerLiter: 19210 },
     { year: Y_CUR, fuelType: 'เบนซิน', pricePerLiter: 23520 },
   ];
 
   const auditLogs = [];
-
   const notifications = [
     { id: 'n1', ts: '2025-11-28T17:00:00', targetDeptId: null, targetRole: 'ACCOUNTING',
-      message: 'งบประมาณปี 2026 ทั้งบริษัท (62 แผนก) อนุมัติและปิดรอบแล้ว · ขั้นถัดไป: เปิดรอบ Revise กลางปีที่ Budget Control', read: false },
+      message: 'งบประมาณปี 2026 ทั้งบริษัท (' + U.length + ' หน่วยงาน) อนุมัติและปิดรอบแล้ว · ขั้นถัดไป: เปิดรอบ Revise กลางปีที่ Budget Control', read: false },
   ];
 
   return {
     meta: {
-      schemaVersion: 10, seededAt: null, appName: 'Annual Budget Planner',
-      company: 'บริษัท น้ำตาลมิตรลาว จำกัด', currency: 'LAK',
+      schemaVersion: 11, seededAt: null, appName: 'Annual Budget Planner',
+      company: COMPANY, currency: 'LAK',
       yearCurrent: Y_CUR, yearPrevious: Y_PREV,
-      sides: SEED_DATA.sides, // ชื่อด้าน: {'1':'ด้านสนับสนุน',...}
+      sides: SEED_DATA.sides,
     },
-    oversight: OVERSIGHT, // ผังกำกับดูแล (static config ฝั่ง client ไม่ซิงค์)
+    oversight: OVERSIGHT,
     users, departments, glAccounts, cctMaster, departmentRows, departmentGL,
     budgetPeriods, budgets, glNotes, deptStatus, cellDetails,
-    budgetSnapshots: [], // งบเดิม (ORIGINAL) ถูก freeze ตอนเปิดรอบ Revise
-    actuals: [],         // ตัวเลขเกิดจริงรายเดือน (บัญชีเป็นผู้ใส่)
+    budgetSnapshots: [],
+    actuals: [],
     exchangeRates, fuelPrices, auditLogs, notifications,
   };
 })();

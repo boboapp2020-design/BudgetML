@@ -25,11 +25,25 @@ const Store = (() => {
     }
     reconcileConfig();
   }
-  // รายชื่อผู้ใช้ + ฝ่าย = config ฝั่ง client (static ไม่ซิงค์) → รีเฟรชจาก SEED เสมอ
-  // ให้ผู้จัดการฝ่าย/ผู้ใช้ใหม่โผล่โดยไม่ต้อง reseed (ไม่แตะข้อมูลงบ)
+  // โครงสร้าง/master = config ฝั่ง client (มาจากโค้ด SEED ไม่ใช่ Supabase) → รีเฟรชจาก SEED เสมอ
+  //  ทำให้ผู้ใช้/ผัง/หน่วยงาน/GL(+Type,ฝ่าย,ด้าน) ครบเสมอ แม้ Supabase เก็บแค่คอลัมน์พื้นฐาน
+  //  Supabase = แหล่งของ "ตัวเลข" เท่านั้น (budgets/status/snapshots/actuals/notes) — ไม่แตะที่นี่
   function reconcileConfig() {
     if (!db) return;
-    db.users = JSON.parse(JSON.stringify(SEED.users));
+    const clone = x => JSON.parse(JSON.stringify(x));
+    db.users = clone(SEED.users);
+    db.departments = clone(SEED.departments);
+    db.glAccounts = clone(SEED.glAccounts);
+    db.cctMaster = clone(SEED.cctMaster);
+    db.departmentRows = clone(SEED.departmentRows);
+    db.departmentGL = clone(SEED.departmentGL);
+    db.oversight = clone(SEED.oversight);
+    if (db.meta) {
+      db.meta.sides = clone(SEED.meta.sides);
+      db.meta.company = SEED.meta.company;   // ป้ายชื่อบริษัท/แอป = static จากโค้ด (Supabase ไม่ต้องเก็บ Thai ให้ถูก)
+      db.meta.currency = SEED.meta.currency;
+      db.meta.appName = SEED.meta.appName;
+    }
   }
   let afterSave = null; // hook สำหรับ Sync (ตั้งค่าโดย sync.js)
   function setAfterSave(fn) { afterSave = fn; }
