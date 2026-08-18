@@ -775,11 +775,12 @@ const Store = (() => {
     const p = period(year);
     if (!p) throw new Error('ไม่พบรอบงบประมาณ');
     p.status = 'OPEN'; p.lockedAt = null; p.lockedBy = null;
+    // เปิดให้ทุกหน่วยงานกลับมาแก้ไขได้ (LOCKED/SUBMITTED/ENDORSED → กำลังจัดทำ) แล้วส่งใหม่
     activeDepartments().forEach(d => {
       const s = deptState(year, d.id);
-      if (s.status === 'LOCKED') setStatusInternal(year, d.id, 'SUBMITTED');
+      if (['LOCKED', 'SUBMITTED', 'ENDORSED'].includes(s.status)) setStatusInternal(year, d.id, 'IN_PROGRESS', { submittedAt: null });
     });
-    audit(actor, 'Unlock รอบงบประมาณ (สิทธิ์พิเศษ)', { newValue: `ปี ${year}` });
+    audit(actor, 'Unlock รอบงบประมาณ (สิทธิ์พิเศษ)', { newValue: `ปี ${year} — เปิดให้หน่วยงานแก้ไขได้` });
     save();
   }
   function openPeriod(actor, year) {

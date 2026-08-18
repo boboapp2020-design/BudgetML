@@ -740,7 +740,7 @@ const PagesAcc = (() => {
     document.querySelectorAll('[data-unlock]').forEach(b => b.addEventListener('click', () => {
       const y = b.dataset.unlock;
       UI.modal(`🔓 Unlock รอบงบประมาณปี ${y} (สิทธิ์พิเศษ)`, `
-        <p class="warn-text">⚠ การ Unlock จะเปิดให้หน่วยงานแก้ไขข้อมูลได้อีกครั้ง และถูกบันทึกใน Audit Log</p>
+        <p class="warn-text">⚠ การ Unlock จะเปิดรอบใหม่ และตั้งสถานะทุกหน่วยงานกลับเป็น "กำลังจัดทำ" (แก้ไขได้ + ต้องส่งใหม่) · บันทึกใน Audit Log</p>
         <p>พิมพ์ <b>UNLOCK</b> เพื่อยืนยัน:</p><input id="unlockConfirm" placeholder="UNLOCK">`, [
         { label: 'ยกเลิก', cls: 'ghost-btn' },
         { label: 'ยืนยัน Unlock', cls: 'danger-btn', onClick: close => {
