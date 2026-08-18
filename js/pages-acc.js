@@ -973,6 +973,9 @@ const PagesAcc = (() => {
           <label class="muted small" style="display:block;margin-top:8px"><input type="checkbox" id="reviseAuto" checked style="vertical-align:-2px"> สร้างแผนก / GL / CCT ใหม่อัตโนมัติ ถ้ายังไม่มีในระบบ (จะได้ 0 แถวจับคู่ไม่ได้)</label>`)
       + card('📋 วางจาก Excel ทีเดียว (ทุกหน่วยงาน)', `
           <p class="muted small">รูปแบบต่อบรรทัด: <code>code a</code> ตามด้วยตัวเลขเดือน 1–${rv.thru} (คั่นด้วย Tab) — หรือ <code>CCT [Tab] รหัส GL</code> ตามด้วยตัวเลข</p>
+          <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--border)"><b class="small">📤 อัปโหลดไฟล์เกิดจริง (Excel / CSV):</b>
+            <input type="file" id="actFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit;vertical-align:middle"> <span id="actFileMsg" class="muted small"></span></div>
+          <p class="muted small">— หรือคัดลอกจาก Excel มาวางด้านล่าง —</p>
           <textarea id="actPaste" rows="6" placeholder="8003310100635202a\t45000000\t120000000\t8000000\t65000000" style="font-family:monospace;font-size:12px"></textarea>
           <button class="primary-btn" id="actPasteBtn" style="margin-top:8px">📥 นำเข้าเกิดจริง</button>`);
   }
@@ -1005,6 +1008,19 @@ const PagesAcc = (() => {
           r.unmatched.length ? 'err' : 'ok');
         App.render();
       } catch (e) { toast(e.message, 'err'); }
+    });
+    document.getElementById('actFile')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const msg = document.getElementById('actFileMsg');
+      msg.textContent = 'กำลังอ่านไฟล์…';
+      try {
+        const grid = await fileToGrid(file);                       // รองรับ .xlsx/.xls/.csv/.tsv/.txt
+        const text = grid.map(row => row.join('\t')).join('\n');    // → รูปแบบเดียวกับ paste
+        const r = Store.pasteActuals(user, year, text);
+        msg.textContent = '';
+        toast(`นำเข้าเกิดจริงจากไฟล์ ${r.matched} แถว${r.unmatched.length ? ` · จับคู่ไม่ได้ ${r.unmatched.length}` : ''}`, r.unmatched.length ? 'err' : 'ok');
+        App.render();
+      } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); e.target.value = ''; }
     });
     document.getElementById('reviseFile')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
@@ -1043,11 +1059,17 @@ const PagesAcc = (() => {
   function loadXLSX() {
     return new Promise((res, rej) => {
       if (window.XLSX) return res(window.XLSX);
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload = () => res(window.XLSX);
-      s.onerror = () => rej(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ (ต้องต่ออินเทอร์เน็ต) — หรือบันทึกไฟล์เป็น .csv แล้วอัปโหลดแทน'));
-      document.head.appendChild(s);
+      const tryLoad = (src, onFail) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => res(window.XLSX);
+        s.onerror = onFail;
+        document.head.appendChild(s);
+      };
+      // โหลดตัวอ่านในเครื่องก่อน (self-contained ใช้ได้แม้ไม่มีเน็ต) → ถ้าไม่มีค่อย fallback CDN
+      tryLoad('js/vendor/xlsx.full.min.js?v=8.1', () =>
+        tryLoad('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+          () => rej(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ — ลองบันทึกไฟล์เป็น .csv แล้วอัปโหลดแทน'))));
     });
   }
   function splitCSV(line, delim) {
