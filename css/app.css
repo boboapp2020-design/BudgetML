@@ -1124,3 +1124,12 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .uc-table tr.uc-row td.uc-item{padding-left:26px;color:#42526b}
 .uc-vol{font:inherit;font-size:13px;text-align:right;width:130px;padding:6px 8px;border:1px solid #d7deea;border-radius:8px}
 .uc-vol:focus{outline:none;border-color:#2b5cf0;box-shadow:0 0 0 3px rgba(43,92,240,.12)}
+
+/* ===== FP&A insights (Executive Dashboard) ===== */
+.fpa-list{display:flex;flex-direction:column;gap:8px}
+.fpa-ins{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.55;border:1px solid var(--line,#e2e8f2)}
+.fpa-ins .fi-ic{flex-shrink:0;font-size:15px}
+.fpa-hi{background:#fdf0ef;border-color:#f2c4c0}
+.fpa-med{background:#fff8ec;border-color:#f0dcae}
+.fpa-ok{background:#eefaf1;border-color:#bfe6cb}
+.fpa-info{background:#eef4fd;border-color:#c5d8f5}

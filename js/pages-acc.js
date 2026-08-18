@@ -143,6 +143,107 @@ const PagesAcc = (() => {
       </div>
       <p class="muted small" style="text-align:center;margin-top:4px">แผนระยะกลาง (MTP) จากคอลัมน์ "ปี ${year + 1} / ปี ${year + 2}" ของไฟล์งบอนุมัติ — บางรายการไม่ได้ระบุ MTP</p>`;
 
+    /* ========== FP&A: Variance เชิงเวลา (YTD) + Outlook + Insights ==========
+     *  ข้อมูล 3 ชั้น: ORIGINAL (แผนอนุมัติ) · actuals (เกิดจริง ด.1-thru) · live (จริง+คาดการณ์)
+     *  หลัก FP&A: เทียบจริงกับ "แผนช่วงเวลาเดียวกัน" (time-phased) ไม่ใช่แผนทั้งปี */
+    const snap = (Store.db.budgetSnapshots || []).find(s => s.year === year && s.label === 'ORIGINAL');
+    let thru = 0; actuals.forEach(a => a.months.forEach((v, i) => { if (v) thru = Math.max(thru, i + 1); }));
+    const sumM = (m, n) => (m || []).slice(0, n).reduce((s, v) => s + (v || 0), 0);
+    const glSap = {}; Store.db.glAccounts.forEach(g => { glSap[g.id] = g.glGroupSap || g.glGroup || 'อื่น ๆ'; });
+    const dSideOf = {}; depts.forEach(d => { dSideOf[d.id] = d.side || '1'; });
+    const fpa = { origYTD: 0, actYTD: 0, origFull: 0, bySide: {}, byGrp: {} };
+    const sideBucket = s => fpa.bySide[s] = fpa.bySide[s] || { oY: 0, aY: 0, oF: 0, lF: 0 };
+    const grpBucket = g => fpa.byGrp[g] = fpa.byGrp[g] || { oY: 0, aY: 0, oF: 0 };
+    (snap ? snap.rows : []).forEach(r => {
+      const oY = sumM(r.months, thru), oF = sumM(r.months, 12);
+      fpa.origYTD += oY; fpa.origFull += oF;
+      const sb = sideBucket(dSideOf[r.departmentId] || '1'); sb.oY += oY; sb.oF += oF;
+      const gb = grpBucket(glSap[r.glId]); gb.oY += oY; gb.oF += oF;
+    });
+    actuals.forEach(a => {
+      const aY = sumM(a.months, thru);
+      fpa.actYTD += aY;
+      sideBucket(dSideOf[a.departmentId] || '1').aY += aY;
+      grpBucket(glSap[a.glId]).aY += aY;
+    });
+    bs.forEach(b => { sideBucket(dSideOf[b.departmentId] || '1').lF += sumM(b.months, 12); });
+    const ytdVar = fpa.actYTD - fpa.origYTD;                         // − = ต่ำกว่าแผน (favorable ด้านต้นทุน)
+    const ytdPct = fpa.origYTD > 0 ? ytdVar / fpa.origYTD * 100 : 0;
+    const outlook = cur - fpa.origFull;                              // งบล่าสุด (จริง+คาดการณ์) เทียบแผนเต็มปี
+    const outlookPct = fpa.origFull > 0 ? outlook / fpa.origFull * 100 : 0;
+    const runRate = thru > 0 ? fpa.actYTD / thru * 12 : 0;           // annualized run-rate
+    // ต้นทุน/ตันอ้อย (ถ้ากรอกปริมาณแล้ว)
+    const volCane = (Store.volume(year, 'caneCompany').actual ?? Store.volume(year, 'caneCompany').plan ?? 0)
+                  + (Store.volume(year, 'caneCommunity').actual ?? Store.volume(year, 'caneCommunity').plan ?? 0);
+    const costPerTon = volCane > 0 && fpa.actYTD > 0 ? fpa.actYTD / volCane : null;
+    // Group Sap: top เกิน/ต่ำกว่าแผน YTD
+    const grpRows = Object.entries(fpa.byGrp).map(([g, v]) => ({ g, ...v, dv: v.aY - v.oY }))
+      .filter(x => Math.abs(x.dv) > 0);
+    const grpOver = grpRows.filter(x => x.dv > 0).sort((a, b2) => b2.dv - a.dv).slice(0, 3);
+    const grpUnder = grpRows.filter(x => x.dv < 0).sort((a, b2) => a.dv - b2.dv).slice(0, 3);
+    // แผนก: outlook เกินแผนเต็มปี >5%
+    const deptOver = snap ? depts.map(d => {
+      const oF = snap.rows.filter(r => r.departmentId === d.id).reduce((s, r) => s + sumM(r.months, 12), 0);
+      const lF = Store.deptTotal(year, d.id);
+      return { d, oF, lF, dv: lF - oF };
+    }).filter(x => x.oF > 0 && x.dv / x.oF > 0.05).sort((a, b2) => b2.dv - a.dv) : [];
+
+    // ---------- Insights (กฎแบบ FP&A/audit — Fact ก่อน แล้วชี้ว่าต้องทำอะไร) ----------
+    const insights = [];
+    if (thru > 0) {
+      insights.push({ sev: ytdVar <= 0 ? 'ok' : 'hi', ic: ytdVar <= 0 ? '✅' : '🔥',
+        t: `<b>YTD (ด.1-${thru}):</b> เกิดจริง ${thShort(fpa.actYTD)} เทียบแผนช่วงเดียวกัน ${thShort(fpa.origYTD)} → ${ytdVar <= 0 ? 'ต่ำกว่าแผน' : 'เกินแผน'} ${thShort(Math.abs(ytdVar))} กีบ (${(ytdPct >= 0 ? '+' : '') + ytdPct.toFixed(1)}%)${ytdVar > 0 ? ' — ควรหาสาเหตุก่อนอนุมัติงบเพิ่ม' : ''}` });
+      if (fpa.origFull > 0) insights.push({ sev: runRate > fpa.origFull * 1.05 ? 'hi' : runRate > fpa.origFull ? 'med' : 'ok', ic: '📈',
+        t: `<b>Run-rate:</b> อัตราใช้จ่ายปัจจุบัน (${thShort(fpa.actYTD)}÷${thru} ด.×12) = ${thShort(runRate)} กีบ/ปี ${runRate > fpa.origFull ? `<b>สูงกว่าแผนเต็มปี ${((runRate / fpa.origFull - 1) * 100).toFixed(1)}%</b> — ถ้าคงอัตรานี้จะเกินงบ` : 'ยังอยู่ในกรอบแผนเต็มปี'}` });
+    } else insights.push({ sev: 'info', ic: 'ℹ️', t: `ยังไม่มีตัวเลขเกิดจริงปี ${year} ในระบบ — ใส่ได้ที่ Budget Control → ใส่เกิดจริง (เปิดรอบ Revise ก่อน)` });
+    if (snap && Math.abs(outlook) > 0.005 * fpa.origFull) insights.push({ sev: outlook > 0 ? 'med' : 'ok', ic: outlook > 0 ? '⚠️' : '💡',
+      t: `<b>Outlook เต็มปี:</b> จริง+คาดการณ์ ${thShort(cur)} เทียบแผนอนุมัติ ${thShort(fpa.origFull)} → ${outlook > 0 ? 'จะเกิน' : 'ต่ำกว่า'}แผน ${thShort(Math.abs(outlook))} กีบ (${(outlookPct >= 0 ? '+' : '') + outlookPct.toFixed(1)}%)` });
+    grpOver.forEach(x => insights.push({ sev: 'med', ic: '🔺',
+      t: `<b>${esc(x.g)}</b> เกิดจริง YTD เกินแผน ${thShort(x.dv)} กีบ (แผน ${thShort(x.oY)} → จริง ${thShort(x.aY)})` }));
+    if (deptOver.length) insights.push({ sev: 'med', ic: '🏢',
+      t: `<b>${deptOver.length} แผนก</b> outlook เต็มปีเกินแผนอนุมัติ >5% — สูงสุด: ${deptOver.slice(0, 3).map(x => esc(x.d.name.replace('แผนก', '')) + ' +' + thShort(x.dv)).join(' · ')}` });
+    // Red flags เชิงบัญชี (audit-brain)
+    const taxGrp = fpa.byGrp['ภาษีนิติบุคคล'];
+    if (taxGrp && taxGrp.oY > 0 && taxGrp.aY === 0) insights.push({ sev: 'hi', ic: '🚩',
+      t: `<b>ภาษีเงินได้นิติบุคคล:</b> แผน YTD ${thShort(taxGrp.oY)} แต่เกิดจริง = 0 — ตรวจความครบถ้วนของการตั้งประมาณการภาษี (IAS 12)` });
+    const fxKeys = Object.keys(fpa.byGrp).filter(g => g.includes('อัตราแลกเปลี่ยน'));
+    const fxNet = fxKeys.reduce((s, g) => s + fpa.byGrp[g].aY, 0);
+    if (Math.abs(fxNet) > 0.01 * (fpa.actYTD || 1)) insights.push({ sev: 'med', ic: '💱',
+      t: `<b>อัตราแลกเปลี่ยน:</b> ผลกระทบสุทธิ YTD ${fxNet >= 0 ? 'ขาดทุน' : 'กำไร'} ${thShort(Math.abs(fxNet))} กีบ — ความผันผวน FX มีนัยสำคัญ ควรทบทวนนโยบายป้องกันความเสี่ยง (IAS 21)` });
+    if (costPerTon) insights.push({ sev: 'info', ic: '🏭',
+      t: `<b>ต้นทุน/ตันอ้อย (YTD):</b> ${fmt(Math.round(costPerTon))} กีบ/ตัน (ปริมาณ ${fmt(Math.round(volCane))} ตัน) — <a class="link" href="#/unitcost">ดูรายละเอียดต้นทุนต่อหน่วย →</a>` });
+    else insights.push({ sev: 'info', ic: '🏭', t: `ยังไม่ได้กรอกปริมาณอ้อยปี ${year} — <a class="link" href="#/unitcost">กรอกที่หน้าต้นทุนต่อหน่วย</a> เพื่อดูต้นทุน กีบ/ตันอ้อย · กีบ/ตันน้ำตาล` });
+    const insHtml = insights.map(i => `<div class="fpa-ins fpa-${i.sev}"><span class="fi-ic">${i.ic}</span><span>${i.t}</span></div>`).join('');
+
+    // ---------- ตาราง Variance รายสังกัด ----------
+    const sidesMeta = Store.db.meta.sides || {};
+    const sideVarRows = Object.keys(fpa.bySide).sort().map(s => {
+      const v = fpa.bySide[s];
+      const dv = v.aY - v.oY, dp = v.oY > 0 ? dv / v.oY * 100 : 0;
+      const fo = v.lF - v.oF, fop = v.oF > 0 ? fo / v.oF * 100 : 0;
+      return `<tr>
+        <td>${(SIDE_META[s] || {}).icon || ''} ${esc(sidesMeta[s] || s)}</td>
+        <td class="num">${fmt(Math.round(v.oY))}</td><td class="num">${fmt(Math.round(v.aY))}</td>
+        <td class="num ${dv > 0 ? 'txt-up' : dv < 0 ? 'txt-down' : ''}">${(dv >= 0 ? '+' : '') + fmt(Math.round(dv))}</td>
+        <td>${deltaBadge(dv, dp)}</td>
+        <td class="num muted">${fmt(Math.round(v.oF))}</td><td class="num">${fmt(Math.round(v.lF))}</td>
+        <td>${deltaBadge(fo, fop)}</td></tr>`;
+    }).join('');
+    const sv = Object.values(fpa.bySide).reduce((a, v) => ({ oY: a.oY + v.oY, aY: a.aY + v.aY, oF: a.oF + v.oF, lF: a.lF + v.lF }), { oY: 0, aY: 0, oF: 0, lF: 0 });
+    const fpaHtml = (thru > 0 || snap) ? `
+      <div class="grid-2 fpa-wrap">
+        ${card(`🧠 Insights — วิเคราะห์อัตโนมัติ (FP&A)`, `<div class="fpa-list">${insHtml}</div>`)}
+        ${card(`🎯 Variance รายสังกัด — จริง YTD (ด.1-${thru || '—'}) เทียบแผนช่วงเดียวกัน + Outlook เต็มปี`, `
+          <div class="table-scroll"><table class="data-table small">
+            <thead><tr><th>สังกัด</th><th class="num">แผน YTD</th><th class="num">จริง YTD</th><th class="num">ผลต่าง</th><th>%</th><th class="num">แผนเต็มปี</th><th class="num">Outlook</th><th>%</th></tr></thead>
+            <tbody>${sideVarRows}
+              <tr class="tr-sum"><td><b>รวม</b></td><td class="num"><b>${fmt(Math.round(sv.oY))}</b></td><td class="num"><b>${fmt(Math.round(sv.aY))}</b></td>
+                <td class="num"><b>${(sv.aY - sv.oY >= 0 ? '+' : '') + fmt(Math.round(sv.aY - sv.oY))}</b></td><td>${deltaBadge(sv.aY - sv.oY, sv.oY > 0 ? (sv.aY - sv.oY) / sv.oY * 100 : 0)}</td>
+                <td class="num muted"><b>${fmt(Math.round(sv.oF))}</b></td><td class="num"><b>${fmt(Math.round(sv.lF))}</b></td><td>${deltaBadge(sv.lF - sv.oF, sv.oF > 0 ? (sv.lF - sv.oF) / sv.oF * 100 : 0)}</td></tr>
+            </tbody></table></div>
+          <p class="muted small" style="margin-top:6px">หลัก FP&A: เทียบเกิดจริงกับ "แผนช่วงเวลาเดียวกัน" (time-phased) · Outlook = เกิดจริง+คาดการณ์ทั้งปี เทียบแผนอนุมัติ (ORIGINAL) · ผลต่างสีแดง = เกินแผน (ด้านต้นทุน)</p>`)}
+      </div>` : '';
+
     // ---------- Hero chip ----------
     const phaseChip = rv.on
       ? `<span class="eh-chip eh-chip-rv">🔁 รอบ Revise · เกิดจริงถึง ด.${rv.thru}</span>`
@@ -188,6 +289,8 @@ const PagesAcc = (() => {
         </div>`
 
       + `<div class="side-cards">${sideCards}</div>`
+
+      + fpaHtml
 
       + `<div class="grid-2">`
       + card(`📈 งบปี ${year} รายเดือน${actTotal > 0 ? ' เทียบเกิดจริง' : ''}${rv.on ? ' และงบเดิม' : ''} (กีบ)`, `<div id="chAccMonthly"></div>`)
