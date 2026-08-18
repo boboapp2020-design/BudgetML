@@ -793,6 +793,30 @@ const Store = (() => {
   }
   // เปิดรอบตั้งงบปีใหม่: (A) ปิดยอดปีปัจจุบัน = revise (เกิดจริง N เดือน + คาดการณ์ที่เหลือ)
   //                     (B) เปิดรอบงบปีใหม่ 12 เดือน (pre-fill: 'landing' คัดลอกจากปิดยอดปีปัจจุบัน หรือ 'blank')
+  // ลบรอบงบทั้งปี (งบ+สถานะ+สมมติฐาน+รายละเอียด+เกิดจริง+snapshot) — เฉพาะปีปัจจุบัน/ปีที่เปิดใหม่
+  function deletePeriod(actor, year) {
+    assertAccounting(actor);
+    year = Number(year);
+    if (!db.budgetPeriods.find(p => p.year === year)) throw new Error('ไม่พบรอบงบประมาณปีนี้');
+    if (db.budgetPeriods.length <= 1) throw new Error('ต้องมีรอบงบอย่างน้อย 1 ปี — ลบรอบสุดท้ายไม่ได้');
+    if (year < db.meta.yearCurrent) throw new Error(`ปี ${year} เป็นปีฐาน/ปีที่อนุมัติแล้ว — ลบได้เฉพาะรอบปีปัจจุบันหรือปีที่เปิดใหม่ (≥ ${db.meta.yearCurrent})`);
+    const nRows = db.budgets.filter(b => b.year === year).length;
+    db.budgetPeriods = db.budgetPeriods.filter(p => p.year !== year);
+    db.budgets = db.budgets.filter(b => b.year !== year);
+    db.deptStatus = (db.deptStatus || []).filter(s => s.year !== year);
+    db.glNotes = (db.glNotes || []).filter(n => n.year !== year);
+    db.cellDetails = (db.cellDetails || []).filter(c => c.year !== year);
+    db.actuals = (db.actuals || []).filter(a => a.year !== year);
+    db.budgetSnapshots = (db.budgetSnapshots || []).filter(s => s.year !== year);
+    if (db.meta.yearCurrent === year) {           // ลบปีปัจจุบัน → ถอยไปปีล่าสุดที่เหลือ
+      const remain = db.budgetPeriods.map(p => p.year).sort((a, b) => b - a);
+      db.meta.yearCurrent = remain[0];
+      db.meta.yearPrevious = remain[1] != null ? remain[1] : remain[0] - 1;
+    }
+    audit(actor, 'ลบรอบงบประมาณ', { newValue: `ลบปี ${year} (${nRows} แถวงบ + สถานะ/สมมติฐาน/เกิดจริง/snapshot)` });
+    save();
+  }
+
   function openBudgetRound(actor, curYear, thru, nextYear, prefill) {
     assertAccounting(actor);
     curYear = Number(curYear); nextYear = Number(nextYear); thru = Number(thru);
@@ -990,7 +1014,7 @@ const Store = (() => {
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
-    needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound,
+    needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,

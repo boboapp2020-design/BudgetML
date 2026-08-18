@@ -549,6 +549,8 @@ const PagesAcc = (() => {
           : (p.year < Store.db.meta.yearCurrent ? '<span class="muted small" title="ปีฐาน/ปิดปีแล้ว — Revise ใช้กับปีงบปัจจุบันเท่านั้น">🔒 ปีฐาน</span>' : '')}
         ${Store.revisePhase(p.year).on
           ? `<a class="ghost-btn small" href="#/acc/actuals?y=${p.year}">📥 ใส่เกิดจริง</a>` : ''}
+        ${p.year >= Store.db.meta.yearCurrent && periods.length > 1
+          ? `<button class="danger-btn small" data-del-period="${p.year}" title="ลบรอบปีนี้ทั้งหมด" style="background:#b02a2a">🗑 ลบรอบปี</button>` : ''}
       </td></tr>`;
     }).join('');
 
@@ -744,6 +746,21 @@ const PagesAcc = (() => {
         { label: 'ยืนยัน Unlock', cls: 'danger-btn', onClick: close => {
             if (document.getElementById('unlockConfirm').value.trim() !== 'UNLOCK') { toast('กรุณาพิมพ์ UNLOCK เพื่อยืนยัน', 'err'); return; }
             try { Store.unlockPeriod(user, y); toast(`Unlock งบปี ${y} แล้ว`); close(); App.render(); } catch (e) { toast(e.message, 'err'); }
+          } },
+      ]);
+    }));
+    document.querySelectorAll('[data-del-period]').forEach(b => b.addEventListener('click', () => {
+      const y = b.dataset.delPeriod;
+      const n = Store.db.budgets.filter(x => x.year === Number(y)).length;
+      UI.modal(`🗑 ลบรอบงบประมาณปี ${y}?`, `
+        <p class="warn-text">⚠ จะลบข้อมูลปี ${y} ทั้งหมด — งบ ${n} แถว + สถานะ/สมมติฐาน/เกิดจริง/snapshot ของปีนี้ (ลบออกจาก Supabase ด้วย)</p>
+        <p class="small muted">ปีอื่นไม่กระทบ · บันทึกใน Audit Log · (เวอร์ชันถัดไปจะเพิ่ม PIN ยืนยัน)</p>
+        <p>พิมพ์เลขปี <b>${y}</b> เพื่อยืนยัน:</p><input id="delConfirm" inputmode="numeric" placeholder="${y}">`, [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: '🗑 ยืนยันลบรอบปี', cls: 'danger-btn', onClick: close => {
+            if (String(document.getElementById('delConfirm').value).trim() !== String(y)) { toast(`กรุณาพิมพ์ ${y} เพื่อยืนยัน`, 'err'); return; }
+            try { Store.deletePeriod(user, y); toast(`ลบรอบงบปี ${y} แล้ว`); close(); if (UI.year() === Number(y)) UI.setYear(Store.db.meta.yearCurrent); App.render(); }
+            catch (e) { toast(e.message, 'err'); }
           } },
       ]);
     }));
