@@ -308,6 +308,10 @@ const PagesAcc = (() => {
 
     const sides = Store.db.meta.sides || {};
     const depts = Store.activeDepartments().slice().sort((a, b) => a.code.localeCompare(b.code));
+    const totCur = depts.reduce((s, d) => s + Store.deptTotal(year, d.id), 0);
+    const totPrev = depts.reduce((s, d) => s + Store.deptTotal(prevYear, d.id), 0);
+    const totCmp = Store.compare(totCur, totPrev);
+    const deptTotalRow = `<tr class="tr-sum"><td><b>รวมทั้งบริษัท · ${depts.length} หน่วยงาน</b></td><td class="num"><b>${fmt(totPrev)}</b></td><td class="num"><b>${fmt(totCur)}</b></td><td class="num"><b>${(totCmp.diff >= 0 ? '+' : '') + fmt(totCmp.diff)}</b></td><td>${deltaBadge(totCmp.diff, totCmp.pct)}</td><td></td><td></td><td></td></tr>`;
     let lastSide = null;
     const rows = depts.map(d => {
       const cur = Store.deptTotal(year, d.id), prev = Store.deptTotal(prevYear, d.id);
@@ -340,7 +344,7 @@ const PagesAcc = (() => {
       + card('', `<div class="table-scroll"><table class="data-table">
         <thead><tr><th>หน่วยงาน</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th>
         <th class="num">ผลต่าง (กีบ)</th><th>%</th><th>ความครบถ้วน</th><th>สถานะ</th><th></th></tr></thead>
-        <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
+        <tbody>${rows}${deptTotalRow}</tbody></table></div>`, { cls: 'card-flush' });
   }
 
   function drillDept(user, deptId) {
@@ -380,7 +384,7 @@ const PagesAcc = (() => {
       + card(`แนวโน้มรายเดือน (กีบ)`, `<div id="chDrillMonthly"></div>`)
       + card(`GL ทั้งหมดของหน่วยงาน — คลิกเพื่อดูรายเดือน${rv.on ? ' · 🔁 รอบ Revise (เทียบงบเดิม)' : ''}`, `<div class="table-scroll"><table class="data-table">
         <thead><tr><th>GL</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">${rv.on ? 'Revise' : 'ปี'} ${year} (กีบ)</th>${rv.on ? `<th class="num">งบเดิม ${year}</th><th>Δ เดิม</th>` : ''}<th>%ปีก่อน</th><th>ตรวจสอบ</th><th>สาเหตุ (ย่อ)</th><th></th></tr></thead>
-        <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
+        <tbody>${rows}<tr class="tr-sum"><td><b>รวมทั้งหน่วยงาน</b></td><td class="num"><b>${fmt(prev)}</b></td><td class="num"><b>${fmt(cur)}</b></td>${rv.on ? `<td class="num"><b>${fmt(Store.originalDeptTotal(year, deptId))}</b></td><td></td>` : ''}<td></td><td></td><td></td><td></td></tr></tbody></table></div>`, { cls: 'card-flush' });
   }
 
   function drillGL(user, deptId, glId) {
