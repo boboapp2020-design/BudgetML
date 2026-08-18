@@ -187,12 +187,24 @@ const App = (() => {
   window.addEventListener('hashchange', safeRender);
   window.addEventListener('DOMContentLoaded', () => {
     if (!location.hash) location.hash = '#/login';
-    safeRender();
-    // เชื่อม Supabase: ต่ออายุ session เดิม + ดึงข้อมูล — ถ้า session หมดต้อง login ใหม่
+    // กันกดบนข้อมูลเก่า: ถ้าต่อ Supabase ให้ขึ้นม่าน "กำลังดึงข้อมูลล่าสุด" จนซิงค์เสร็จก่อน แล้วค่อยเปิดหน้าจอ
+    const useOverlay = (typeof Supa !== 'undefined' && Supa.enabled());
+    let ov = null;
+    if (useOverlay) {
+      ov = document.createElement('div');
+      ov.className = 'boot-sync';
+      ov.innerHTML = '<div class="bs-card"><div class="bs-spin"></div><b>กำลังดึงข้อมูลล่าสุด…</b><small>เชื่อมต่อฐานข้อมูล Supabase</small></div>';
+      document.body.appendChild(ov);
+    } else {
+      safeRender();
+    }
+    const done = () => { if (ov) { ov.remove(); ov = null; safeRender(); } };
+    const fallback = setTimeout(done, 9000);   // ออฟไลน์/ช้าผิดปกติ → เปิดหน้าจอด้วยข้อมูลในเครื่อง
     Sync.init().then(res => {
+      clearTimeout(fallback); done();
       if (res && res.needLogin) { Store.logout(); location.hash = '#/login'; safeRender(); }
-      else if (res && res.adopted) safeRender();
-    }).catch(() => {});
+      else if (!useOverlay && res && res.adopted) safeRender();
+    }).catch(() => { clearTimeout(fallback); done(); });
   });
 
   return { render };
