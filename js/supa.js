@@ -21,8 +21,10 @@ const Supa = (() => {
   const SEP = '~|~';      // ตัวคั่น key ที่ไม่โผล่ในข้อมูลจริง
 
   const TOK_KEY = 'abp_sb_token', REF_KEY = 'abp_sb_refresh', UID_KEY = 'abp_sb_uid';
-  const base = () => (localStorage.getItem(URL_KEY) || '').replace(/\/+$/, '');
-  const key  = () => localStorage.getItem(KEY_KEY) || '';
+  const DEFAULT_URL = 'https://fdicsryxzyxuoxacxilz.supabase.co';
+  const DEFAULT_KEY = 'sb_publishable_1iBfWSMLMRf-Be1E96zS9w_f5tf1rVT';
+  const base = () => (localStorage.getItem(URL_KEY) || DEFAULT_URL).replace(/\/+$/, '');
+  const key  = () => localStorage.getItem(KEY_KEY) || DEFAULT_KEY;
   const enabled = () => !!(base() && key());
   function setConfig(url, k) {
     url = (url || '').trim(); k = (k || '').trim();
