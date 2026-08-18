@@ -87,7 +87,7 @@ const SEED = (() => {
     OVERSIGHT.push({ id, name: a.name, parent: 'co' });
   });
 
-  // ฝ่าย (div) — key ด้วย area+div (ชื่อฝ่ายซ้ำข้ามด้านได้) — parent = ด้าน
+  // ฝ่าย (div = คอลัมน์ CP) — ★ ชั้นผู้อนุมัติ (approver) ★ — key ด้วย area+div — parent = สังกัด
   const divId = {}; // (area '~' div) → node id
   let dvi = 0;
   SEED_DATA.divisions.forEach(d => {
@@ -95,16 +95,29 @@ const SEED = (() => {
     if (divId[key]) return;
     const id = 'div_' + (++dvi);
     divId[key] = id;
-    OVERSIGHT.push({ id, name: d.name, parent: areaId[d.area] || 'co' });
+    OVERSIGHT.push({ id, name: d.name, parent: areaId[d.area] || 'co', approver: true });
   });
 
-  // แผนก (dept F) — parent = ฝ่าย · deptCodes = รหัสหน่วยงาน (unit.code) ที่สังกัดแผนกนี้
+  // ฝ่ายย่อย (subDiv = คอลัมน์ CO) — ชั้นย่อยใต้ฝ่าย — key ด้วย area+div+subDiv — parent = ฝ่าย
+  const subId = {}; // (area '~' div '~' subDiv) → node id
+  let svi = 0;
+  U.forEach(u => {
+    const sd = u.subDiv || u.div;
+    const key = u.area + '~' + u.div + '~' + sd;
+    if (subId[key]) return;
+    const id = 'sub_' + (++svi);
+    subId[key] = id;
+    OVERSIGHT.push({ id, name: sd, parent: divId[u.area + '~' + u.div] || areaId[u.area] || 'co' });
+  });
+
+  // แผนก (dept F) — parent = ฝ่ายย่อย · deptCodes = รหัสหน่วยงาน (unit.code) ที่สังกัดแผนกนี้
   SEED_DATA.depts.forEach(dp => {
     const codes = U.filter(u => u.deptCode === dp.code).map(u => u.code);
+    const sd = dp.subDiv || dp.div;
     OVERSIGHT.push({
       id: 'deptf_' + dp.code,
       name: dp.name + ' (' + dp.code + ')',
-      parent: divId[dp.area + '~' + dp.div] || areaId[dp.area] || 'co',
+      parent: subId[dp.area + '~' + dp.div + '~' + sd] || divId[dp.area + '~' + dp.div] || areaId[dp.area] || 'co',
       deptCodes: codes,
     });
   });
