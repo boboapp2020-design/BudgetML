@@ -1042,3 +1042,6 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .mgr-view-lb { font-weight: 700; color: #1c3d6e; font-size: 14px; }
 .mgr-view-sel { flex: 1; min-width: 240px; max-width: 480px; border-radius: 10px; border: 1.7px solid #c9d8f0; padding: 9px 12px; font-size: 14px; background: #fff; font-family: inherit; }
 .mgr-view-sel:focus { border-color: #2b5cf0; box-shadow: 0 0 0 3px rgba(43,92,240,.15); outline: none; }
+
+/* ===== Landing v7: ย่อ 10% (ratio เท่าเดิม) ===== */
+.login-v7 .lv-shell { transform: scale(0.9); transform-origin: center center; }
