@@ -1113,3 +1113,13 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 @media(max-width:860px){.glrow-form{grid-template-columns:repeat(2,1fr)}}
 .glrow-form label.opt{opacity:.72}
 .glrow-form label small{color:#c2820a;font-weight:600}
+
+/* ===== หน้า ต้นทุนต่อหน่วย (unit cost) ===== */
+.uc-table th.uc-h1{background:#ddebf7;color:#1f3864}
+.uc-table th.uc-h2{background:#e2efda;color:#375623}
+.uc-table th.uc-h3{background:#bdd7ee;color:#1f3864}
+.uc-table td.uc-ton{color:#3556a8;background:#fafcff}
+.uc-table tr.uc-block td{background:#eef2fb;border-top:2px solid #d7deea;font-size:13px}
+.uc-table tr.uc-row td.uc-item{padding-left:26px;color:#42526b}
+.uc-vol{font:inherit;font-size:13px;text-align:right;width:130px;padding:6px 8px;border:1px solid #d7deea;border-radius:8px}
+.uc-vol:focus{outline:none;border-color:#2b5cf0;box-shadow:0 0 0 3px rgba(43,92,240,.12)}

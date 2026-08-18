@@ -33,6 +33,7 @@ const App = (() => {
     '#/acc/system':      { role: 'ACCOUNTING', page: () => PagesAcc.system,       bind: () => PagesAcc.systemBind },
     '#/acc/audit':       { role: 'ACCOUNTING', page: () => PagesAcc.audit,        bind: null },
     '#/acc/actuals':     { role: 'ACCOUNTING', page: () => PagesAcc.actuals,      bind: () => PagesAcc.actualsBind },
+    '#/unitcost':        { role: '*',          page: () => PagesCost.unitCost,    bind: () => PagesCost.unitCostBind },
   };
 
   function loginPage() {
@@ -161,7 +162,7 @@ const App = (() => {
 
     const route = ROUTES[base];
     if (!route) { location.hash = homeFor(user); return; }
-    if (route.role !== user.role) { location.hash = homeFor(user); return; }
+    if (route.role !== '*' && route.role !== user.role) { location.hash = homeFor(user); return; }
     const html = route.page()(user);
     root().innerHTML = UI.shell(user, html, base);
     UI.bindShell(user);

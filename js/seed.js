@@ -184,12 +184,21 @@ const SEED = (() => {
       company: COMPANY, currency: 'LAK',
       yearCurrent: Y_CUR, yearPrevious: Y_PREV,
       sides: SEED_DATA.sides,
+      // แผนก (รหัส F) ที่กรอก "ปริมาณผลิต" ได้ นอกเหนือจากแอดมินบัญชี — แก้ที่นี่ที่เดียว
+      volumeEditors: ['2712'],   // แผนกบริการไร่ (เปลี่ยน/เพิ่มรหัสแผนกได้)
     },
     oversight: OVERSIGHT,
     users, departments, glAccounts, cctMaster, departmentRows, departmentGL,
     budgetPeriods, budgets, glNotes, deptStatus, cellDetails,
     budgetSnapshots: [],
     actuals: [],
+    // ปริมาณผลิตปี 2025 (จากชีทสรุป PPT ไฟล์ Revise 2025) — ฐานเทียบต้นทุนต่อหน่วย
+    prodVolumes: [
+      { year: Y_PREV, metric: 'caneCompany',   plan: null, actual: 119149.74, updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
+      { year: Y_PREV, metric: 'caneCommunity', plan: null, actual: 218879.94, updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
+      { year: Y_PREV, metric: 'sugarProduce',  plan: null, actual: 45155.78,  updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
+      { year: Y_PREV, metric: 'sugarTrading',  plan: null, actual: null,      updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
+    ],
     exchangeRates, fuelPrices, auditLogs, notifications,
   };
 })();

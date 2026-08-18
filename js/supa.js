@@ -217,6 +217,11 @@ const Supa = (() => {
     { name: 'budget_snapshots', pk: ['year', 'label'],
       list: db => (db.budgetSnapshots || []).map(s => ({ year: s.year, label: s.label, created_at: nz(s.createdAt) })),
     },
+    { name: 'prod_volumes', pk: ['year', 'metric'], assign: 'prodVolumes', optional: true, // ตารางใหม่ — ข้ามเงียบๆ ถ้ายังไม่รัน prod-volumes.sql
+      list: db => db.prodVolumes || [],
+      toRow: p => ({ year: p.year, metric: p.metric, plan: nz(p.plan), actual: nz(p.actual), updated_at: nz(p.updatedAt), updated_by: nz(p.updatedBy) }),
+      fromRow: r => ({ year: r.year, metric: r.metric, plan: r.plan, actual: r.actual, updatedAt: r.updated_at, updatedBy: r.updated_by }),
+    },
     { name: 'snapshot_rows', pk: ['year', 'label', 'department_id', 'gl_id', 'cct'],
       list: db => (db.budgetSnapshots || []).flatMap(s => (s.rows || []).map(r =>
         ({ year: s.year, label: s.label, department_id: r.departmentId, gl_id: r.glId, cct: r.cct, months: r.months }))),
@@ -232,7 +237,10 @@ const Supa = (() => {
     if (!meta || !meta.length) return null;  // เซิร์ฟเวอร์ยังว่าง → ให้ผู้เรียก push ขึ้นครั้งแรก
 
     const fetched = {};
-    for (const t of TABLES) fetched[t.name] = await fetchAll(t.name);
+    for (const t of TABLES) {
+      try { fetched[t.name] = await fetchAll(t.name); }
+      catch (e) { if (t.optional) fetched[t.name] = []; else throw e; }
+    }
 
     const db = JSON.parse(JSON.stringify(SEED));   // เริ่มจาก seed เพื่อได้ users + โครง
     const m = meta[0];
@@ -241,7 +249,10 @@ const Supa = (() => {
       appName: m.app_name, sides: m.sides };
 
     for (const t of TABLES) {
-      if (t.assign) db[t.assign] = fetched[t.name].map(t.fromRow);
+      if (!t.assign) continue;
+      const rows = fetched[t.name] || [];
+      if (t.optional && !rows.length) continue;   // ตาราง optional ว่าง/ยังไม่สร้าง → คงค่า seed ไว้ (เช่น ปริมาณผลิตปี 2025)
+      db[t.assign] = rows.map(t.fromRow);
     }
     // snapshots ประกอบกลับ
     const snapMeta = fetched['budget_snapshots'] || [];
@@ -284,7 +295,10 @@ const Supa = (() => {
         cur.set(k, j);
         if (prev.get(k) !== j) toUpsert.push(row);
       });
-      if (toUpsert.length) await upsert(t.name, toUpsert);
+      if (toUpsert.length) {
+        try { await upsert(t.name, toUpsert); }
+        catch (e) { if (!t.optional) throw e; }   // ตาราง optional ยังไม่สร้าง → ข้าม (ค่าเก็บใน localStorage จนกว่ารัน SQL)
+      }
       stash.push({ t, cur, prev });
     }
     // delete child→parent (ข้าม append-only) — ถอด PK จาก JSON ที่เก็บไว้

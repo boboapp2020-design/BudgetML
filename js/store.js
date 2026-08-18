@@ -53,6 +53,7 @@ const Store = (() => {
       db.meta.company = SEED.meta.company;   // ป้ายชื่อบริษัท/แอป = static จากโค้ด (Supabase ไม่ต้องเก็บ Thai ให้ถูก)
       db.meta.currency = SEED.meta.currency;
       db.meta.appName = SEED.meta.appName;
+      db.meta.volumeEditors = clone(SEED.meta.volumeEditors || []);   // สิทธิ์กรอกปริมาณผลิต = config จากโค้ด
     }
   }
   let afterSave = null; // hook สำหรับ Sync (ตั้งค่าโดย sync.js)
@@ -980,6 +981,38 @@ const Store = (() => {
     audit(actor, 'ถอด GL ออกจากหน่วยงาน', { deptId, glCode: gl(glId)?.code });
     save();
   }
+  /* ---------- ปริมาณผลิต (ตัวหารต้นทุนต่อหน่วย — ตันอ้อยไร่บริษัท/ส่งเสริม, ตันน้ำตาล) ---------- */
+  const VOLUME_METRICS = [
+    { key: 'caneCompany',   label: 'ตันอ้อย — ไร่บริษัท' },
+    { key: 'caneCommunity', label: 'ตันอ้อย — ไร่ส่งเสริม/ชุมชน' },
+    { key: 'sugarProduce',  label: 'ตันน้ำตาลผลิต' },
+    { key: 'sugarTrading',  label: 'ตันน้ำตาล Trading' },
+  ];
+  function volume(year, metric) {
+    return (db.prodVolumes || []).find(v => v.year === Number(year) && v.metric === metric)
+      || { year: Number(year), metric, plan: null, actual: null };
+  }
+  // สิทธิ์กรอกปริมาณ: แอดมินบัญชี หรือ แผนกใน meta.volumeEditors (ตั้งใน seed.js)
+  function canEditVolume(actor) {
+    if (!actor) return false;
+    if (actor.role === 'ACCOUNTING') return true;
+    const editors = (db.meta && db.meta.volumeEditors) || [];
+    const d = actor.departmentId ? dept(actor.departmentId) : null;
+    return actor.role === 'USER' && d && editors.includes(d.code);
+  }
+  function setVolume(actor, year, metric, field, value) {
+    if (!canEditVolume(actor)) throw new Error('เฉพาะแผนกบัญชี (Admin) หรือแผนกที่ได้รับมอบหมายเท่านั้นที่กรอกปริมาณได้');
+    if (!VOLUME_METRICS.some(m => m.key === metric)) throw new Error('metric ไม่ถูกต้อง');
+    if (field !== 'plan' && field !== 'actual') throw new Error('field ไม่ถูกต้อง');
+    if (value !== null && (typeof value !== 'number' || !isFinite(value) || value < 0)) throw new Error('ค่าไม่ถูกต้อง');
+    if (!db.prodVolumes) db.prodVolumes = [];
+    let v = db.prodVolumes.find(x => x.year === Number(year) && x.metric === metric);
+    if (!v) { v = { year: Number(year), metric, plan: null, actual: null }; db.prodVolumes.push(v); }
+    v[field] = value; v.updatedAt = new Date().toISOString(); v.updatedBy = actor.name;
+    audit(actor, 'กรอกปริมาณผลิต', { newValue: `${year} ${metric}.${field} = ${value}` });
+    save();
+  }
+
   function setRate(actor, year, currency, rate) {
     assertAccounting(actor);
     let r = db.exchangeRates.find(x => x.year === Number(year) && x.currency === currency);
@@ -1091,6 +1124,7 @@ const Store = (() => {
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
+    VOLUME_METRICS, volume, canEditVolume, setVolume,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
     MONTH_TH, MONTH_S,
