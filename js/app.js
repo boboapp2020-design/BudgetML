@@ -30,6 +30,7 @@ const App = (() => {
     '#/acc/pnl':         { role: 'ACCOUNTING', page: () => PagesAcc.pnl,          bind: () => PagesAcc.pnlBind },
     '#/acc/variance':    { role: 'ACCOUNTING', page: () => PagesAcc.variance,     bind: () => PagesAcc.varianceBind },
     '#/acc/control':     { role: 'ACCOUNTING', page: () => PagesAcc.control,      bind: () => PagesAcc.controlBind },
+    '#/acc/system':      { role: 'ACCOUNTING', page: () => PagesAcc.system,       bind: () => PagesAcc.systemBind },
     '#/acc/audit':       { role: 'ACCOUNTING', page: () => PagesAcc.audit,        bind: null },
     '#/acc/actuals':     { role: 'ACCOUNTING', page: () => PagesAcc.actuals,      bind: () => PagesAcc.actualsBind },
   };

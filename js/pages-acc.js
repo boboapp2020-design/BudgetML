@@ -579,39 +579,7 @@ const PagesAcc = (() => {
     const rates = Store.db.exchangeRates.filter(r => r.year === year);
 
     const syncOn = Sync.enabled();
-    return pageHead('Budget Control', `จัดการรอบงบประมาณ หน่วยงาน GL และ Budget Rate · Admin เท่านั้น`)
-      + card(`🗄️ ฐานข้อมูล Supabase ${Sync.backend() === 'supa' ? '<span class="pill-on">● กำลังใช้งาน</span>' : ''}`, `
-          <p style="margin-bottom:8px">${Sync.backend() === 'supa'
-            ? `สถานะ: ${Sync.chipHtml()} — ทุกการแก้ไขซิงค์ขึ้น Supabase อัตโนมัติ · แต่ละแผนกกรอกพร้อมกันไม่ชนกัน`
-            : `เก็บข้อมูลเป็นตาราง PostgreSQL จริง (แก้ปัญหาชนกันเวลาหลายแผนกกรอกพร้อมกัน) — ตั้งค่าตามไฟล์ <code>supabase/README.md</code>`}</p>
-          <div class="inline-form" style="flex-wrap:wrap">
-            <input id="supaUrl" placeholder="https://xxxx.supabase.co" value="${esc(Supa.url())}" style="flex:1;min-width:280px">
-            <input id="supaKey" type="password" placeholder="${Supa.hasKey() ? '•••• (ตั้งไว้แล้ว — วางใหม่เพื่อเปลี่ยน)' : 'anon public key (sb_publishable_… หรือ eyJ…)'}" style="flex:1;min-width:280px">
-            <button class="primary-btn" id="supaSave">บันทึก & ทดสอบ</button>
-            ${Sync.backend() === 'supa' ? `<button class="ghost-btn" id="supaPull">⬇ ดึงจาก Supabase</button>
-            <button class="ghost-btn" id="supaPush">⬆ ส่งขึ้นเดี๋ยวนี้</button>
-            <button class="ghost-btn" id="supaOff">ยกเลิก</button>` : ''}
-          </div>
-          <p class="muted small" style="margin-top:6px">🔒 URL และ key เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่อยู่ในโค้ดสาธารณะ</p>`)
-      + (() => {
-          const gasActive = Sync.backend() === 'gas';
-          const supaActive = Sync.backend() === 'supa';
-          return card('🔗 Google Sheet (Apps Script) — ทางเลือกสำรอง (ไม่บังคับ)', `
-          <p style="margin-bottom:8px">${
-            supaActive ? '<span class="muted">ℹ️ ระบบกำลังใช้ <b>Supabase</b> เป็นฐานข้อมูลหลักอยู่ — ส่วนนี้เป็นวิธีเดิม (Google Sheet) <b>ไม่ต้องตั้งค่า</b> เว้นแต่ต้องการสลับกลับไปใช้ Google Sheet</span>'
-            : gasActive ? `สถานะ: ${Sync.chipHtml()} — ข้อมูลซิงค์ขึ้น Google Sheet อัตโนมัติ`
-            : '<span class="muted">ยังไม่ได้เชื่อมต่อ (วิธีเดิมก่อนย้ายมา Supabase) — แนะนำใช้ Supabase ด้านบนแทน</span>'}</p>
-          ${(!supaActive && !gasActive) ? `<ol class="setup-steps">
-            <li>เปิดชีท <a class="link" href="https://docs.google.com/spreadsheets/d/1KiE6hk3FJTF4QSk_nYgUwYXynCFFE__J3pcTBdeRhDo/edit" target="_blank">บัญชี</a> → เมนู <b>ส่วนขยาย → Apps Script</b> → วางโค้ด <code>apps-script/Code.gs</code> → Deploy Web app → คัดลอก URL /exec</li>
-          </ol>` : ''}
-          <div class="inline-form">
-            <input id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(Sync.url())}" style="flex:1;min-width:320px">
-            <button class="ghost-btn" id="gasSave">${supaActive ? 'สลับไปใช้ Google Sheet' : 'บันทึก & ทดสอบ'}</button>
-            ${gasActive ? `<button class="ghost-btn" id="gasPull">⬇ ดึงจากชีท</button>
-            <button class="ghost-btn" id="gasPush">⬆ ส่งขึ้นชีทเดี๋ยวนี้</button>
-            <button class="ghost-btn" id="gasOff">ยกเลิกการเชื่อมต่อ</button>` : ''}
-          </div>`);
-        })()
+    return pageHead('Budget Control', `จัดการรอบงบประมาณ หน่วยงาน GL และ Budget Rate · Admin เท่านั้น <a href="#/acc/system" style="opacity:.35;font-size:12px;text-decoration:none" title="ตั้งค่าระบบ (IT)">⚙</a>`)
       + card('รอบงบประมาณ (Budget Periods)', `
           <div class="table-scroll"><table class="data-table"><thead><tr><th>ปีงบ</th><th>สถานะ</th><th>ประวัติ</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
           <div class="inline-form" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:6px">
@@ -659,68 +627,6 @@ const PagesAcc = (() => {
           <p class="muted small" style="margin-top:8px">สำรองทุกอย่าง (งบทุกปี · master · เกิดจริง · สถานะ · audit) เป็นไฟล์เดียว เก็บไว้กู้คืนได้ · แนะนำดาวน์โหลดก่อนทำงานสำคัญทุกครั้ง · กู้คืนจะเขียนทับข้อมูลปัจจุบัน + ซิงค์ขึ้นฐานข้อมูล</p>`);
   }
   function controlBind(user) {
-    /* ---------- Supabase ---------- */
-    document.getElementById('supaSave')?.addEventListener('click', async () => {
-      const url = document.getElementById('supaUrl').value.trim();
-      let key = document.getElementById('supaKey').value.trim();
-      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) { toast('URL ไม่ถูกต้อง — ต้องเป็น https://xxxx.supabase.co', 'err'); return; }
-      if (!key) { if (Supa.hasKey()) key = localStorage.getItem('abp_supa_key'); else { toast('วาง anon public key ก่อน', 'err'); return; } }
-      if (!/^(sb_|eyJ)/.test(key)) { toast('anon key ไม่ถูกต้อง (ขึ้นต้น sb_ หรือ eyJ)', 'err'); return; }
-      Supa.setConfig(url, key);
-      toast('กำลังทดสอบการเชื่อมต่อ…');
-      try {
-        await Sync.ping();
-        toast('เชื่อมต่อ Supabase สำเร็จ ✓ — กำลังซิงค์…');
-        await Sync.pull();
-        toast(Sync.state.mode === 'ok' ? 'ซิงค์กับ Supabase แล้ว ✓' : 'ซิงค์ไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
-        App.render();
-      } catch (e) { toast('เชื่อมต่อไม่สำเร็จ: ' + e.message, 'err'); }
-    });
-    document.getElementById('supaPull')?.addEventListener('click', async () => {
-      toast('กำลังดึงข้อมูลจาก Supabase…');
-      try { await Sync.pull(); toast('ดึงข้อมูลล่าสุดแล้ว ✓'); App.render(); }
-      catch (e) { toast('ดึงไม่สำเร็จ: ' + e.message, 'err'); }
-    });
-    document.getElementById('supaPush')?.addEventListener('click', async () => {
-      toast('กำลังส่งขึ้น Supabase…');
-      await Sync.push();
-      toast(Sync.state.mode === 'ok' ? 'ส่งขึ้น Supabase แล้ว ✓' : 'ส่งไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
-    });
-    document.getElementById('supaOff')?.addEventListener('click', () => {
-      UI.confirm2('ยกเลิกการเชื่อมต่อ Supabase?', 'แอปจะกลับไปเก็บข้อมูลในเบราว์เซอร์เครื่องนี้ (หรือใช้ Google Sheet ถ้าตั้งไว้)', 'ข้อมูลบน Supabase ไม่ถูกลบ เชื่อมต่อใหม่ได้ทุกเมื่อ',
-        () => { Supa.setConfig('', ''); toast('ยกเลิกการเชื่อมต่อ Supabase แล้ว'); App.render(); });
-    });
-
-    document.getElementById('gasSave')?.addEventListener('click', async () => {
-      const u = document.getElementById('gasUrl').value.trim();
-      if (!u) { toast('วาง Web app URL ก่อน (ลงท้าย /exec)', 'err'); return; }
-      if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(u)) { toast('URL ไม่ถูกต้อง — ต้องเป็น URL ของ Apps Script ที่ลงท้าย /exec', 'err'); return; }
-      Sync.setUrl(u);
-      toast('กำลังทดสอบการเชื่อมต่อ…');
-      try {
-        const r = await Sync.ping();
-        if (!r.ok) throw new Error(r.reason || 'ping ล้มเหลว');
-        toast(`เชื่อมต่อสำเร็จ ✓ (ชีท: ${r.sheet}) — กำลังซิงค์ข้อมูล…`);
-        await Sync.pull();
-        App.render();
-      } catch (e) {
-        Sync.setUrl('');
-        toast('เชื่อมต่อไม่สำเร็จ: ' + e.message + ' — ตรวจว่า Deploy แบบ Anyone แล้ว', 'err');
-        App.render();
-      }
-    });
-    document.getElementById('gasPull')?.addEventListener('click', async () => {
-      try { const r = await Sync.pull(); toast(r.adopted ? 'ดึงข้อมูลล่าสุดจากชีทแล้ว' : 'ข้อมูลตรงกันอยู่แล้ว ✓'); App.render(); }
-      catch (e) { toast('ดึงไม่สำเร็จ: ' + e.message, 'err'); }
-    });
-    document.getElementById('gasPush')?.addEventListener('click', async () => {
-      await Sync.push(true);
-      toast(Sync.state.mode === 'ok' ? 'ส่งข้อมูลขึ้น Google Sheet แล้ว ✓' : 'ส่งไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
-    });
-    document.getElementById('gasOff')?.addEventListener('click', () => {
-      UI.confirm2('ยกเลิกการเชื่อมต่อ Google Sheet?', 'แอปจะกลับไปเก็บข้อมูลใน browser เครื่องนี้เท่านั้น', 'ข้อมูลบนชีทไม่ถูกลบ เชื่อมต่อใหม่ได้ทุกเมื่อ',
-        () => { Sync.setUrl(''); toast('ยกเลิกการเชื่อมต่อแล้ว'); App.render(); });
-    });
 
     document.querySelectorAll('[data-lock]').forEach(b => b.addEventListener('click', () => {
       const y = b.dataset.lock;
@@ -931,6 +837,107 @@ const PagesAcc = (() => {
   }
 
   /* ============ ใส่ตัวเลขเกิดจริง (รอบ Revise — บัญชีเท่านั้น) ============ */
+  function system(user) {
+    return pageHead('⚙ ตั้งค่าการเชื่อมต่อระบบ (IT)', 'ปกติไม่ต้องแตะ — URL + key ฝังในโค้ดแล้ว ระบบต่อ Supabase อัตโนมัติ · เฉพาะผู้ดูแลระบบ / IT',
+        '<a class="ghost-btn" href="#/acc/control">← กลับ Budget Control</a>')
+      + card(`🗄️ ฐานข้อมูล Supabase ${Sync.backend() === 'supa' ? '<span class="pill-on">● กำลังใช้งาน</span>' : ''}`, `
+          <p style="margin-bottom:8px">${Sync.backend() === 'supa'
+            ? `สถานะ: ${Sync.chipHtml()} — ทุกการแก้ไขซิงค์ขึ้น Supabase อัตโนมัติ · แต่ละแผนกกรอกพร้อมกันไม่ชนกัน`
+            : `เก็บข้อมูลเป็นตาราง PostgreSQL จริง (แก้ปัญหาชนกันเวลาหลายแผนกกรอกพร้อมกัน) — ตั้งค่าตามไฟล์ <code>supabase/README.md</code>`}</p>
+          <div class="inline-form" style="flex-wrap:wrap">
+            <input id="supaUrl" placeholder="https://xxxx.supabase.co" value="${esc(Supa.url())}" style="flex:1;min-width:280px">
+            <input id="supaKey" type="password" placeholder="${Supa.hasKey() ? '•••• (ตั้งไว้แล้ว — วางใหม่เพื่อเปลี่ยน)' : 'anon public key (sb_publishable_… หรือ eyJ…)'}" style="flex:1;min-width:280px">
+            <button class="primary-btn" id="supaSave">บันทึก & ทดสอบ</button>
+            ${Sync.backend() === 'supa' ? `<button class="ghost-btn" id="supaPull">⬇ ดึงจาก Supabase</button>
+            <button class="ghost-btn" id="supaPush">⬆ ส่งขึ้นเดี๋ยวนี้</button>
+            <button class="ghost-btn" id="supaOff">ยกเลิก</button>` : ''}
+          </div>
+          <p class="muted small" style="margin-top:6px">🔒 URL และ key เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่อยู่ในโค้ดสาธารณะ</p>`)
+      + (() => {
+          const gasActive = Sync.backend() === 'gas';
+          const supaActive = Sync.backend() === 'supa';
+          return card('🔗 Google Sheet (Apps Script) — ทางเลือกสำรอง (ไม่บังคับ)', `
+          <p style="margin-bottom:8px">${
+            supaActive ? '<span class="muted">ℹ️ ระบบกำลังใช้ <b>Supabase</b> เป็นฐานข้อมูลหลักอยู่ — ส่วนนี้เป็นวิธีเดิม (Google Sheet) <b>ไม่ต้องตั้งค่า</b> เว้นแต่ต้องการสลับกลับไปใช้ Google Sheet</span>'
+            : gasActive ? `สถานะ: ${Sync.chipHtml()} — ข้อมูลซิงค์ขึ้น Google Sheet อัตโนมัติ`
+            : '<span class="muted">ยังไม่ได้เชื่อมต่อ (วิธีเดิมก่อนย้ายมา Supabase) — แนะนำใช้ Supabase ด้านบนแทน</span>'}</p>
+          ${(!supaActive && !gasActive) ? `<ol class="setup-steps">
+            <li>เปิดชีท <a class="link" href="https://docs.google.com/spreadsheets/d/1KiE6hk3FJTF4QSk_nYgUwYXynCFFE__J3pcTBdeRhDo/edit" target="_blank">บัญชี</a> → เมนู <b>ส่วนขยาย → Apps Script</b> → วางโค้ด <code>apps-script/Code.gs</code> → Deploy Web app → คัดลอก URL /exec</li>
+          </ol>` : ''}
+          <div class="inline-form">
+            <input id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(Sync.url())}" style="flex:1;min-width:320px">
+            <button class="ghost-btn" id="gasSave">${supaActive ? 'สลับไปใช้ Google Sheet' : 'บันทึก & ทดสอบ'}</button>
+            ${gasActive ? `<button class="ghost-btn" id="gasPull">⬇ ดึงจากชีท</button>
+            <button class="ghost-btn" id="gasPush">⬆ ส่งขึ้นชีทเดี๋ยวนี้</button>
+            <button class="ghost-btn" id="gasOff">ยกเลิกการเชื่อมต่อ</button>` : ''}
+          </div>`);
+        })();
+  }
+  function systemBind(user) {
+    /* ---------- Supabase ---------- */
+    document.getElementById('supaSave')?.addEventListener('click', async () => {
+      const url = document.getElementById('supaUrl').value.trim();
+      let key = document.getElementById('supaKey').value.trim();
+      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) { toast('URL ไม่ถูกต้อง — ต้องเป็น https://xxxx.supabase.co', 'err'); return; }
+      if (!key) { if (Supa.hasKey()) key = localStorage.getItem('abp_supa_key'); else { toast('วาง anon public key ก่อน', 'err'); return; } }
+      if (!/^(sb_|eyJ)/.test(key)) { toast('anon key ไม่ถูกต้อง (ขึ้นต้น sb_ หรือ eyJ)', 'err'); return; }
+      Supa.setConfig(url, key);
+      toast('กำลังทดสอบการเชื่อมต่อ…');
+      try {
+        await Sync.ping();
+        toast('เชื่อมต่อ Supabase สำเร็จ ✓ — กำลังซิงค์…');
+        await Sync.pull();
+        toast(Sync.state.mode === 'ok' ? 'ซิงค์กับ Supabase แล้ว ✓' : 'ซิงค์ไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
+        App.render();
+      } catch (e) { toast('เชื่อมต่อไม่สำเร็จ: ' + e.message, 'err'); }
+    });
+    document.getElementById('supaPull')?.addEventListener('click', async () => {
+      toast('กำลังดึงข้อมูลจาก Supabase…');
+      try { await Sync.pull(); toast('ดึงข้อมูลล่าสุดแล้ว ✓'); App.render(); }
+      catch (e) { toast('ดึงไม่สำเร็จ: ' + e.message, 'err'); }
+    });
+    document.getElementById('supaPush')?.addEventListener('click', async () => {
+      toast('กำลังส่งขึ้น Supabase…');
+      await Sync.push();
+      toast(Sync.state.mode === 'ok' ? 'ส่งขึ้น Supabase แล้ว ✓' : 'ส่งไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
+    });
+    document.getElementById('supaOff')?.addEventListener('click', () => {
+      UI.confirm2('ยกเลิกการเชื่อมต่อ Supabase?', 'แอปจะกลับไปเก็บข้อมูลในเบราว์เซอร์เครื่องนี้ (หรือใช้ Google Sheet ถ้าตั้งไว้)', 'ข้อมูลบน Supabase ไม่ถูกลบ เชื่อมต่อใหม่ได้ทุกเมื่อ',
+        () => { Supa.setConfig('', ''); toast('ยกเลิกการเชื่อมต่อ Supabase แล้ว'); App.render(); });
+    });
+
+    document.getElementById('gasSave')?.addEventListener('click', async () => {
+      const u = document.getElementById('gasUrl').value.trim();
+      if (!u) { toast('วาง Web app URL ก่อน (ลงท้าย /exec)', 'err'); return; }
+      if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(u)) { toast('URL ไม่ถูกต้อง — ต้องเป็น URL ของ Apps Script ที่ลงท้าย /exec', 'err'); return; }
+      Sync.setUrl(u);
+      toast('กำลังทดสอบการเชื่อมต่อ…');
+      try {
+        const r = await Sync.ping();
+        if (!r.ok) throw new Error(r.reason || 'ping ล้มเหลว');
+        toast(`เชื่อมต่อสำเร็จ ✓ (ชีท: ${r.sheet}) — กำลังซิงค์ข้อมูล…`);
+        await Sync.pull();
+        App.render();
+      } catch (e) {
+        Sync.setUrl('');
+        toast('เชื่อมต่อไม่สำเร็จ: ' + e.message + ' — ตรวจว่า Deploy แบบ Anyone แล้ว', 'err');
+        App.render();
+      }
+    });
+    document.getElementById('gasPull')?.addEventListener('click', async () => {
+      try { const r = await Sync.pull(); toast(r.adopted ? 'ดึงข้อมูลล่าสุดจากชีทแล้ว' : 'ข้อมูลตรงกันอยู่แล้ว ✓'); App.render(); }
+      catch (e) { toast('ดึงไม่สำเร็จ: ' + e.message, 'err'); }
+    });
+    document.getElementById('gasPush')?.addEventListener('click', async () => {
+      await Sync.push(true);
+      toast(Sync.state.mode === 'ok' ? 'ส่งข้อมูลขึ้น Google Sheet แล้ว ✓' : 'ส่งไม่สำเร็จ — ' + (Sync.state.error || ''), Sync.state.mode === 'ok' ? 'ok' : 'err');
+    });
+    document.getElementById('gasOff')?.addEventListener('click', () => {
+      UI.confirm2('ยกเลิกการเชื่อมต่อ Google Sheet?', 'แอปจะกลับไปเก็บข้อมูลใน browser เครื่องนี้เท่านั้น', 'ข้อมูลบนชีทไม่ถูกลบ เชื่อมต่อใหม่ได้ทุกเมื่อ',
+        () => { Sync.setUrl(''); toast('ยกเลิกการเชื่อมต่อแล้ว'); App.render(); });
+    });
+  }
+
   function actuals(user) {
     const qs = parseQS();
     const year = Number(qs.y) || UI.year();
@@ -1253,5 +1260,5 @@ const PagesAcc = (() => {
   }
   function varianceBind() { UI.enableSort(document.getElementById('varTable')); }
 
-  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind };
+  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind };
 })();
