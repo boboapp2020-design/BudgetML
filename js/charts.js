@@ -68,14 +68,21 @@ const Charts = (() => {
     return ((h ? h.textContent : 'กราฟ') || 'กราฟ').replace(/[⬇⛶🖨💾⤢].*/, '').trim() || 'กราฟ';
   }
   function addTools(container) {
-    if (!container || container.querySelector(':scope > .chart-tools')) return;
-    container.style.position = 'relative';
-    const bar = document.createElement('div');
-    bar.className = 'chart-tools';
-    bar.innerHTML = '<button type="button" data-ct="zoom" title="ขยายดูรายละเอียด">⤢</button><button type="button" data-ct="save" title="บันทึกเป็นรูปภาพ (PNG)">💾</button>';
-    container.appendChild(bar);
-    bar.querySelector('[data-ct=zoom]').addEventListener('click', e => { e.stopPropagation(); openChartModal(container); });
-    bar.querySelector('[data-ct=save]').addEventListener('click', e => { e.stopPropagation(); exportPNG(container); });
+    if (!container) return;
+    const card = (container.closest && container.closest('.card')) || container;
+    if (!card.querySelector(':scope > .chart-save')) {
+      if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'chart-save';
+      btn.title = 'บันทึกเป็นรูปภาพ (PNG)'; btn.textContent = '💾';
+      btn.addEventListener('click', e => { e.stopPropagation(); exportPNG(container, chartTitle(container)); });
+      card.appendChild(btn);
+    }
+    container.style.cursor = 'zoom-in';           // คลิกที่กราฟ = ขยาย popup
+    if (!container._zoom) {
+      container._zoom = true;
+      container.addEventListener('click', () => openChartModal(container));
+    }
   }
   function openChartModal(container) {
     if (typeof UI === 'undefined') return;
@@ -192,7 +199,7 @@ const Charts = (() => {
       svg.appendChild(t);
       const bw = (W - labelW - valueW - padL) * Math.abs(it.value) / max;
       const r = el('rect', { x: labelW, y: y + 7, width: Math.max(bw, 2), height: rowH - 14, fill: it.color || CAT[0], rx: 3 });
-      if (it.onClick) { r.style.cursor = 'pointer'; r.addEventListener('click', it.onClick); }
+      if (it.onClick) { r.style.cursor = 'pointer'; r.addEventListener('click', e => { e.stopPropagation(); it.onClick(e); }); }
       r.addEventListener('mousemove', ev => showTip(ev, `<b>${it.label}</b><br>${it.sub || ''}<b>${fmtFull(it.value)}</b> กีบ`));
       r.addEventListener('mouseleave', hideTip);
       svg.appendChild(r);
