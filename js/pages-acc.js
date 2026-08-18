@@ -271,9 +271,13 @@ const PagesAcc = (() => {
               <div class="ehs-sub">ใช้ไป ${actPct.toFixed(1)}% ของงบ · มีข้อมูล ${actDeptN}/${depts.length} แผนก</div>
             </div>
             <div class="eh-stat">
-              <div class="ehs-label">🔁 Revise เทียบงบเดิม</div>
-              <div class="ehs-val">${rv.on ? (Math.abs(rvDiff) < 0.5 ? '± 0' : (rvDiff > 0 ? '+' : '−') + thShort(Math.abs(rvDiff))) + ' <small>กีบ</small>' : '<small>ยังไม่เปิดรอบ</small>'}</div>
-              <div class="ehs-sub">${rv.on ? `งบเดิม ${thShort(origTotal)} กีบ · ${(rvPct >= 0 ? '+' : '') + rvPct.toFixed(2)}%` : 'งบปัจจุบัน = งบอนุมัติ'}</div>
+              <div class="ehs-label">${rv.on ? '🔁 Revise เทียบงบเดิม' : '🎯 เทียบแผนอนุมัติ (ORIGINAL)'}</div>
+              <div class="ehs-val">${rv.on
+                ? (Math.abs(rvDiff) < 0.5 ? '± 0' : (rvDiff > 0 ? '+' : '−') + thShort(Math.abs(rvDiff))) + ' <small>กีบ</small>'
+                : (snap ? (Math.abs(outlook) < 0.5 ? '± 0' : (outlook > 0 ? '+' : '−') + thShort(Math.abs(outlook))) + ' <small>กีบ</small>' : '<small>ยังไม่ freeze แผน</small>')}</div>
+              <div class="ehs-sub">${rv.on
+                ? `งบเดิม ${thShort(origTotal)} กีบ · ${(rvPct >= 0 ? '+' : '') + rvPct.toFixed(2)}%`
+                : (snap ? `แผนอนุมัติ ${thShort(fpa.origFull)} กีบ · ${(outlookPct >= 0 ? '+' : '') + outlookPct.toFixed(2)}%` : 'จะ freeze อัตโนมัติตอนปิดรอบ & Lock')}</div>
             </div>
             <div class="eh-stat">
               <div class="ehs-label">🎯 MTP ปี ${year + 1}</div>
