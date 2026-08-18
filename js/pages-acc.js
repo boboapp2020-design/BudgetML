@@ -437,7 +437,42 @@ const PagesAcc = (() => {
     } else {
       const XLSX = await loadXLSX();
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = Array(98).fill({ wch: 12 }); ws['!cols'][0] = { wch: 20 }; ws['!cols'][3] = { wch: 24 }; ws['!cols'][5] = { wch: 24 }; ws['!cols'][7] = { wch: 30 };
+      ws['!cols'] = Array(98).fill({ wch: 13 }); ws['!cols'][0] = { wch: 20 }; ws['!cols'][1] = { wch: 16 }; ws['!cols'][3] = { wch: 26 }; ws['!cols'][5] = { wch: 26 }; ws['!cols'][7] = { wch: 32 };
+      // ---- จัดรูปแบบตาราง (ต้องใช้ xlsx-js-style) ----
+      const canStyle = !!(XLSX.version && window.XLSX === XLSX); // xlsx-js-style เก็บ style ผ่าน cell.s
+      const BD = c => ({ style: 'thin', color: { rgb: c } });
+      const border = { top: BD('B8C4D8'), bottom: BD('B8C4D8'), left: BD('B8C4D8'), right: BD('B8C4D8') };
+      const SEC = [ // [c0, c1, สีพื้น section (r6), สีพื้นหัวเดือน (r7)]
+        [8, 22, 'DDEBF7', '9DC3E6'],   // งบต้นปี — ฟ้าอ่อน
+        [23, 37, 'E2EFDA', 'A9D18E'],  // งบล่าสุด/Revise — เขียวอ่อน
+        [38, 50, 'BDD7EE', '8EAADB'],  // เกิดจริง — ฟ้า (ตามไฟล์)
+        [88, 97, 'FFF2CC', 'FFD966'],  // จำแนก master — เหลืองอ่อน
+      ];
+      const setS = (r, c, s) => { const a = XLSX.utils.encode_cell({ r, c }); if (ws[a]) ws[a].s = s; };
+      // ชื่อรายงาน (แถว 1-4)
+      for (let r = 0; r < 4; r++) setS(r, 0, { font: { bold: r === 2, sz: r === 2 ? 14 : 11, color: { rgb: '16233A' } } });
+      // แถว 6: section headers (merge + สี)
+      ws['!merges'] = SEC.slice(0, 3).map(x => ({ s: { r: 5, c: x[0] }, e: { r: 5, c: x[1] } }));
+      SEC.forEach(x => { for (let c = x[0]; c <= x[1]; c++) setS(5, c, { fill: { fgColor: { rgb: x[2] } }, font: { bold: true, sz: 12, color: { rgb: '1F3864' } }, alignment: { horizontal: 'center', vertical: 'center' }, border }); });
+      // แถว 7: หัวคอลัมน์
+      const hdrBase = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4472C4' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border };
+      for (let c = 0; c <= 7; c++) setS(6, c, hdrBase);
+      SEC.forEach(x => { for (let c = x[0]; c <= x[1]; c++) setS(6, c, { ...hdrBase, fill: { fgColor: { rgb: x[3] } }, font: { ...hdrBase.font, color: { rgb: '1F3864' } } }); });
+      // แถวข้อมูล: เส้นขอบ + ฟอร์แมตเลข + แถบสีสลับ + คอลัมน์รวมเน้น
+      const TOTCOLS = new Set([20, 21, 22, 35, 36, 37, 50]);
+      const COLS = []; for (let c = 0; c <= 50; c++) COLS.push(c); for (let c = 88; c <= 97; c++) COLS.push(c);
+      for (let r = 7; r < aoa.length; r++) {
+        const zebra = (r % 2 === 1) ? 'F6F9FE' : 'FFFFFF';
+        for (const c of COLS) {
+          const a = XLSX.utils.encode_cell({ r, c }); const cell = ws[a]; if (!cell) continue;
+          const isNum = typeof cell.v === 'number';
+          cell.s = { border, fill: { fgColor: { rgb: TOTCOLS.has(c) ? 'EDF2FB' : zebra } },
+            font: { sz: 10, bold: TOTCOLS.has(c), color: { rgb: '16233A' } },
+            alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' } };
+          if (isNum) cell.z = '#,##0';
+        }
+      }
+      ws['!rows'] = []; ws['!rows'][5] = { hpt: 22 }; ws['!rows'][6] = { hpt: 30 };
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'ML_งบค่าใช้จ่าย');
       XLSX.writeFile(wb, fname + '.xlsx');
@@ -1186,9 +1221,11 @@ const PagesAcc = (() => {
         document.head.appendChild(s);
       };
       // โหลดตัวอ่านในเครื่องก่อน (self-contained ใช้ได้แม้ไม่มีเน็ต) → ถ้าไม่มีค่อย fallback CDN
-      tryLoad('js/vendor/xlsx.full.min.js?v=8.1', () =>
-        tryLoad('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-          () => rej(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ — ลองบันทึกไฟล์เป็น .csv แล้วอัปโหลดแทน'))));
+      // ใช้รุ่น xlsx-js-style (รองรับสี/เส้นขอบ/ฟอร์แมตตอน export) — อ่านไฟล์ได้เหมือนรุ่นเดิม
+      tryLoad('js/vendor/xlsx-style.min.js?v=11.3', () =>
+        tryLoad('js/vendor/xlsx.full.min.js?v=8.1', () =>
+          tryLoad('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+            () => rej(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ — ลองบันทึกไฟล์เป็น .csv แล้วอัปโหลดแทน')))));
     });
   }
   function splitCSV(line, delim) {
