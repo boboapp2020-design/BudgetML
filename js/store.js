@@ -103,6 +103,17 @@ const Store = (() => {
   }
   const subtreeDepartments = unitId => subtreeDeptCodes(unitId)
     .map(code => db.departments.find(d => d.code === code)).filter(d => d && d.active);
+  // หน่วยทั้งหมดใน subtree (รวมตัวเอง) เรียงแบบต้นไม้ + depth — ใช้ทำตัวเลือก "ดูแยกฝ่ายย่อย"
+  function subtreeUnits(unitId) {
+    const out = [];
+    const walk = (id, depth) => {
+      const u = oversightUnit(id); if (!u) return;
+      out.push({ unit: u, depth });
+      childUnits(id).forEach(c => walk(c.id, depth + 1));
+    };
+    walk(unitId, 0);
+    return out;
+  }
   // หน่วยกำกับดูแลที่แผนกนี้สังกัด (สำหรับแสดงผล)
   const unitOfDept = code => oversight().find(u => (u.deptCodes || []).includes(code)) || null;
 
@@ -1006,7 +1017,7 @@ const Store = (() => {
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
     login, loginByUsername, logout, currentUser,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
-    oversight, oversightUnit, childUnits, subtreeDeptCodes, subtreeDepartments, unitOfDept,
+    oversight, oversightUnit, childUnits, subtreeDeptCodes, subtreeDepartments, subtreeUnits, unitOfDept,
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,
     months, glTotal, deptTotal, companyTotal, deptMonthly, companyMonthly,
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,

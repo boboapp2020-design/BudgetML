@@ -17,12 +17,21 @@ const PagesMgr = (() => {
     NEED_REVISION: { label: 'ตีกลับแก้ไข', color: '#d03b3b' }, DRAFT: { label: 'ยังไม่เริ่ม', color: '#c3c2b7' },
   };
 
+  // หน่วยที่ผู้บริหารกำลัง "เจาะดู" (เลือกฝ่ายย่อยใน subtree ของตน) — default = หน่วยของตัวเอง
+  function currentViewUnit(user) {
+    const qs = parseQS();
+    const ids = Store.subtreeUnits(user.orgUnit).map(x => x.unit.id);
+    return (qs.u && ids.includes(qs.u)) ? qs.u : user.orgUnit;
+  }
+
   function dashboard(user) {
     const year = UI.year(), prevYear = year - 1;
-    const unit = Store.oversightUnit(user.orgUnit) || { name: '(หน่วยงาน)' };
+    const viewUnitId = currentViewUnit(user);
+    const units = Store.subtreeUnits(user.orgUnit);   // ทั้ง subtree ไว้ทำตัวเลือกมุมมอง
+    const unit = Store.oversightUnit(viewUnitId) || { name: '(หน่วยงาน)' };
     const div = unit.name;
-    const depts = Store.subtreeDepartments(user.orgUnit);
-    const kids = Store.childUnits(user.orgUnit);
+    const depts = Store.subtreeDepartments(viewUnitId);
+    const kids = Store.childUnits(viewUnitId);
     const rv = Store.revisePhase(year);
 
     const cur = depts.reduce((s, d) => s + Store.deptTotal(year, d.id), 0);
@@ -69,6 +78,12 @@ const PagesMgr = (() => {
         `หน่วยกำกับดูแล · ${depts.length} แผนกที่มีงบ${kidNote} · งบปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
         `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
 
+      + (units.length > 1 ? `<div class="mgr-view">
+          <span class="mgr-view-lb">👁 ดูแยกฝ่าย / ศูนย์:</span>
+          <select id="mgrViewUnit" class="mgr-view-sel">${units.map(({ unit: u, depth }) => `<option value="${u.id}" ${u.id === viewUnitId ? 'selected' : ''}>${'　'.repeat(depth)}${depth ? '└ ' : '▸ '}${esc(u.name)} · ${Store.subtreeDepartments(u.id).length} แผนก</option>`).join('')}</select>
+          ${viewUnitId !== user.orgUnit ? `<a class="ghost-btn small" href="#/mgr/dashboard">↺ กลับดูทั้งหมด</a>` : ''}
+        </div>` : '')
+
       + `<div class="kpi-grid kpi-grid-4">
         ${kpiC('🏢', '#e6f0fb', 'kpi-tint-blue', `งบรวมทั้งฝ่าย ปี ${year}`, `${fmtShort(cur)} <small>กีบ</small>`, fmt(cur) + ' กีบ')}
         ${kpiC(rv.on ? '🧊' : '🗓️', '#e6f7f0', 'kpi-tint-teal', baseLabel, `${fmtShort(baseVal)} <small>กีบ</small>`, fmt(baseVal) + ' กีบ')}
@@ -91,9 +106,15 @@ const PagesMgr = (() => {
 
   function dashboardBind(user) {
     const year = UI.year();
-    const depts = Store.subtreeDepartments(user.orgUnit);
+    const viewUnitId = currentViewUnit(user);
+    const depts = Store.subtreeDepartments(viewUnitId);
     const rv = Store.revisePhase(year);
     UI.enableSort(document.getElementById('mgrDeptTable'));
+    // เปลี่ยนมุมมองฝ่ายย่อย
+    document.getElementById('mgrViewUnit')?.addEventListener('change', e => {
+      const v = e.target.value;
+      location.hash = (v === user.orgUnit) ? '#/mgr/dashboard' : '#/mgr/dashboard?u=' + v;
+    });
     // รับรอง / ตีกลับ (ผู้จัดการฝ่าย)
     document.querySelectorAll('[data-mgr-approve]').forEach(b => b.addEventListener('click', () => {
       try { Store.mgrApprove(user, year, b.dataset.mgrApprove); UI.toast('รับรองงบแล้ว ✓ — ส่งต่อให้บัญชี'); App.render(); }
