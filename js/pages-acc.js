@@ -339,12 +339,110 @@ const PagesAcc = (() => {
     }).join('');
 
     return pageHead(`หน่วยงานทั้งหมด — งบปี ${year}`, `Company → Department → GL → รายเดือน → เหตุผล · ${asOf()}`,
-        `<button class="ghost-btn" onclick="Store.exportDeptSummary(${year})">⬇ Export CSV</button>`)
+        `<button class="ghost-btn btn-green" id="exportMLXlsx" title="ไฟล์ Excel โครงคอลัมน์ A→CT ตรงตามไฟล์ ML_งบค่าใช้จ่าย (งบต้นปี/ล่าสุด/เกิดจริง + จำแนกครบ)">⬇ Excel (ML Form)</button>
+         <button class="ghost-btn" id="exportMLCsv" title="CSV โครงเดียวกับไฟล์ ML">⬇ CSV (ML Form)</button>
+         <button class="ghost-btn" onclick="Store.exportDeptSummary(${year})" title="สรุปยอดรายหน่วยงานแบบย่อ">⬇ CSV สรุป</button>`)
       + `<div class="breadcrumb"><b>ทุกหน่วยงาน</b></div>`
       + card('', `<div class="table-scroll"><table class="data-table">
         <thead><tr><th>หน่วยงาน</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th>
         <th class="num">ผลต่าง (กีบ)</th><th>%</th><th>ความครบถ้วน</th><th>สถานะ</th><th></th></tr></thead>
         <tbody>${rows}${deptTotalRow}</tbody></table></div>`, { cls: 'card-flush' });
+  }
+
+  /* ---------- Export แบบไฟล์ ML_งบค่าใช้จ่าย (โครงคอลัมน์ A→CT ตรงตำแหน่งไฟล์จริง) ----------
+   *  A codeA · B IO · C CCT · D ชื่อหน่วยงาน · E รหัสแผนก · F แผนก · G GL · H ชื่อบัญชี
+   *  I-T งบต้นปี 12 เดือน (ORIGINAL) · U รวม · V เพิ่ม-ลด · W รวมหลังปรับ
+   *  X-AI งบล่าสุด/Revise 12 เดือน (ตัว live) · AJ รวม · AM-AX เกิดจริง 12 เดือน · AY รวมเกิดจริง
+   *  CK หน่วยงานที่รับผิดชอบ · CL Group GL PPT · CM Group Sap · CN-CO ฝ่ายย่อย · CP ฝ่าย · CQ รหัสด้าน · CR ด้าน · CS Type · CT สังกัด */
+  function buildMLRows(year) {
+    const NCOL = 98;
+    const db = Store.db;
+    // master maps
+    const cctInfo = {}; (db.cctMaster || []).forEach(c => { cctInfo[c.code] = c; });
+    const glInfo = {}; db.glAccounts.forEach(g => { glInfo[g.id] = g; });
+    const deptInfo = {}; db.departments.forEach(d => { deptInfo[d.id] = d; });
+    // ข้อมูลจำแนกเต็มจากไฟล์ (resp/ฝ่ายย่อย/ฝ่าย/ด้าน/สังกัด) — จาก SEED_DATA
+    const rich = {}; // cct|glcode -> unit meta + row meta
+    (typeof SEED_DATA !== 'undefined' ? SEED_DATA.units : []).forEach(u => u.rows.forEach(r => {
+      rich[r.cct + '|' + r.gl] = { resp: r.resp || '', u };
+    }));
+    const num = v => (v === null || v === undefined) ? 0 : v;
+    const sum = a => (a || []).reduce((s, v) => s + num(v), 0);
+    const orig = k => { const s = (db.budgetSnapshots || []).find(x => x.year === year && x.label === 'ORIGINAL'); return s ? s.rows.find(r => r.departmentId === k[0] && r.glId === k[1] && r.cct === k[2]) : null; };
+    // index budgets/actuals/snapshot by dept|gl|cct
+    const bIdx = {}, aIdx = {}, oIdx = {};
+    db.budgets.filter(b => b.year === year).forEach(b => { bIdx[b.departmentId + '|' + b.glId + '|' + b.cct] = b.months; });
+    (db.actuals || []).filter(a => a.year === year).forEach(a => { aIdx[a.departmentId + '|' + a.glId + '|' + a.cct] = a.months; });
+    const snap = (db.budgetSnapshots || []).find(x => x.year === year && x.label === 'ORIGINAL');
+    if (snap) snap.rows.forEach(r => { oIdx[r.departmentId + '|' + r.glId + '|' + r.cct] = r.months; });
+
+    const out = [];
+    // แถวหัว (ตรงตำแหน่งไฟล์: แถว 6 = section, แถว 7 = header) — แถว 1-5 เว้นเป็นชื่อรายงาน
+    const blank = () => Array(NCOL).fill('');
+    const r1 = blank(); r1[0] = year;
+    const r2 = blank(); r2[0] = Store.db.meta.company;
+    const r3 = blank(); r3[0] = 'งบประมาณค่าใช้จ่าย ปี' + year + ' (export จากระบบ)';
+    const r4 = blank(); r4[0] = 'หน่วย : กีบ';
+    const r5 = blank();
+    const r6 = blank(); r6[8] = 'งบต้นปี ' + year; r6[23] = 'งบประมาณ ' + year + ' - ล่าสุด (Revise/Live)'; r6[38] = 'เกิดจริงสะสม ปี ' + year;
+    const r7 = blank();
+    const MTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const yy = String(year).slice(2);
+    r7[0] = 'code a'; r7[1] = 'IO / รหัสงบประมาณ'; r7[2] = 'รหัสหน่วยงาน/CCT'; r7[3] = 'ชื่อหน่วยงาน';
+    r7[4] = 'รหัสแผนก'; r7[5] = 'แผนก'; r7[6] = 'รหัสบัญชี /GL'; r7[7] = 'ชื่อบัญชี';
+    MTH.forEach((m, i) => { r7[8 + i] = m + '-' + yy; r7[23 + i] = m + '-' + yy; r7[38 + i] = m + '-' + yy; });
+    r7[20] = 'งบประมาณ 12เดือน ' + year + ' งบต้นปี'; r7[21] = 'เพิ่ม - ลดระหว่างปี ' + year; r7[22] = 'งบประมาณ 12เดือน ' + year;
+    r7[35] = 'งบประมาณ 12เดือน ' + year + ' ล่าสุด'; r7[36] = 'เพิ่ม - ลดระหว่างปี ' + year; r7[37] = 'งบประมาณ 12เดือน ' + year + ' ล่าสุด';
+    r7[50] = 'รวมงบเกิดจริง 12เดือน ' + year;
+    r7[88] = 'หน่วยงานที่รับผิดชอบ'; r7[89] = 'Group GL PPT'; r7[90] = 'Group Sap'; r7[91] = 'รหัสฝ่ายย่อย'; r7[92] = 'ฝ่ายย่อย';
+    r7[93] = 'ฝ่าย'; r7[94] = 'รหัสด้าน'; r7[95] = 'ด้าน'; r7[96] = 'Type'; r7[97] = 'สังกัด';
+    out.push(r1, r2, r3, r4, r5, r6, r7);
+
+    // แถวข้อมูล — เรียงตาม แผนก → GL → CCT
+    const rows = (db.departmentRows || []).slice().sort((a, b) => {
+      const da = deptInfo[a.departmentId]?.code || '', db2 = deptInfo[b.departmentId]?.code || '';
+      return da.localeCompare(db2) || (glInfo[a.glId]?.code || '').localeCompare(glInfo[b.glId]?.code || '') || a.cct.localeCompare(b.cct);
+    });
+    rows.forEach(x => {
+      const key = x.departmentId + '|' + x.glId + '|' + x.cct;
+      const g = glInfo[x.glId] || {}; const cc = cctInfo[x.cct] || {};
+      const ownerDept = deptInfo[cc.departmentId] || deptInfo[x.departmentId] || {};   // แผนกเจ้าของตามไฟล์ (จาก CCT)
+      const rr = rich[x.cct + '|' + (g.code || '')] || {}; const u = rr.u || {};
+      const live = bIdx[key] || Array(12).fill(null);
+      const act = aIdx[key] || Array(12).fill(null);
+      const og = oIdx[key] || Array(12).fill(null);
+      const row = blank();
+      row[0] = x.codeA || ''; row[1] = x.io || ''; row[2] = x.cct; row[3] = cc.name || u.name || '';
+      row[4] = ownerDept.code || ''; row[5] = ownerDept.name || ''; row[6] = g.code || ''; row[7] = g.name || '';
+      for (let i = 0; i < 12; i++) { row[8 + i] = num(og[i]); row[23 + i] = num(live[i]); row[38 + i] = num(act[i]); }
+      row[20] = sum(og); row[21] = sum(live) - sum(og); row[22] = sum(live);
+      row[35] = sum(live); row[36] = 0; row[37] = sum(live);
+      row[50] = sum(act);
+      row[88] = rr.resp || ''; row[89] = g.glGroup || ''; row[90] = g.glGroupSap || '';
+      row[91] = u.subDivCode || ''; row[92] = u.subDiv || ''; row[93] = u.div || '';
+      row[94] = u.areaCode || ''; row[95] = u.area || ''; row[96] = g.glType || ''; row[97] = u.area || '';
+      out.push(row);
+    });
+    return out;
+  }
+  async function exportML(kind) {
+    const year = UI.year();
+    const aoa = buildMLRows(year);
+    const fname = 'ML_งบค่าใช้จ่าย_' + year + '_export';
+    if (kind === 'csv') {
+      const csv = aoa.map(r => r.map(v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname + '.csv'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } else {
+      const XLSX = await loadXLSX();
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = Array(98).fill({ wch: 12 }); ws['!cols'][0] = { wch: 20 }; ws['!cols'][3] = { wch: 24 }; ws['!cols'][5] = { wch: 24 }; ws['!cols'][7] = { wch: 30 };
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'ML_งบค่าใช้จ่าย');
+      XLSX.writeFile(wb, fname + '.xlsx');
+    }
+    toast('Export ' + (kind === 'csv' ? 'CSV' : 'Excel') + ' แล้ว (' + (aoa.length - 7) + ' แถว · โครงคอลัมน์ตามไฟล์ ML)');
   }
 
   function drillDept(user, deptId) {
@@ -481,6 +579,8 @@ const PagesAcc = (() => {
         { name: `ปี ${year}`,     color: Charts.CUR_C,  values: Store.deptMonthly(year, qs.d) },
       ]);
     }
+    document.getElementById('exportMLXlsx')?.addEventListener('click', () => exportML('xlsx').catch(e => toast(e.message, 'err')));
+    document.getElementById('exportMLCsv')?.addEventListener('click', () => exportML('csv').catch(e => toast(e.message, 'err')));
     document.querySelectorAll('[data-revise]').forEach(btn => btn.addEventListener('click', () => {
       const deptId = btn.dataset.revise;
       UI.modal(`ตีกลับให้แก้ไข — ${esc(Store.dept(deptId).name)}`, `
