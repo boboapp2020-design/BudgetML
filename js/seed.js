@@ -22,9 +22,11 @@ const SEED = (() => {
   const departments = U.map(u => ({
     id: u.id, code: u.code, name: u.name, nameEn: '',
     side: u.side, active: true,
-    // บริบทลำดับชั้น (ใช้แสดงผล/จัดกลุ่ม) — แผนก(F) / ฝ่าย(CP) / ด้าน(CR)
-    deptCode: u.deptCode, deptName: u.deptName, div: u.div, area: u.area,
-    ccts: u.ccts,
+    // บริบทลำดับชั้น (ครบ 16 คอลัมน์จากไฟล์) — แผนก(F)/ฝ่ายย่อย/ฝ่าย(CP)/ด้าน(CR)/หน่วยงานรับผิดชอบ
+    deptCode: u.deptCode, deptName: u.deptName,
+    subDiv: u.subDiv, subDivCode: u.subDivCode,
+    div: u.div, area: u.area, areaCode: u.areaCode,
+    respUnit: u.respUnit, ccts: u.ccts,
   }));
 
   // ---------- GL master (173 บัญชี + Type + Group PPT/Sap) ----------
