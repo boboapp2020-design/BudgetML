@@ -1,10 +1,12 @@
 # =====================================================================
-# apply-filler-routing.ps1
-# ย้ายเจ้าของ (department_id) ของแถว ACC/HR ไปแผนกกลางผู้กรอก (routing)
-#  ACC+อ้อย -> แผนกบริการไร่ / ACC อื่น -> แผนกบัญชีทั่วไป / HR -> แผนกบุคคลโรงงาน
-#  ครอบทั้งปี 2025 + 2026 · ยอดรวมไม่เปลี่ยน (2026=1.44T, 2025=913.9B) แค่ย้ายเจ้าของ
-#  อ่านจาก budgets-routed.json + deptstatus-routed.json (สร้างไว้แล้ว)
-# วิธีรัน:
+# apply-filler-routing.ps1  (ASCII-only; Thai loaded at runtime from JSON)
+# Move ownership (department_id) of ACC/HR rows to 3 central filler depts:
+#   ACC + Group Sap has 'aoi'  -> bri-rai   (u8001010400)
+#   ACC other                  -> gen-acct  (u8003851100)
+#   HR                         -> hr-factory(u8003821400)
+# Covers years 2025 + 2026. Totals unchanged (2026=1.44T, 2025=913.9B) - only owner moves.
+# Reads budgets-routed.json + deptstatus-routed.json (already generated).
+# Run:
 #   powershell.exe -ExecutionPolicy Bypass -File "C:\Users\surasakna\Desktop\Project AI\Budget App\supabase\apply-filler-routing.ps1"
 # =====================================================================
 $ErrorActionPreference = 'Stop'
@@ -41,15 +43,16 @@ Write-Host "== INSERT routed budgets + dept_status =="
 PostRows 'budgets' $budgets
 PostRows 'dept_status' $status
 
-Write-Host "== VERIFY =="
+Write-Host "== VERIFY totals =="
 foreach($y in 2025,2026){
   $tot=0.0; $from=0
-  while($true){ $b=Invoke-RestMethod -Uri "$url/rest/v1/budgets?select=months&year=eq.$y&limit=1000&offset=$from" -Headers $H; foreach($x in $b){ foreach($v in $x.months){ if($v){$tot+=$v} } }; if($b.Count -lt 1000){break}; $from+=1000 }
+  while($true){ $b=Invoke-RestMethod -Uri ($url+'/rest/v1/budgets?select=months&year=eq.'+$y+'&limit=1000&offset='+$from) -Headers $H; foreach($x in $b){ foreach($v in $x.months){ if($v){$tot+=$v} } }; if($b.Count -lt 1000){break}; $from+=1000 }
   Write-Host ("budget "+$y+" TOTAL = "+('{0:N0}' -f $tot))
 }
-# central owner row counts
-foreach($c in @{n='บริการไร่';id='u8001010400'},@{n='บัญชีทั่วไป';id='u8003851100'},@{n='บุคคลโรงงาน';id='u8003821400'}){
-  $r=Invoke-WebRequest -Uri ($url+'/rest/v1/budgets?select=year&department_id=eq.'+$c.id) -Headers ($H + @{Prefer='count=exact'}) -Method Get -UseBasicParsing
-  Write-Host ("  "+$c.n+" ("+$c.id+") owns "+(($r.Headers['Content-Range'] -split '/')[-1])+" budget rows")
+Write-Host "== VERIFY central owners =="
+foreach($id in 'u8001010400','u8003851100','u8003821400'){
+  $q = $url + '/rest/v1/budgets?select=year' + [char]38 + 'department_id=eq.' + $id
+  $r = Invoke-WebRequest -Uri $q -Headers ($H + @{ Prefer='count=exact' }) -Method Get -UseBasicParsing
+  Write-Host ("  "+$id+" owns "+(($r.Headers['Content-Range'] -split '/')[-1])+" budget rows")
 }
 Write-Host "DONE - reload web app (Ctrl+F5)"
