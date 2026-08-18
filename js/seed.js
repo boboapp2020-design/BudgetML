@@ -185,7 +185,7 @@ const SEED = (() => {
       yearCurrent: Y_CUR, yearPrevious: Y_PREV,
       sides: SEED_DATA.sides,
       // แผนก (รหัส F) ที่กรอก "ปริมาณผลิต" ได้ นอกเหนือจากแอดมินบัญชี — แก้ที่นี่ที่เดียว
-      volumeEditors: ['2712'],   // แผนกบริการไร่ (เปลี่ยน/เพิ่มรหัสแผนกได้)
+      volumeEditors: [],   // ตอนนี้: แอดมินบัญชีกรอกคนเดียว · ภายหลังจะแบ่งให้คนเกี่ยวข้อง → ใส่รหัสแผนก เช่น ['2712','3221']
     },
     oversight: OVERSIGHT,
     users, departments, glAccounts, cctMaster, departmentRows, departmentGL,
