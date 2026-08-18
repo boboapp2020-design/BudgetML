@@ -27,19 +27,30 @@ const PagesMgr = (() => {
   function dashboard(user) {
     const year = UI.year(), prevYear = year - 1;
     const viewUnitId = currentViewUnit(user);
-    const units = Store.subtreeUnits(user.orgUnit);   // ทั้ง subtree ไว้ทำตัวเลือกมุมมอง
+    const units = Store.subtreeUnits(user.orgUnit);
     const unit = Store.oversightUnit(viewUnitId) || { name: '(หน่วยงาน)' };
     const div = unit.name;
     const depts = Store.subtreeDepartments(viewUnitId);
     const kids = Store.childUnits(viewUnitId);
     const rv = Store.revisePhase(year);
+    const dset = new Set(depts.map(d => d.id));
 
     const cur = depts.reduce((s, d) => s + Store.deptTotal(year, d.id), 0);
     const prev = depts.reduce((s, d) => s + Store.deptTotal(prevYear, d.id), 0);
     const orig = rv.on ? depts.reduce((s, d) => s + Store.originalDeptTotal(year, d.id), 0) : 0;
     const baseVal = rv.on ? orig : prev;
     const cmp = Store.compare(cur, baseVal);
-    const baseLabel = rv.on ? 'งบเดิม (ก่อน Revise)' : `ปี ${prevYear}`;
+    const baseLabel = rv.on ? 'งบเดิม (ORIGINAL)' : `ปี ${prevYear}`;
+
+    // MTP รวมของฝ่าย
+    let mtp1 = 0, mtp2 = 0;
+    Store.db.budgets.filter(b => b.year === year && dset.has(b.departmentId)).forEach(b => { mtp1 += (b.mtp1 || 0); mtp2 += (b.mtp2 || 0); });
+    const mtpPct = cur > 0 ? (mtp1 - cur) / cur * 100 : 0;
+
+    // การกระจุกตัว
+    const deptT = depts.map(d => ({ d, t: Store.deptTotal(year, d.id) })).sort((a, b) => b.t - a.t);
+    const topShare = cur > 0 && deptT.length ? deptT[0].t / cur * 100 : 0;
+    const top5Share = cur > 0 ? deptT.slice(0, 5).reduce((s, x) => s + x.t, 0) / cur * 100 : 0;
 
     // สถานะการส่ง
     const states = depts.map(d => Store.deptState(year, d.id).status);
@@ -51,9 +62,15 @@ const PagesMgr = (() => {
     const legends = stOrder.filter(s => cnt[s]).map(s =>
       `<span class="st-legend"><span class="dl-dot" style="background:${ST_META[s].color}"></span>${ST_META[s].label} <b>${cnt[s]}</b></span>`).join('');
 
-    // ตารางแผนกในฝ่าย
-    const rows = depts.slice().sort((a, b) => Store.deptTotal(year, b.id) - Store.deptTotal(year, a.id)).map(d => {
-      const c = Store.deptTotal(year, d.id), p = Store.deptTotal(prevYear, d.id);
+    // โครงสร้างต้นทุน (GL group) — top cost driver
+    const grp = {};
+    depts.forEach(d => Store.deptGLs(d.id).forEach(g => { const gg = g.glGroup || 'อื่นๆ'; grp[gg] = (grp[gg] || 0) + Store.glTotal(year, d.id, g.id); }));
+    const grpTop = Object.entries(grp).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    const topCost = grpTop[0];
+
+    // ตารางแผนก
+    const rows = deptT.map(({ d, t }) => {
+      const c = t, p = Store.deptTotal(prevYear, d.id);
       const o = rv.on ? Store.originalDeptTotal(year, d.id) : 0;
       const cc = Store.compare(c, rv.on ? o : p);
       const st = Store.deptState(year, d.id).status;
@@ -61,7 +78,7 @@ const PagesMgr = (() => {
       const stOrd = ['DRAFT', 'IN_PROGRESS', 'NEED_REVISION', 'COMPLETED', 'SUBMITTED', 'LOCKED'].indexOf(st);
       const revCol = rv.on ? `<td class="num" data-v="${o}">${fmt(o)}</td>` : `<td class="num" data-v="${p}">${fmt(p)}</td>`;
       return `<tr>
-        <td data-v="${esc(d.name)}"><a class="link" href="#/mgr/dept?d=${d.id}"><b>${UI.deptIcon(d)} ${esc(d.name)}</b></a><div class="muted small">${d.code} · <a class="link" href="#/mgr/dept?d=${d.id}">ดูรายย่อย →</a></div></td>
+        <td data-v="${esc(d.name)}"><a class="link" href="#/mgr/dept?d=${d.id}"><b>${UI.deptIcon(d)} ${esc(d.name)}</b></a><div class="muted small">${d.code}</div></td>
         ${revCol}
         <td class="num" data-v="${c}">${fmt(c)}</td>
         <td data-v="${cc.diff}">${deltaBadge(cc.diff, cc.pct)}</td>
@@ -72,10 +89,19 @@ const PagesMgr = (() => {
           : st === 'ENDORSED' ? '<span class="muted small">✓ รับรองแล้ว</span>'
           : st === 'NEED_REVISION' ? '<span class="muted small">↩ ตีกลับแล้ว</span>' : '<span class="muted small">—</span>'}</td></tr>`;
     }).join('');
+    const totalRow = `<tr class="tr-sum"><td><b>รวม${esc(div)} · ${depts.length} แผนก</b></td>${rv.on ? `<td class="num"><b>${fmt(orig)}</b></td>` : `<td class="num"><b>${fmt(prev)}</b></td>`}<td class="num"><b>${fmt(cur)}</b></td><td>${deltaBadge(cmp.diff, cmp.pct)}</td><td><b>100%</b></td><td></td><td></td></tr>`;
 
-    const kidNote = kids.length ? ` · ครอบคลุมหน่วย: ${kids.map(k => esc(k.name)).join(', ')}` : '';
+    // auto-insights
+    const ins = [];
+    if (topShare >= 35 && deptT[0]) ins.push({ c: 'amber', i: '🎯', t: `งบกระจุกที่ "${esc(deptT[0].d.name)}" ${topShare.toFixed(0)}%`, p: `แผนกเดียวถืองบ ${fmt(deptT[0].t)} กีบ — ควรตรวจสมมติฐานเป็นพิเศษ` });
+    else if (top5Share >= 70 && depts.length > 5) ins.push({ c: 'amber', i: '🎯', t: `Top 5 แผนกถืองบ ${top5Share.toFixed(0)}%`, p: `กระจุกตัวสูง — อีก ${depts.length - 5} แผนกรวมกันแค่ ${(100 - top5Share).toFixed(0)}%` });
+    if (topCost) ins.push({ c: 'blue', i: '🧱', t: `ต้นทุนหลัก: ${esc(topCost[0])} ${(topCost[1] / cur * 100).toFixed(0)}%`, p: `${fmt(topCost[1])} กีบ ของงบทั้งฝ่าย` });
+    if (mtpPct >= 10) ins.push({ c: 'violet', i: '🧭', t: `แผน MTP โต +${mtpPct.toFixed(0)}% ปีถัดไป`, p: `จาก ${fmtShort(cur)} → ${fmtShort(mtp1)} กีบ — ต้องมีเหตุผลรองรับ` });
+    if (submitted < depts.length) ins.push({ c: 'red', i: '📮', t: `ยังไม่ส่งงบ ${depts.length - submitted} แผนก`, p: `ส่งแล้ว ${submitted}/${depts.length} — ติดตามให้ครบก่อนปิดรอบ` });
+    const insHtml = ins.length ? ins.map(x => `<div class="insit ${x.c}"><span class="ic">${x.i}</span><div><b>${x.t}</b><p>${x.p}</p></div></div>`).join('') : '<p class="muted">✓ ไม่พบประเด็นที่ต้องสังเกตเป็นพิเศษ</p>';
+
     return pageHead(`ภาพรวม${esc(div)} 📊`,
-        `หน่วยกำกับดูแล · ${depts.length} แผนกที่มีงบ${kidNote} · งบปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
+        `หน่วยกำกับดูแล · ${depts.length} แผนก · งบปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
         `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
 
       + (units.length > 1 ? `<div class="mgr-view">
@@ -84,38 +110,45 @@ const PagesMgr = (() => {
           ${viewUnitId !== user.orgUnit ? `<a class="ghost-btn small" href="#/mgr/dashboard">↺ กลับดูทั้งหมด</a>` : ''}
         </div>` : '')
 
-      + `<div class="kpi-grid kpi-grid-4">
+      + `<div class="kpi-grid kpi-grid-5">
         ${kpiC('🏢', '#e6f0fb', 'kpi-tint-blue', `งบรวมทั้งฝ่าย ปี ${year}`, `${fmtShort(cur)} <small>กีบ</small>`, fmt(cur) + ' กีบ')}
-        ${kpiC(rv.on ? '🧊' : '🗓️', '#e6f7f0', 'kpi-tint-teal', baseLabel, `${fmtShort(baseVal)} <small>กีบ</small>`, fmt(baseVal) + ' กีบ')}
-        ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', rv.on ? 'เพิ่ม/ลดจากงบเดิม' : 'เพิ่ม/ลด', `<span>${deltaBadge(cmp.diff, cmp.pct)}</span>`, (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
-        ${kpiC('📮', submitted === depts.length ? '#eaf6ea' : '#fff7e6', 'kpi-tint-amber', rv.on ? 'ส่ง Revise แล้ว' : 'ส่งงบแล้ว', `${submitted} <small>/ ${depts.length} แผนก</small>`, submitted === depts.length ? 'ครบทุกแผนก ✓' : `รออีก ${depts.length - submitted} แผนก`)}
+        ${kpiC(rv.on ? '🧊' : '🗓️', '#e6f7f0', 'kpi-tint-teal', baseLabel, `${fmtShort(baseVal)} <small>กีบ</small>`, `${(cmp.diff >= 0 ? '+' : '') + fmtShort(cmp.diff)} vs ปัจจุบัน`)}
+        ${kpiC('🧭', '#f2edff', 'kpi-tint-blue', 'MTP แนวโน้มปีถัดไป', `${fmtShort(mtp1)} <small>กีบ</small>`, (mtpPct >= 0 ? '▲ +' : '▼ ') + mtpPct.toFixed(1) + '% vs ปีนี้')}
+        ${kpiC('🎯', top5Share >= 70 ? '#fff7e6' : '#eaf6ea', 'kpi-tint-amber', 'การกระจุกตัว (Top 5)', `${top5Share.toFixed(0)}<small>%</small>`, deptT[0] ? `สูงสุด: ${esc(deptT[0].d.name.slice(0, 18))}` : '')}
+        ${kpiC('📮', submitted === depts.length ? '#eaf6ea' : '#fff7e6', 'kpi-tint-amber', rv.on ? 'ส่ง Revise แล้ว' : 'ส่งงบแล้ว', `${submitted} <small>/ ${depts.length}</small>`, submitted === depts.length ? 'ครบทุกแผนก ✓' : `รออีก ${depts.length - submitted}`)}
       </div>`
 
       + card(`📮 สถานะการส่งของแผนกในฝ่าย`, `<div class="exec-status-bar">${segs}</div><div class="st-legends">${legends}</div>`)
 
       + `<div class="grid-2">`
       + card(`📈 งบรายเดือนของฝ่าย ปี ${year} (กีบ)`, `<div id="chMgrMonthly"></div>`)
-      + card(`🏆 Top GL ค่าใช้จ่ายสูงสุดในฝ่าย (กีบ)`, `<div id="chMgrTopGL"></div>`)
+      + card(`🍩 สัดส่วนงบ${kids.length ? 'ตามหน่วยย่อย' : 'ราย 6 แผนกสูงสุด'}`, `<div id="chMgrComp"></div>`)
       + `</div>`
 
-      + card(`🏢 แผนกภายใต้ ${esc(div)} (${depts.length})`, `<div class="table-scroll"><table class="data-table sortable-table" id="mgrDeptTable">
+      + `<div class="grid-2">`
+      + card(`🧱 โครงสร้างต้นทุน — กลุ่มบัญชีสูงสุด (กีบ)`, `<div id="chMgrCost"></div>`)
+      + card(`🔎 สิ่งที่ต้องสังเกต (Auto-insights)`, `<div class="ins">${insHtml}</div>`)
+      + `</div>`
+
+      + card(`🏢 แผนกภายใต้ ${esc(div)} (${depts.length}) — คลิกดูรายย่อย`, `<div class="table-scroll"><table class="data-table sortable-table" id="mgrDeptTable">
           <thead><tr><th class="sortable">แผนก</th><th class="num sortable">${rv.on ? 'งบเดิม' : 'ปี ' + prevYear} (กีบ)</th><th class="num sortable">ปี ${year} (กีบ)</th><th class="sortable">%Δ</th><th class="sortable">สัดส่วนในฝ่าย</th><th class="sortable">สถานะ</th><th>รับรอง</th></tr></thead>
-          <tbody>${rows}</tbody></table></div>
-          <p class="muted small" style="margin-top:6px">💡 คลิกหัวคอลัมน์เพื่อเรียงลำดับ</p>`, { cls: 'card-flush' });
+          <tbody>${rows}${totalRow}</tbody></table></div>
+          <p class="muted small" style="margin-top:6px">💡 คลิกหัวคอลัมน์เพื่อเรียง · คลิกชื่อแผนกเพื่อ drill</p>`, { cls: 'card-flush' });
   }
 
   function dashboardBind(user) {
     const year = UI.year();
     const viewUnitId = currentViewUnit(user);
     const depts = Store.subtreeDepartments(viewUnitId);
+    const kids = Store.childUnits(viewUnitId);
     const rv = Store.revisePhase(year);
+    const dset = new Set(depts.map(d => d.id));
     UI.enableSort(document.getElementById('mgrDeptTable'));
-    // เปลี่ยนมุมมองฝ่ายย่อย
     document.getElementById('mgrViewUnit')?.addEventListener('change', e => {
       const v = e.target.value;
       location.hash = (v === user.orgUnit) ? '#/mgr/dashboard' : '#/mgr/dashboard?u=' + v;
     });
-    // รับรอง / ตีกลับ (ผู้จัดการฝ่าย)
+    // รับรอง / ตีกลับ
     document.querySelectorAll('[data-mgr-approve]').forEach(b => b.addEventListener('click', () => {
       try { Store.mgrApprove(user, year, b.dataset.mgrApprove); UI.toast('รับรองงบแล้ว ✓ — ส่งต่อให้บัญชี'); App.render(); }
       catch (e) { UI.toast(e.message, 'err'); }
@@ -132,7 +165,7 @@ const PagesMgr = (() => {
       ]);
     }));
 
-    // รายเดือน: ปีนี้ (+ งบเดิม ช่วง revise + เกิดจริง)
+    // รายเดือน
     const monthly = y => { const m = Array(12).fill(0); depts.forEach(d => Store.deptMonthly(y, d.id).forEach((v, i) => m[i] += (v || 0))); return m; };
     const series = [];
     if (rv.on) {
@@ -143,24 +176,35 @@ const PagesMgr = (() => {
     }
     series.push({ name: `ปี ${year}${rv.on ? ' (Revise)' : ''}`, color: Charts.CUR_C, values: monthly(year) });
     const actMonthly = Array(12).fill(0); let hasAct = false;
-    (Store.db.actuals || []).filter(a => a.year === year && depts.some(d => d.id === a.departmentId))
+    (Store.db.actuals || []).filter(a => a.year === year && dset.has(a.departmentId))
       .forEach(a => a.months.forEach((v, i) => { if (v) { actMonthly[i] += v; hasAct = true; } }));
     if (hasAct) series.push({ name: 'เกิดจริง', color: '#0ca30c', values: actMonthly.slice(0, Math.max(1, rv.thru || 12)) });
     Charts.line(document.getElementById('chMgrMonthly'), Store.MONTH_S, series);
 
-    // Top GL ในฝ่าย
-    const glTot = {};
-    depts.forEach(d => Store.deptGLs(d.id).forEach(g => { glTot[g.id] = (glTot[g.id] || 0) + Store.glTotal(year, d.id, g.id); }));
-    const gById = {}; Store.db.glAccounts.forEach(g => gById[g.id] = g);
-    const total = Math.max(1, Object.values(glTot).reduce((s, v) => s + v, 0));
-    const top = Object.entries(glTot).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    Charts.hbar(document.getElementById('chMgrTopGL'), top.map(([id, v]) => {
-      const g = gById[id] || { code: id, name: '' };
-      return { label: `${g.code} ${g.name}`, value: v, color: Charts.CUR_C, sub: `${(v / total * 100).toFixed(1)}% ของฝ่าย<br>` };
-    }));
+    // สัดส่วน: ตามหน่วยย่อย (ถ้ามี) หรือ top 6 แผนก
+    const compItems = [];
+    if (kids.length) {
+      kids.forEach((k, i) => { const t = Store.subtreeDepartments(k.id).reduce((s, d) => s + Store.deptTotal(year, d.id), 0); if (t > 0) compItems.push({ label: k.name, value: t, color: Charts.CAT[i % Charts.CAT.length] }); });
+      // แผนกที่อยู่ในหน่วยนี้ตรง ๆ (ไม่ได้อยู่ใน child)
+      const inKids = new Set(kids.flatMap(k => Store.subtreeDeptCodes(k.id)));
+      const direct = depts.filter(d => !inKids.has(d.code)).reduce((s, d) => s + Store.deptTotal(year, d.id), 0);
+      if (direct > 0) compItems.push({ label: 'หน่วยนี้โดยตรง', value: direct, color: Charts.CAT[kids.length % Charts.CAT.length] });
+    } else {
+      const dt = depts.map(d => ({ d, t: Store.deptTotal(year, d.id) })).filter(x => x.t > 0).sort((a, b) => b.t - a.t);
+      dt.slice(0, 5).forEach((x, i) => compItems.push({ label: x.d.name, value: x.t, color: Charts.CAT[i % Charts.CAT.length] }));
+      const rest = dt.slice(5).reduce((s, x) => s + x.t, 0);
+      if (rest > 0) compItems.push({ label: 'อื่นๆ', value: rest, color: '#c3c2b7' });
+    }
+    if (compItems.length) Charts.donut(document.getElementById('chMgrComp'), compItems);
+
+    // โครงสร้างต้นทุน (GL group)
+    const grp = {};
+    depts.forEach(d => Store.deptGLs(d.id).forEach(g => { const gg = g.glGroup || 'อื่นๆ'; grp[gg] = (grp[gg] || 0) + Store.glTotal(year, d.id, g.id); }));
+    const total = Math.max(1, Object.values(grp).reduce((s, v) => s + v, 0));
+    const top = Object.entries(grp).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    Charts.hbar(document.getElementById('chMgrCost'), top.map(([g, v]) => ({ label: g, value: v, color: Charts.CUR_C, sub: `${(v / total * 100).toFixed(1)}% ของฝ่าย<br>` })));
   }
 
-  /* ---------- รายย่อยของแผนก (อ่านอย่างเดียว) ---------- */
   function parseQS() {
     const q = location.hash.split('?')[1] || '';
     return Object.fromEntries(new URLSearchParams(q));
