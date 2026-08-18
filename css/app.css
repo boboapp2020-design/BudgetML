@@ -1042,21 +1042,3 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .mgr-view-lb { font-weight: 700; color: #1c3d6e; font-size: 14px; }
 .mgr-view-sel { flex: 1; min-width: 240px; max-width: 480px; border-radius: 10px; border: 1.7px solid #c9d8f0; padding: 9px 12px; font-size: 14px; background: #fff; font-family: inherit; }
 .mgr-view-sel:focus { border-color: #2b5cf0; box-shadow: 0 0 0 3px rgba(43,92,240,.15); outline: none; }
-
-/* ===== Landing v7: fit 1 หน้าจอ ไม่ต้องเลื่อน ===== */
-.login-wrap.login-v7 { min-height:0; height:100vh; height:100dvh; overflow:hidden; padding:14px; }
-.login-v7 .lv-shell { max-height:calc(100dvh - 28px); }
-.login-v7 .lv-login { padding:20px 34px; }
-.login-v7 .lv-badge { width:60px; height:60px; margin:0 auto 8px; border-radius:17px; }
-.login-v7 .lv-login h2 { font-size:22px; }
-.login-v7 .lv-sub { margin:2px 0 15px; }
-.login-v7 .lv-login .fld { margin-bottom:11px; }
-.login-v7 .lv-login .fld > span { margin-bottom:4px; font-size:13px; }
-.login-v7 .lv-login select { padding:10px 12px; }
-.login-v7 .lv-pass input { padding:10px 40px 10px 36px; }
-.login-v7 .lv-row { margin:2px 0 12px; }
-.login-v7 .lv-submit { padding:12px; }
-.login-v7 .lv-or { margin:13px 0 9px; }
-.login-v7 .lv-idash img { height:26px; padding:6px 14px; }
-.login-v7 .lv-secure { margin-top:10px; }
-@media (max-height:640px){ .login-v7 .lv-badge{width:48px;height:48px;margin-bottom:5px} .login-v7 .lv-login{padding:14px 30px} .login-v7 .lv-login h2{font-size:19px} .login-v7 .lv-sub{margin-bottom:10px} }
