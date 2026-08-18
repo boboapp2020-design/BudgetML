@@ -62,7 +62,7 @@ const App = (() => {
       <div class="lv-shell">
         <!-- ซ้าย: hero แบรนด์ -->
         <aside class="lv-hero lv-hero-img">
-          <img src="hero.jpg?v=7.2" alt="Annual Budget System">
+          <img src="hero.jpg?v=7.4" alt="Annual Budget System">
         </aside>
 
         <!-- ขวา: การ์ด login -->
