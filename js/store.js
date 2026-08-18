@@ -31,13 +31,23 @@ const Store = (() => {
   function reconcileConfig() {
     if (!db) return;
     const clone = x => JSON.parse(JSON.stringify(x));
+    // ผู้ใช้ + ผัง = static จากโค้ด (ไม่ให้แก้ runtime)
     db.users = clone(SEED.users);
-    db.departments = clone(SEED.departments);
-    db.glAccounts = clone(SEED.glAccounts);
-    db.cctMaster = clone(SEED.cctMaster);
-    db.departmentRows = clone(SEED.departmentRows);
-    db.departmentGL = clone(SEED.departmentGL);
     db.oversight = clone(SEED.oversight);
+    // โครงสร้าง/master = SEED (มี rich fields: Type/ฝ่าย/ด้าน) เป็น "ฐาน" + ของที่แอดมินเพิ่มภายหลัง
+    //  (แถว/GL/CCT/แผนก ที่มาจาก Supabase แต่ไม่มีใน SEED = แอดมินเพิ่มเอง → เก็บไว้ merge บนสุด)
+    const merge = (seedArr, cur, keyFn) => {
+      const out = clone(seedArr); const seen = new Set(out.map(keyFn));
+      (cur || []).forEach(x => { const k = keyFn(x); if (!seen.has(k)) { seen.add(k); out.push(x); } });
+      return out;
+    };
+    db.glAccounts     = merge(SEED.glAccounts,     db.glAccounts,     g => g.id);
+    db.departments    = merge(SEED.departments,    db.departments,    d => d.id);
+    db.cctMaster      = merge(SEED.cctMaster,      db.cctMaster,      c => c.code);
+    db.departmentRows = merge(SEED.departmentRows, db.departmentRows, r => r.departmentId + '|' + r.glId + '|' + r.cct);
+    // departmentGL (distinct) — derive จาก departmentRows หลัง merge
+    const seenDG = new Set(); db.departmentGL = [];
+    db.departmentRows.forEach(x => { const k = x.departmentId + '|' + x.glId; if (!seenDG.has(k)) { seenDG.add(k); db.departmentGL.push({ departmentId: x.departmentId, glId: x.glId }); } });
     if (db.meta) {
       db.meta.sides = clone(SEED.meta.sides);
       db.meta.company = SEED.meta.company;   // ป้ายชื่อบริษัท/แอป = static จากโค้ด (Supabase ไม่ต้องเก็บ Thai ให้ถูก)
@@ -923,6 +933,39 @@ const Store = (() => {
     audit(actor, 'มอบหมาย GL ให้หน่วยงาน', { deptId, glCode: code, newValue: 'CCT ' + mainCct });
     save();
   }
+  // เพิ่มแถวงบใหม่ครบจาก 8 ฟิลด์ (GL/code a/CCT/IO/ชื่อบัญชี/ชื่อหน่วยงาน/ชื่อแผนก/รหัสแผนก)
+  //  สร้าง GL master + cct_master + แผนก(F) ถ้ายังไม่มี + departmentRow + budget ว่าง (ปีปัจจุบัน+ปีก่อน)
+  //  ของที่เพิ่มจะ persist ผ่าน merge ใน reconcileConfig + ซิงค์ขึ้น Supabase (เห็นทุกคน)
+  function addGLRow(actor, f) {
+    assertAccounting(actor);
+    const g = {
+      gl: (f.gl || '').trim(), codeA: (f.codeA || '').trim(), cct: (f.cct || '').trim(), io: (f.io || '').trim(),
+      glName: (f.glName || '').trim(), unitName: (f.unitName || '').trim(),
+      deptName: (f.deptName || '').trim(), deptCode: (f.deptCode || '').trim(),
+    };
+    if (!g.gl || !g.cct || !g.deptCode) throw new Error('ต้องกรอกอย่างน้อย: GL, CCT และ รหัสแผนก');
+    const glId = 'g' + g.gl, deptId = 'd' + g.deptCode;
+    if (db.departmentRows.some(x => x.departmentId === deptId && x.glId === glId && x.cct === g.cct))
+      throw new Error(`แถวนี้มีอยู่แล้ว (แผนก ${g.deptCode} · GL ${g.gl} · CCT ${g.cct})`);
+    // GL master
+    if (!gl(glId)) db.glAccounts.push({ id: glId, code: g.gl, name: g.glName || g.gl, glGroup: 'อื่นๆ', glGroupSap: '', glType: '', ioGroup: 'ไม่คุม', active: true });
+    else if (g.glName) gl(glId).name = g.glName;
+    // แผนก (F)
+    if (!dept(deptId)) db.departments.push({ id: deptId, code: g.deptCode, name: g.deptName || g.deptCode, nameEn: '', active: true });
+    // หน่วยงาน (CCT)
+    if (!(db.cctMaster || []).some(c => c.code === g.cct)) db.cctMaster.push({ code: g.cct, name: g.unitName || g.cct, departmentId: deptId });
+    // แถว + GL distinct
+    db.departmentRows.push({ departmentId: deptId, cct: g.cct, glId, io: g.io, codeA: g.codeA });
+    if (!db.departmentGL.some(x => x.departmentId === deptId && x.glId === glId)) db.departmentGL.push({ departmentId: deptId, glId });
+    // budget ว่าง (ปีปัจจุบัน + ปีก่อน) — ค่าจะซิงค์ขึ้น Supabase
+    [db.meta.yearCurrent, db.meta.yearPrevious].forEach(y => {
+      if (y && !db.budgets.some(b => b.year === y && b.departmentId === deptId && b.glId === glId && b.cct === g.cct))
+        db.budgets.push({ year: y, departmentId: deptId, glId, cct: g.cct, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: actor.name });
+    });
+    audit(actor, 'เพิ่มแถวงบ (GL)', { deptId, glCode: g.gl, newValue: `CCT ${g.cct} · ${g.glName || ''}` });
+    save();
+    return { deptId, glId, cct: g.cct };
+  }
   function unassignGL(actor, deptId, glId) {
     assertAccounting(actor);
     const hasData = db.budgets.some(b => b.departmentId === deptId && b.glId === glId && b.months.some(v => v));
@@ -1042,7 +1085,7 @@ const Store = (() => {
     canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
-    addDepartment, toggleDepartment, addGL, assignGL, unassignGL, setRate, setFuelPrice,
+    addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
     MONTH_TH, MONTH_S,

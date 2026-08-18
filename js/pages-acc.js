@@ -608,6 +608,20 @@ const PagesAcc = (() => {
             <button class="primary-btn" id="addGlBtn">＋ เพิ่ม GL</button>
           </div>
           <p class="muted small" style="margin-top:6px">กลุ่ม IO = รหัส 2 หลักตามชีท ML&amp;SF (ใช้ประกอบเลข IO อัตโนมัติตอนมอบหมาย GL) · เว้นว่างถ้า GL นี้ไม่คุมงบด้วย IO</p>`)
+      + card(`➕ เพิ่ม GL (แถวงบใหม่) — มอบหมาย GL × หน่วยงานให้แผนก`, `
+          <p class="muted small" style="margin:0 0 10px">กรอกครบตามฟอร์มจริง — ระบบจะสร้าง GL / หน่วยงาน / แผนก อัตโนมัติถ้ายังไม่มี แล้วเพิ่มแถวงบว่าง (ปี ${year} + ${year - 1}) ให้แผนกนั้นกรอก</p>
+          <div class="glrow-form">
+            <label>GL (รหัสบัญชี)<input id="grGl" inputmode="numeric" placeholder="เช่น 636500"></label>
+            <label>ชื่อบัญชี<input id="grGlName" placeholder="เช่น ค่าที่ปรึกษา"></label>
+            <label>CCT (รหัสหน่วยงาน)<input id="grCct" inputmode="numeric" placeholder="เช่น 8003851100"></label>
+            <label>ชื่อหน่วยงาน<input id="grUnit" placeholder="เช่น แผนกบัญชีทั่วไป"></label>
+            <label>รหัสแผนก (F)<input id="grDeptCode" list="grDeptList" placeholder="เช่น 1161"><datalist id="grDeptList">${Store.db.departments.map(d => `<option value="${d.code}">${esc(d.name)}</option>`).join('')}</datalist></label>
+            <label>ชื่อแผนก<input id="grDeptName" placeholder="เช่น แผนกบัญชีทั่วไปและการเงิน"></label>
+            <label>IO<input id="grIo" placeholder="เช่น 800558511... หรือ ไม่คุม"></label>
+            <label>code a<input id="grCodeA" placeholder="เช่น 8003851100636500a"></label>
+          </div>
+          <div style="margin-top:10px"><button class="primary-btn" id="addGlRowBtn">➕ เพิ่มแถวงบ</button>
+          <span id="grMsg" class="muted small" style="margin-left:10px"></span></div>`)
       + card(`Budget Exchange Rate ปี ${year} (Reference Rate ทางการ)`, `
           <div class="table-scroll"><table class="data-table small"><thead><tr><th>สกุลเงิน</th><th class="num">กีบ / 1 หน่วย</th><th></th></tr></thead><tbody>
           ${rates.map(r => `<tr><td>${r.currency}</td><td class="num">${fmt(r.rateToLAK)}</td>
@@ -722,6 +736,18 @@ const PagesAcc = (() => {
         toast(`เพิ่ม GL ${code} ${name} แล้ว — มอบหมายให้หน่วยงานได้ที่ปุ่ม "＋ GL" ในการ์ดหน่วยงาน`);
         App.render();
       } catch (e) { toast(e.message, 'err'); }
+    });
+    document.getElementById('addGlRowBtn')?.addEventListener('click', () => {
+      const v = id => (document.getElementById(id)?.value || '').trim();
+      const f = { gl: v('grGl'), glName: v('grGlName'), cct: v('grCct'), unitName: v('grUnit'),
+        deptCode: v('grDeptCode'), deptName: v('grDeptName'), io: v('grIo'), codeA: v('grCodeA') };
+      const msg = document.getElementById('grMsg');
+      try {
+        const r = Store.addGLRow(user, f);
+        toast(`เพิ่มแถวงบแล้ว: GL ${f.gl} · CCT ${f.cct} → แผนก ${f.deptCode}`);
+        if (msg) { msg.textContent = '✓ เพิ่มแล้ว — แผนก ' + f.deptCode + ' กรอกได้เลย'; msg.style.color = '#1e7d46'; }
+        App.render();
+      } catch (e) { if (msg) { msg.textContent = '✗ ' + e.message; msg.style.color = '#c0392b'; } toast(e.message, 'err'); }
     });
     document.querySelectorAll('[data-assign]').forEach(b => b.addEventListener('click', () => {
       const deptId = b.dataset.assign;
