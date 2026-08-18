@@ -110,6 +110,7 @@ const PagesMgr = (() => {
           ${viewUnitId !== user.orgUnit ? `<a class="ghost-btn small" href="#/mgr/dashboard">↺ กลับดูทั้งหมด</a>` : ''}
         </div>` : '')
 
+      + (cur === 0 && prev === 0 ? `<div class="lock-banner" style="background:#fff7e6;border-color:#f0c877;color:#7a4d09">📭 <b>ยังไม่มีข้อมูลงบปี ${year} ของแผนกในฝ่ายนี้</b> — ${year < Store.db.meta.yearCurrent ? 'ปีฐานมีข้อมูลเฉพาะหน่วยงานที่อยู่ในไฟล์งบปีนั้น (ด้านสนับสนุน/บริหารสำนักงาน) หากต้องการครบทุกฝ่าย ให้แผนกบัญชีนำเข้าไฟล์งบ/เกิดจริงของปีนั้นเพิ่ม' : 'แผนกยังไม่เริ่มกรอก — เลือกปีอื่นจากมุมบนเพื่อดูข้อมูลที่มี'}</div>` : '')
       + `<div class="kpi-grid kpi-grid-5">
         ${kpiC('🏢', '#e6f0fb', 'kpi-tint-blue', `งบรวมทั้งฝ่าย ปี ${year}`, `${fmtShort(cur)} <small>กีบ</small>`, fmt(cur) + ' กีบ')}
         ${kpiC(rv.on ? '🧊' : '🗓️', '#e6f7f0', 'kpi-tint-teal', baseLabel, `${fmtShort(baseVal)} <small>กีบ</small>`, `${(cmp.diff >= 0 ? '+' : '') + fmtShort(cmp.diff)} vs ปัจจุบัน`)}
