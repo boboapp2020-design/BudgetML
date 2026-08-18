@@ -122,6 +122,23 @@ const Sync = (() => {
     timer = setTimeout(() => push(), 800);
   }
 
+  // ลบทั้งปีขึ้น Supabase ทันที (bulk) — เลี่ยงลบรายแถว 1,800+ รายการที่ช้า/พังกลางคัน
+  async function deleteYearNow(year) {
+    clearTimeout(timer);                       // ยกเลิก debounce push ที่ deletePeriod ตั้งไว้
+    if (!enabled()) return;
+    if (backend() !== 'supa') { schedulePush(); return; }  // GAS: ใช้ push ปกติ
+    while (pushing) { await new Promise(r => setTimeout(r, 120)); }  // รอ push ที่ค้างให้จบก่อน
+    pushing = true; setState('sync');
+    try {
+      await Supa.deleteYear(Number(year));     // ลบแถวปีนั้นบน server + ล้าง baseline
+      Store.db.meta.rev = (Store.db.meta.rev || 0) + 1;
+      Store.saveSilent();
+      await Supa.pushDiff(Store.db);            // เหลือแค่ app_meta (year_current/rev) ที่ต่าง → push แถวเดียว
+      setState('ok');
+    } catch (e) { setState('err', e.message); throw e; }
+    finally { pushing = false; }
+  }
+
   async function ping() { return backend() === 'supa' ? Supa.ping() : gasPing(); }
 
   async function init() {
@@ -143,7 +160,7 @@ const Sync = (() => {
   }
 
   return {
-    url: gasUrl, setUrl, enabled, backend, ping, pull, push, schedulePush, init, chipHtml,
+    url: gasUrl, setUrl, enabled, backend, ping, pull, push, schedulePush, deleteYearNow, init, chipHtml,
     get state() { return state; },
   };
 })();

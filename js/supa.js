@@ -305,7 +305,20 @@ const Supa = (() => {
     return { ok: true, rows: Array.isArray(r) ? r.length : 0 };
   }
 
-  return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline,
+  /* ลบทั้งปี แบบ bulk (filter year เดียว = 1 request/ตาราง แทนลบรายแถว) + ล้าง baseline ของปีนั้น
+     → เร็ว/เชื่อถือได้ · ไม่มี FK year→budget_periods จึงลบลำดับใดก็ได้ */
+  async function deleteYear(year) {
+    year = Number(year);
+    const yearTables = ['snapshot_rows', 'budget_snapshots', 'budgets', 'gl_notes',
+      'dept_status', 'cell_details', 'actuals', 'exchange_rates', 'fuel_prices', 'budget_periods'];
+    for (const t of yearTables) {
+      await req('DELETE', `${t}?year=eq.${year}`, null, 'return=minimal');
+      const map = baseline[t];
+      if (map) for (const [k, v] of [...map]) { try { if (JSON.parse(v).year === year) map.delete(k); } catch (e) {} }
+    }
+  }
+
+  return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline, deleteYear,
     signIn, signOut, refresh, authed, myProfile, authRequired: () => AUTH_REQUIRED };
 })();
 

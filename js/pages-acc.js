@@ -757,10 +757,15 @@ const PagesAcc = (() => {
         <p class="small muted">ปีอื่นไม่กระทบ · บันทึกใน Audit Log · (เวอร์ชันถัดไปจะเพิ่ม PIN ยืนยัน)</p>
         <p>พิมพ์เลขปี <b>${y}</b> เพื่อยืนยัน:</p><input id="delConfirm" inputmode="numeric" placeholder="${y}">`, [
         { label: 'ยกเลิก', cls: 'ghost-btn' },
-        { label: '🗑 ยืนยันลบรอบปี', cls: 'danger-btn', onClick: close => {
+        { label: '🗑 ยืนยันลบรอบปี', cls: 'danger-btn', onClick: async close => {
             if (String(document.getElementById('delConfirm').value).trim() !== String(y)) { toast(`กรุณาพิมพ์ ${y} เพื่อยืนยัน`, 'err'); return; }
-            try { Store.deletePeriod(user, y); toast(`ลบรอบงบปี ${y} แล้ว`); close(); if (UI.year() === Number(y)) UI.setYear(Store.db.meta.yearCurrent); App.render(); }
-            catch (e) { toast(e.message, 'err'); }
+            try {
+              Store.deletePeriod(user, y);                 // ลบในเครื่อง (ยกเลิก debounce push ที่ตามมา)
+              if (UI.year() === Number(y)) UI.setYear(Store.db.meta.yearCurrent);
+              close(); App.render();
+              await Sync.deleteYearNow(Number(y));          // ลบขึ้น Supabase แบบ bulk (persist จริง)
+              toast(`ลบรอบงบปี ${y} เรียบร้อย (ซิงค์ Supabase แล้ว)`);
+            } catch (e) { toast('ลบไม่สำเร็จ: ' + e.message, 'err'); App.render(); }
           } },
       ]);
     }));
