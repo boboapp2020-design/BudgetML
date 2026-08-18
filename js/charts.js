@@ -53,6 +53,24 @@ const Charts = (() => {
     for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10]) if (m * p >= v) return m * p;
     return 10 * p;
   }
+  /* ---------- 3D: gradient นูนต่อสี (อ่อนบน → เข้มล่าง) ---------- */
+  let gradN = 0;
+  function shade(hex, amt) {
+    const n = parseInt(String(hex).replace('#', ''), 16);
+    if (isNaN(n)) return hex;
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const adj = v => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+    return '#' + [adj(r), adj(g), adj(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  function barGrad(svg, color, vertical) {
+    const id = 'bg' + (++gradN);
+    const g = el('linearGradient', vertical ? { id, x1: 0, y1: 0, x2: 0, y2: 1 } : { id, x1: 0, y1: 0, x2: 1, y2: 0 });
+    [[0, shade(color, 0.34)], [0.55, color], [1, shade(color, -0.17)]].forEach(([o, c]) => g.appendChild(el('stop', { offset: o, 'stop-color': c })));
+    let defs = svg.querySelector('defs');
+    if (!defs) { defs = el('defs', {}); svg.insertBefore(defs, svg.firstChild); }
+    defs.appendChild(g);
+    return `url(#${id})`;
+  }
 
   function svgBase(container, W, H) {
     container.innerHTML = '';
@@ -143,7 +161,7 @@ const Charts = (() => {
         const v = s.values[i] ?? 0;
         const h = (H - padB - padT) * v / max;
         const x = cx - barW * series.length / 2 + si * barW + (si > 0 ? 2 : 0);
-        const r = el('rect', { x, y: H - padB - h, width: barW - (series.length > 1 ? 2 : 0), height: Math.max(h, v > 0 ? 2 : 0), fill: s.color, rx: 3 });
+        const r = el('rect', { x, y: H - padB - h, width: barW - (series.length > 1 ? 2 : 0), height: Math.max(h, v > 0 ? 2 : 0), fill: barGrad(svg, s.color, true), rx: 3 });
         r.addEventListener('mousemove', ev => showTip(ev, `<b>${lab}</b><br>${s.name}: <b>${fmtFull(v)}</b> กีบ`));
         r.addEventListener('mouseleave', hideTip);
         svg.appendChild(r);
@@ -198,7 +216,7 @@ const Charts = (() => {
       t.textContent = it.label.length > 30 ? it.label.slice(0, 29) + '…' : it.label;
       svg.appendChild(t);
       const bw = (W - labelW - valueW - padL) * Math.abs(it.value) / max;
-      const r = el('rect', { x: labelW, y: y + 7, width: Math.max(bw, 2), height: rowH - 14, fill: it.color || CAT[0], rx: 3 });
+      const r = el('rect', { x: labelW, y: y + 7, width: Math.max(bw, 2), height: rowH - 14, fill: barGrad(svg, it.color || CAT[0], true), rx: 3 });
       if (it.onClick) { r.style.cursor = 'pointer'; r.addEventListener('click', e => { e.stopPropagation(); it.onClick(e); }); }
       r.addEventListener('mousemove', ev => showTip(ev, `<b>${it.label}</b><br>${it.sub || ''}<b>${fmtFull(it.value)}</b> กีบ`));
       r.addEventListener('mouseleave', hideTip);
@@ -230,7 +248,7 @@ const Charts = (() => {
       const p = (a, rr) => `${cx + rr * Math.cos(a)} ${cy + rr * Math.sin(a)}`;
       const gap = 0.012;
       const d = `M ${p(a0 + gap, R)} A ${R} ${R} 0 ${large} 1 ${p(a1 - gap, R)} L ${p(a1 - gap, r2)} A ${r2} ${r2} 0 ${large} 0 ${p(a0 + gap, r2)} Z`;
-      const path = el('path', { d, fill: it.color });
+      const path = el('path', { d, fill: barGrad(svg, it.color, false) });
       path.addEventListener('mousemove', ev => showTip(ev, `<b>${it.label}</b><br><b>${fmtFull(it.value)}</b> กีบ (${(frac * 100).toFixed(1)}%)`));
       path.addEventListener('mouseleave', hideTip);
       svg.appendChild(path);

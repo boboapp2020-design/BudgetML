@@ -1054,3 +1054,30 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .chart-modal{width:100%}
 .chart-modal svg{width:100%!important;height:auto}
 .chart-modal .chart-legend,.chart-modal .donut-legend{margin-top:10px}
+
+/* ===== 3D depth layer — ใช้กับทุกแดชบอร์ด (การ์ดลอย เงาหลายชั้น ไฮไลต์) ===== */
+.card{
+  background:linear-gradient(165deg,#ffffff,#f4f8fd) !important;
+  border:1px solid rgba(255,255,255,.75) !important;
+  box-shadow:0 1px 2px rgba(16,38,76,.05),0 6px 16px rgba(16,38,76,.08),0 16px 34px rgba(16,38,76,.09),inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+.kpi,.kpi-c{
+  background:linear-gradient(160deg,#ffffff,#f3f7fd) !important;
+  box-shadow:0 2px 4px rgba(16,38,76,.08),0 12px 26px rgba(16,38,76,.12),inset 0 1px 0 #fff !important;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.kpi:hover,.kpi-c:hover{transform:translateY(-3px)}
+.kpi-tint-blue {box-shadow:0 2px 4px rgba(43,92,240,.12),0 14px 30px rgba(43,92,240,.20),inset 0 1px 0 #fff !important}
+.kpi-tint-teal {box-shadow:0 2px 4px rgba(13,148,136,.12),0 14px 30px rgba(13,148,136,.20),inset 0 1px 0 #fff !important}
+.kpi-tint-green{box-shadow:0 2px 4px rgba(18,150,91,.12),0 14px 30px rgba(18,150,91,.20),inset 0 1px 0 #fff !important}
+.kpi-tint-amber{box-shadow:0 2px 4px rgba(224,145,42,.14),0 14px 30px rgba(224,145,42,.22),inset 0 1px 0 #fff !important}
+.kpi-ic{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 8px 16px rgba(0,0,0,.15) !important}
+.exec-hero{box-shadow:0 2px 4px rgba(11,31,77,.25),0 18px 40px rgba(11,31,77,.32),0 40px 80px rgba(11,31,77,.20),inset 0 1px 0 rgba(255,255,255,.22) !important}
+.eh-stat{box-shadow:inset 0 1px 0 rgba(255,255,255,.20),0 6px 14px rgba(0,0,0,.16) !important;background:rgba(255,255,255,.10) !important}
+.side-card{
+  background:linear-gradient(160deg,#ffffff,#f4f8fd) !important;
+  box-shadow:0 2px 4px rgba(16,38,76,.06),0 12px 26px rgba(16,38,76,.10),inset 0 1px 0 #fff !important;
+}
+.side-card:hover{transform:translateY(-3px) !important;box-shadow:0 4px 8px rgba(16,38,76,.08),0 20px 40px rgba(16,38,76,.17),inset 0 1px 0 #fff !important}
+.card svg{filter:drop-shadow(0 6px 12px rgba(16,38,76,.13))}
+.chart-save{filter:none}
