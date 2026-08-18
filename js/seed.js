@@ -39,14 +39,30 @@ const SEED = (() => {
     active: true,
   }));
 
+  // ---------- Routing ผู้กรอก (แทนที่การกรอกเดิม) ----------
+  //  คอลัมน์ "หน่วยงานที่รับผิดชอบ" (resp) กำหนดว่าใครกรอก แถวนั้น ๆ:
+  //   ACC + Group Sap มี 'อ้อย'  → แผนกบริการไร่   (u8001010400)
+  //   ACC อื่น ๆ                 → แผนกบัญชีทั่วไป (u8003851100)
+  //   HR                         → แผนกบุคคลโรงงาน (u8003821400)
+  //   HR PPE / หน่วยงาน / ค่าส่งออกน้ำตาล / อื่น ๆ → หน่วยงานเจ้าของกรอกเอง (ตามเดิม)
+  //  ต้นทุนถูก "ย้าย" ไปเป็นของแผนกกลาง (roll-up ใน dashboard/ด้าน ตามแผนกกลาง) ตามที่ผู้ใช้เลือก
+  const F_OOI = 'u8001010400', F_ACC = 'u8003851100', F_HR = 'u8003821400';
+  const glSapOf = {}; SEED_DATA.glMaster.forEach(g => { glSapOf['g' + g.code] = g.grpSap || ''; });
+  function fillerOf(r, ownerId) {
+    const resp = (r.resp || '').trim();
+    if (resp === 'ACC') return (glSapOf['g' + r.gl] || '').indexOf('อ้อย') >= 0 ? F_OOI : F_ACC;
+    if (resp === 'HR') return F_HR;
+    return ownerId;
+  }
+
   // ---------- หน่วยงานย่อย (Cost Center) — mapping CCT → หน่วยงาน ----------
   const cctMaster = [];
   U.forEach(u => u.ccts.forEach(c => cctMaster.push({ code: c, name: u.name, departmentId: u.id })));
 
-  // ---------- การมอบหมายระดับแถว: CCT × GL (+ IO / code a) ----------
+  // ---------- การมอบหมายระดับแถว: CCT × GL (+ IO / code a) — departmentId = ผู้กรอกจริง (routing) ----------
   const departmentRows = [];
   U.forEach(u => u.rows.forEach(r =>
-    departmentRows.push({ departmentId: u.id, cct: r.cct, glId: 'g' + r.gl, io: r.io || '', codeA: r.codeA || '' })));
+    departmentRows.push({ departmentId: fillerOf(r, u.id), cct: r.cct, glId: 'g' + r.gl, io: r.io || '', codeA: r.codeA || '' })));
 
   // ---------- มุมมองระดับ GL (distinct) ----------
   const departmentGL = [];
@@ -122,13 +138,15 @@ const SEED = (() => {
   U.forEach(u => {
     u.rows.forEach(r => {
       budgets.push({
-        year: Y_CUR, departmentId: u.id, glId: 'g' + r.gl, cct: r.cct,
+        year: Y_CUR, departmentId: fillerOf(r, u.id), glId: 'g' + r.gl, cct: r.cct,
         months: r.m.map(Number), mtp1: null, mtp2: null,
         updatedAt: '2025-11-25T16:00:00', updatedBy: 'ไฟล์งบต้นปี 2026',
       });
     });
-    deptStatus.push({ year: Y_CUR, departmentId: u.id, status: 'LOCKED', submittedAt: '2025-11-20T16:40:00', revisionNote: null });
   });
+  // สถานะ = ตามผู้กรอกจริง (distinct owner หลัง routing)
+  [...new Set(budgets.map(b => b.departmentId))].forEach(did =>
+    deptStatus.push({ year: Y_CUR, departmentId: did, status: 'LOCKED', submittedAt: '2025-11-20T16:40:00', revisionNote: null }));
 
   const cellDetails = [];
 
