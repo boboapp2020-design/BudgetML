@@ -193,7 +193,7 @@ const App = (() => {
     if (useOverlay) {
       ov = document.createElement('div');
       ov.className = 'boot-sync';
-      ov.innerHTML = '<div class="bs-card"><div class="bs-spin"></div><b>กำลังดึงข้อมูลล่าสุด…</b><small>เชื่อมต่อฐานข้อมูล Supabase</small></div>';
+      ov.innerHTML = '<div class="bs-card"><div class="bs-spin"></div></div>';
       document.body.appendChild(ov);
     } else {
       safeRender();
