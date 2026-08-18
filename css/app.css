@@ -1045,3 +1045,13 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 
 /* ===== Landing v7: ย่อ 10% (ratio เท่าเดิม) ===== */
 .login-v7 .lv-shell { transform: scale(0.9); transform-origin: center center; }
+
+/* ===== กราฟ: toolbar ขยาย(popup)/บันทึกภาพ ===== */
+.chart-tools{position:absolute;top:6px;right:6px;display:flex;gap:5px;z-index:3;opacity:.6;transition:opacity .15s}
+.card:hover .chart-tools,.chart-tools:hover{opacity:1}
+.chart-tools button{width:29px;height:29px;border:1px solid #e0e6f0;background:#fff;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;padding:0;box-shadow:0 2px 6px rgba(16,38,76,.12);color:#3560c9}
+.chart-tools button:hover{background:#eef2f9;border-color:#2b5cf0}
+.modal.modal-chart{width:min(94vw,1000px);max-width:none}
+.chart-modal{width:100%}
+.chart-modal svg{width:100%!important;height:auto}
+.chart-modal .chart-legend,.chart-modal .donut-legend{margin-top:10px}

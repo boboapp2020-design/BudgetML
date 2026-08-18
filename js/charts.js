@@ -56,9 +56,59 @@ const Charts = (() => {
 
   function svgBase(container, W, H) {
     container.innerHTML = '';
-    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: 'display:block;font-family:inherit' });
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: 'display:block;font-family:inherit;text-rendering:geometricPrecision' });
     container.appendChild(svg);
     return svg;
+  }
+
+  /* ---------- toolbar ทุกกราฟ: ⤢ ขยาย (popup) + 💾 บันทึกเป็นรูปภาพ ---------- */
+  function chartTitle(container) {
+    const c = container.closest && container.closest('.card');
+    const h = c && c.querySelector('h3, h4, .card-title');
+    return ((h ? h.textContent : 'กราฟ') || 'กราฟ').replace(/[⬇⛶🖨💾⤢].*/, '').trim() || 'กราฟ';
+  }
+  function addTools(container) {
+    if (!container || container.querySelector(':scope > .chart-tools')) return;
+    container.style.position = 'relative';
+    const bar = document.createElement('div');
+    bar.className = 'chart-tools';
+    bar.innerHTML = '<button type="button" data-ct="zoom" title="ขยายดูรายละเอียด">⤢</button><button type="button" data-ct="save" title="บันทึกเป็นรูปภาพ (PNG)">💾</button>';
+    container.appendChild(bar);
+    bar.querySelector('[data-ct=zoom]').addEventListener('click', e => { e.stopPropagation(); openChartModal(container); });
+    bar.querySelector('[data-ct=save]').addEventListener('click', e => { e.stopPropagation(); exportPNG(container); });
+  }
+  function openChartModal(container) {
+    if (typeof UI === 'undefined') return;
+    const clone = container.cloneNode(true);
+    const t = clone.querySelector('.chart-tools'); if (t) t.remove();
+    clone.style.position = '';
+    const back = UI.modal(chartTitle(container), `<div class="chart-modal">${clone.innerHTML}</div>`, [
+      { label: '💾 บันทึกภาพ', cls: 'ghost-btn', onClick: () => exportPNG(back.querySelector('.chart-modal'), chartTitle(container)) },
+      { label: 'ปิด', cls: 'primary-btn' },
+    ]);
+    const m = back.querySelector('.modal'); if (m) m.classList.add('modal-chart');
+  }
+  function exportPNG(container, nm) {
+    const svg = container.querySelector('svg'); if (!svg) return;
+    const vb = (svg.getAttribute('viewBox') || '0 0 640 300').split(/\s+/).map(Number);
+    const w = vb[2] || 640, h = vb[3] || 300, scale = 2;
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('width', w); clone.setAttribute('height', h);
+    clone.setAttribute('style', "font-family:'IBM Plex Sans Thai','Leelawadee UI','Segoe UI',sans-serif;background:#fff");
+    const xml = new XMLSerializer().serializeToString(clone);
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = w * scale; cv.height = h * scale;
+      const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(b => {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = ((nm || chartTitle(container) || 'chart').replace(/[^\w฀-๿ -]/g, '').trim().slice(0, 40) || 'chart') + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+      });
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
   }
   function yAxis(svg, x0, x1, y0, y1, max, ticks = 4) {
     for (let i = 0; i <= ticks; i++) {
@@ -150,6 +200,7 @@ const Charts = (() => {
       v.textContent = fmtShort(it.value);
       svg.appendChild(v);
     });
+    addTools(container);
   }
 
   /* ---------- Donut: สัดส่วน (จำกัด ≤4 ชิ้น + อื่นๆ) ---------- */
@@ -193,6 +244,7 @@ const Charts = (() => {
        <span class="dl-val">${fmtFull(it.value)}</span>
        <span class="dl-pct">${(it.value / total * 100).toFixed(1)}%</span></div>`).join('');
     wrap.appendChild(lg);
+    addTools(container);
   }
 
   function legend(container, series) {
@@ -200,6 +252,7 @@ const Charts = (() => {
     lg.className = 'chart-legend';
     lg.innerHTML = series.map(s => `<span class="lg-item"><span class="dl-dot" style="background:${s.color}"></span>${s.name}</span>`).join('');
     container.appendChild(lg);
+    addTools(container);
   }
 
   /* ---------- Gauge: วงแหวน 270° สไตล์โมเดิร์น (gradient + animation, 100% = เขียวสด) ---------- */
