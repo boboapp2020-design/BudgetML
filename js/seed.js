@@ -18,15 +18,13 @@ const SEED = (() => {
   const U = SEED_DATA.units;
   const COMPANY = 'บริษัท น้ำตาลมิตรลาว จำกัด';
 
-  // ---------- app department = หน่วยงาน (หน่วยกรอกจริง) ----------
-  const departments = U.map(u => ({
-    id: u.id, code: u.code, name: u.name, nameEn: '',
-    side: u.side, active: true,
-    // บริบทลำดับชั้น (ครบ 16 คอลัมน์จากไฟล์) — แผนก(F)/ฝ่ายย่อย/ฝ่าย(CP)/ด้าน(CR)/หน่วยงานรับผิดชอบ
-    deptCode: u.deptCode, deptName: u.deptName,
-    subDiv: u.subDiv, subDivCode: u.subDivCode,
-    div: u.div, area: u.area, areaCode: u.areaCode,
-    respUnit: u.respUnit, ccts: u.ccts,
+  // ---------- app department = แผนก (คอลัมน์ F) — หน่วยกรอกจริง (64 แผนก) ----------
+  //  ผู้กรอก 1 คน = 1 แผนก(F) · กรอกทุก GL ทุกหน่วยงาน(D)/CCT ใต้แผนกตน (ยกเว้น HR/ACC routing)
+  const sideOfArea = {}; SEED_DATA.areas.forEach(a => { sideOfArea[a.name] = a.side; });
+  const departments = SEED_DATA.depts.map(dp => ({
+    id: 'd' + dp.code, code: dp.code, name: dp.name, nameEn: '',
+    side: sideOfArea[dp.area] || '', active: true,
+    area: dp.area, div: dp.div, subDiv: dp.subDiv,   // สังกัด(CT) / ฝ่าย(CP=ผู้อนุมัติ) / ฝ่ายย่อย(CO)
   }));
 
   // ---------- GL master (173 บัญชี + Type + Group PPT/Sap) ----------
@@ -39,30 +37,31 @@ const SEED = (() => {
     active: true,
   }));
 
-  // ---------- Routing ผู้กรอก (แทนที่การกรอกเดิม) ----------
-  //  คอลัมน์ "หน่วยงานที่รับผิดชอบ" (resp) กำหนดว่าใครกรอก แถวนั้น ๆ:
-  //   ACC + Group Sap มี 'อ้อย'  → แผนกบริการไร่   (u8001010400)
-  //   ACC อื่น ๆ                 → แผนกบัญชีทั่วไป (u8003851100)
-  //   HR                         → แผนกบุคคลโรงงาน (u8003821400)
-  //   HR PPE / หน่วยงาน / ค่าส่งออกน้ำตาล / อื่น ๆ → หน่วยงานเจ้าของกรอกเอง (ตามเดิม)
-  //  ต้นทุนถูก "ย้าย" ไปเป็นของแผนกกลาง (roll-up ใน dashboard/ด้าน ตามแผนกกลาง) ตามที่ผู้ใช้เลือก
-  const F_OOI = 'u8001010400', F_ACC = 'u8003851100', F_HR = 'u8003821400';
+  // ---------- Routing ผู้กรอก (ระดับแผนก F) ----------
+  //  ปกติ: แถวถูกกรอกโดย "แผนก(F) เจ้าของ" (dp.code ของหน่วยงานนั้น)
+  //  ยกเว้นตามคอลัมน์ resp (หน่วยงานที่รับผิดชอบ):
+  //   ACC + Group Sap มี 'อ้อย' → แผนกบริการไร่ (F 2712)
+  //   ACC อื่น ๆ                → แผนกบัญชีทั่วไปและการเงิน (F 1161)
+  //   HR                        → แผนกทรัพยากรบุคคล (F 1155)
+  //   HR PPE / หน่วยงาน / ค่าส่งออกน้ำตาล / อื่น ๆ → แผนกเจ้าของกรอกเอง
+  //  ต้นทุนย้ายไปเป็นของแผนกกลาง (roll-up ตามแผนกกลาง) ตามที่ผู้ใช้เลือก
+  const F_OOI = 'd2712', F_ACC = 'd1161', F_HR = 'd1155';
   const glSapOf = {}; SEED_DATA.glMaster.forEach(g => { glSapOf['g' + g.code] = g.grpSap || ''; });
-  function fillerOf(r, ownerId) {
+  function fillerOf(r, ownerDeptCode) {
     const resp = (r.resp || '').trim();
     if (resp === 'ACC') return (glSapOf['g' + r.gl] || '').indexOf('อ้อย') >= 0 ? F_OOI : F_ACC;
     if (resp === 'HR') return F_HR;
-    return ownerId;
+    return 'd' + ownerDeptCode;
   }
 
-  // ---------- หน่วยงานย่อย (Cost Center) — mapping CCT → หน่วยงาน ----------
+  // ---------- หน่วยงานย่อย (Cost Center) — mapping CCT → ชื่อหน่วยงาน(D) + แผนก(F) ----------
   const cctMaster = [];
-  U.forEach(u => u.ccts.forEach(c => cctMaster.push({ code: c, name: u.name, departmentId: u.id })));
+  U.forEach(u => u.ccts.forEach(c => cctMaster.push({ code: c, name: u.name, departmentId: 'd' + u.deptCode })));
 
   // ---------- การมอบหมายระดับแถว: CCT × GL (+ IO / code a) — departmentId = ผู้กรอกจริง (routing) ----------
   const departmentRows = [];
   U.forEach(u => u.rows.forEach(r =>
-    departmentRows.push({ departmentId: fillerOf(r, u.id), cct: r.cct, glId: 'g' + r.gl, io: r.io || '', codeA: r.codeA || '' })));
+    departmentRows.push({ departmentId: fillerOf(r, u.deptCode), cct: r.cct, glId: 'g' + r.gl, io: r.io || '', codeA: r.codeA || '' })));
 
   // ---------- มุมมองระดับ GL (distinct) ----------
   const departmentGL = [];
@@ -110,15 +109,14 @@ const SEED = (() => {
     OVERSIGHT.push({ id, name: sd, parent: divId[u.area + '~' + u.div] || areaId[u.area] || 'co' });
   });
 
-  // แผนก (dept F) — parent = ฝ่ายย่อย · deptCodes = รหัสหน่วยงาน (unit.code) ที่สังกัดแผนกนี้
+  // แผนก (dept F = app department / หน่วยกรอก) — parent = ฝ่ายย่อย · deptCodes = รหัสแผนกตัวเอง
   SEED_DATA.depts.forEach(dp => {
-    const codes = U.filter(u => u.deptCode === dp.code).map(u => u.code);
     const sd = dp.subDiv || dp.div;
     OVERSIGHT.push({
       id: 'deptf_' + dp.code,
       name: dp.name + ' (' + dp.code + ')',
       parent: subId[dp.area + '~' + dp.div + '~' + sd] || divId[dp.area + '~' + dp.div] || areaId[dp.area] || 'co',
-      deptCodes: codes,
+      deptCodes: [dp.code],
     });
   });
 
@@ -132,9 +130,9 @@ const SEED = (() => {
   const users = [
     { id: 'u2', username: 'accounting', password: '1234', name: 'แผนกบัญชี (Admin)', role: 'ACCOUNTING', departmentId: null },
     ...managers,
-    ...U.map(u => ({
-      id: 'user_' + u.id, username: u.code, password: '1234',
-      name: u.name, role: 'USER', departmentId: u.id,
+    ...departments.map(d => ({
+      id: 'user_' + d.id, username: d.code, password: '1234',
+      name: d.name, role: 'USER', departmentId: d.id,
     })),
   ];
 
@@ -151,7 +149,7 @@ const SEED = (() => {
   U.forEach(u => {
     u.rows.forEach(r => {
       budgets.push({
-        year: Y_CUR, departmentId: fillerOf(r, u.id), glId: 'g' + r.gl, cct: r.cct,
+        year: Y_CUR, departmentId: fillerOf(r, u.deptCode), glId: 'g' + r.gl, cct: r.cct,
         months: r.m.map(Number), mtp1: null, mtp2: null,
         updatedAt: '2025-11-25T16:00:00', updatedBy: 'ไฟล์งบต้นปี 2026',
       });
@@ -177,7 +175,7 @@ const SEED = (() => {
   const auditLogs = [];
   const notifications = [
     { id: 'n1', ts: '2025-11-28T17:00:00', targetDeptId: null, targetRole: 'ACCOUNTING',
-      message: 'งบประมาณปี 2026 ทั้งบริษัท (' + U.length + ' หน่วยงาน) อนุมัติและปิดรอบแล้ว · ขั้นถัดไป: เปิดรอบ Revise กลางปีที่ Budget Control', read: false },
+      message: 'งบประมาณปี 2026 ทั้งบริษัท (' + departments.length + ' แผนก) อนุมัติและปิดรอบแล้ว · ขั้นถัดไป: เปิดรอบ Revise กลางปีที่ Budget Control', read: false },
   ];
 
   return {

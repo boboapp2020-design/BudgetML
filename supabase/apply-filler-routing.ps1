@@ -50,7 +50,7 @@ foreach($y in 2025,2026){
   Write-Host ("budget "+$y+" TOTAL = "+('{0:N0}' -f $tot))
 }
 Write-Host "== VERIFY central owners =="
-foreach($id in 'u8001010400','u8003851100','u8003821400'){
+foreach($id in 'd2712','d1161','d1155'){
   $q = $url + '/rest/v1/budgets?select=year' + [char]38 + 'department_id=eq.' + $id
   $r = Invoke-WebRequest -Uri $q -Headers ($H + @{ Prefer='count=exact' }) -Method Get -UseBasicParsing
   Write-Host ("  "+$id+" owns "+(($r.Headers['Content-Range'] -split '/')[-1])+" budget rows")
