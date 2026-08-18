@@ -1,11 +1,10 @@
 # =====================================================================
-# apply-filler-routing.ps1  (ASCII-only; Thai loaded at runtime from JSON)
-# Move ownership (department_id) of ACC/HR rows to 3 central filler depts:
-#   ACC + Group Sap has 'aoi'  -> bri-rai   (u8001010400)
-#   ACC other                  -> gen-acct  (u8003851100)
-#   HR                         -> hr-factory(u8003821400)
-# Covers years 2025 + 2026. Totals unchanged (2026=1.44T, 2025=913.9B) - only owner moves.
-# Reads budgets-routed.json + deptstatus-routed.json (already generated).
+# apply-filler-routing.ps1  (ASCII-only; Thai from JSON at runtime)
+# Rebuild Supabase to แผนก(F)-level model + filler routing (2025 + 2026).
+#  - departments -> 64 แผนก (F)   (fixes FK: budgets.department_id -> departments.id)
+#  - cct_master  -> cct maps to แผนก F
+#  - budgets/dept_status -> F-routed (ACC/HR to central แผนก 2712/1161/1155)
+#  Totals unchanged (2026=1.44T, 2025=913.9B). FK-safe order.
 # Run:
 #   powershell.exe -ExecutionPolicy Bypass -File "C:\Users\surasakna\Desktop\Project AI\Budget App\supabase\apply-filler-routing.ps1"
 # =====================================================================
@@ -28,18 +27,26 @@ function PostRows($table, $rows) {
   }
   Write-Host ("  "+$table+": +"+$done)
 }
+function DelAll($table,$col){ Invoke-RestMethod -Method Delete -Uri ($url+'/rest/v1/'+$table+'?'+$col+'=not.is.null') -Headers $Hmin | Out-Null }
 
-$budgets = Get-Content (Join-Path $PSScriptRoot 'budgets-routed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$status  = Get-Content (Join-Path $PSScriptRoot 'deptstatus-routed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-Write-Host ("budgets-routed rows = "+$budgets.Count+"  dept_status = "+$status.Count)
+$departments = Get-Content (Join-Path $PSScriptRoot 'departments-F.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$cctmaster   = Get-Content (Join-Path $PSScriptRoot 'cctmaster-F.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$budgets     = Get-Content (Join-Path $PSScriptRoot 'budgets-routed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$status      = Get-Content (Join-Path $PSScriptRoot 'deptstatus-routed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+Write-Host ("departments="+$departments.Count+" cct="+$cctmaster.Count+" budgets="+$budgets.Count+" status="+$status.Count)
 
-Write-Host "== DELETE budgets/dept_status 2025+2026 =="
-foreach($y in 2025,2026){
-  Invoke-RestMethod -Method Delete -Uri ($url+'/rest/v1/budgets?year=eq.'+$y) -Headers $Hmin | Out-Null
-  Invoke-RestMethod -Method Delete -Uri ($url+'/rest/v1/dept_status?year=eq.'+$y) -Headers $Hmin | Out-Null
-}
+Write-Host "== DELETE children then departments (FK-safe) =="
+DelAll 'budgets' 'year'
+DelAll 'dept_status' 'year'
+DelAll 'department_rows' 'cct'
+DelAll 'cct_master' 'code'
+DelAll 'departments' 'id'
 
-Write-Host "== INSERT routed budgets + dept_status =="
+Write-Host "== INSERT departments(F) + cct_master =="
+PostRows 'departments' $departments
+PostRows 'cct_master' $cctmaster
+
+Write-Host "== INSERT budgets + dept_status (F-routed) =="
 PostRows 'budgets' $budgets
 PostRows 'dept_status' $status
 
@@ -49,7 +56,7 @@ foreach($y in 2025,2026){
   while($true){ $b=Invoke-RestMethod -Uri ($url+'/rest/v1/budgets?select=months&year=eq.'+$y+'&limit=1000&offset='+$from) -Headers $H; foreach($x in $b){ foreach($v in $x.months){ if($v){$tot+=$v} } }; if($b.Count -lt 1000){break}; $from+=1000 }
   Write-Host ("budget "+$y+" TOTAL = "+('{0:N0}' -f $tot))
 }
-Write-Host "== VERIFY central owners =="
+Write-Host "== VERIFY central แผนก F =="
 foreach($id in 'd2712','d1161','d1155'){
   $q = $url + '/rest/v1/budgets?select=year' + [char]38 + 'department_id=eq.' + $id
   $r = Invoke-WebRequest -Uri $q -Headers ($H + @{ Prefer='count=exact' }) -Method Get -UseBasicParsing
