@@ -103,7 +103,8 @@ const PagesMgr = (() => {
 
     return pageHead(`ภาพรวม${esc(div)} 📊`,
         `หน่วยกำกับดูแล · ${depts.length} แผนก · งบปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
-        `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
+        `<button class="ghost-btn btn-green" id="exportMyXlsx" title="ดาวน์โหลด Excel (ML Form) เฉพาะฝ่าย/สายงานที่ท่านดูแล">⬇ Excel ฝ่ายของฉัน</button>
+         <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
 
       + (units.length > 1 ? `<div class="mgr-view">
           <span class="mgr-view-lb">👁 ดูแยกฝ่าย / ศูนย์:</span>
@@ -140,6 +141,10 @@ const PagesMgr = (() => {
 
   function dashboardBind(user) {
     const year = UI.year();
+    document.getElementById('exportMyXlsx')?.addEventListener('click', () => {
+      UI.toast('กำลังสร้างไฟล์ Excel…');
+      PagesAcc.exportForUser(user, 'xlsx').catch(e => UI.toast(e.message, 'err'));
+    });
     const viewUnitId = currentViewUnit(user);
     const depts = Store.subtreeDepartments(viewUnitId);
     const kids = Store.childUnits(viewUnitId);

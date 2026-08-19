@@ -233,6 +233,7 @@ const PagesUser = (() => {
          <button id="ioViewBtn" class="ghost-btn">🔎 IO / CCT</button>
          <button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
+         <button id="exportMyXlsx" class="ghost-btn btn-green" title="ดาวน์โหลด Excel (ML Form) เฉพาะหน่วยงานของคุณ">⬇ Excel ของฉัน</button>
          <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>`)
       + `<div class="kpi-grid kpi-grid-4">
           ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', (rvOn ? 'ยอด Revise ปี ' : 'ยอดรวมปี ') + c.year, `<span data-kpi-total>${fmt(cur)}</span> <small>กีบ</small>`, rvOn ? `เกิดจริง 1-${thru} + คาดการณ์ ${thru + 1}-12` : 'คำนวณอัตโนมัติ real-time')}
@@ -538,6 +539,10 @@ const PagesUser = (() => {
       } catch (e) { toast(e.message, 'err'); }
     }));
 
+    document.getElementById('exportMyXlsx')?.addEventListener('click', () => {
+      UI.toast('กำลังสร้างไฟล์ Excel…');
+      PagesAcc.exportForUser(user, 'xlsx').catch(e => UI.toast(e.message, 'err'));
+    });
     document.getElementById('calcOpenBtn')?.addEventListener('click', () => {
       const back = UI.modal(`<span class="mt-ic mt-rainbow">🧮</span><span class="mt-tx">เครื่องมือคำนวณ<small>Financial Tools &amp; Calculators</small></span>`,
         calcCards(user), [{ label: 'ปิด', cls: 'ghost-btn' }]);

@@ -463,7 +463,7 @@ const PagesAcc = (() => {
    *  I-T งบต้นปี 12 เดือน (ORIGINAL) · U รวม · V เพิ่ม-ลด · W รวมหลังปรับ
    *  X-AI งบล่าสุด/Revise 12 เดือน (ตัว live) · AJ รวม · AM-AX เกิดจริง 12 เดือน · AY รวมเกิดจริง
    *  CK หน่วยงานที่รับผิดชอบ · CL Group GL PPT · CM Group Sap · CN-CO ฝ่ายย่อย · CP ฝ่าย · CQ รหัสด้าน · CR ด้าน · CS Type · CT สังกัด */
-  function buildMLRows(year) {
+  function buildMLRows(year, allowSet) {   // allowSet = Set(departmentId) จำกัดสิทธิ์ · null/undefined = ทั้งบริษัท
     const NCOL = 98;
     const db = Store.db;
     // master maps
@@ -513,6 +513,7 @@ const PagesAcc = (() => {
       return da.localeCompare(db2) || (glInfo[a.glId]?.code || '').localeCompare(glInfo[b.glId]?.code || '') || a.cct.localeCompare(b.cct);
     });
     rows.forEach(x => {
+      if (allowSet && !allowSet.has(x.departmentId)) return;   // จำกัดเฉพาะแผนก/ฝ่ายที่มีสิทธิ์
       const key = x.departmentId + '|' + x.glId + '|' + x.cct;
       const g = glInfo[x.glId] || {}; const cc = cctInfo[x.cct] || {};
       const ownerDept = deptInfo[cc.departmentId] || deptInfo[x.departmentId] || {};   // แผนกเจ้าของตามไฟล์ (จาก CCT)
@@ -534,10 +535,26 @@ const PagesAcc = (() => {
     });
     return out;
   }
-  async function exportML(kind) {
+  // ขอบเขตสิทธิ์: แอดมิน=ทั้งบริษัท · ผู้จัดการ=แผนกในสายงานตน · ผู้กรอก=แผนกตนเอง
+  function scopeDeptIds(user) {
+    if (!user || user.role === 'ACCOUNTING') return null;
+    if (user.role === 'MANAGER') {
+      const codes = new Set(Store.subtreeDeptCodes(user.orgUnit));
+      return new Set(Store.activeDepartments().filter(d => codes.has(d.code)).map(d => d.id));
+    }
+    return new Set(user.departmentId ? [user.departmentId] : []);
+  }
+  function scopeLabel(user) {
+    if (!user || user.role === 'ACCOUNTING') return 'ทั้งบริษัท';
+    if (user.role === 'MANAGER') return (user.name || 'ฝ่าย').replace(/[\\/:*?"<>|]/g, '');
+    return (Store.dept(user.departmentId) || {}).name || 'แผนก';
+  }
+  const exportForUser = (user, kind) => exportML(kind, scopeDeptIds(user), scopeLabel(user));
+
+  async function exportML(kind, allowSet, fnameSuffix) {
     const year = UI.year();
-    const aoa = buildMLRows(year);
-    const fname = 'ML_งบค่าใช้จ่าย_' + year + '_export';
+    const aoa = buildMLRows(year, allowSet);
+    const fname = 'ML_งบค่าใช้จ่าย_' + year + (fnameSuffix ? '_' + fnameSuffix : '_export');
     if (kind === 'csv') {
       const csv = aoa.map(r => r.map(v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n');
       const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
@@ -1631,5 +1648,5 @@ const PagesAcc = (() => {
     if (ov.requestFullscreen) ov.requestFullscreen().catch(() => {});
   }
 
-  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind };
+  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind, exportForUser };
 })();
