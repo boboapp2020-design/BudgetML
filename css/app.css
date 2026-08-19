@@ -14,11 +14,14 @@
   --shadow-lg: 0 4px 10px rgba(13,54,107,.08), 0 12px 32px rgba(13,54,107,.14);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
 body {
   font-family: "IBM Plex Sans Thai", "Segoe UI", "Leelawadee UI", "Noto Sans Thai", system-ui, sans-serif;
-  background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5;
+  background: #0a1c40; color: var(--ink); font-size: 14px; line-height: 1.5;   /* พื้น letterbox */
 }
+/* ===== ล็อกสัดส่วนทั้งเว็บ: canvas ขนาดคงที่ แล้ว scale ให้พอดีจอ (ย่อ/ขยายไม่บิด) ===== */
+:root { --appW: 1600px; --appH: 900px; }
+#root { position: absolute; top: 0; left: 0; width: var(--appW); height: var(--appH); transform-origin: top left; will-change: transform; }
 small { font-size: .68em; color: var(--muted); font-weight: 400; }
 a { color: var(--blue); }
 .link { color: var(--blue); text-decoration: none; }
@@ -26,11 +29,11 @@ a { color: var(--blue); }
 .muted { color: var(--muted); } .small { font-size: 12px; }
 
 /* ---------- layout ---------- */
-.app { display: flex; min-height: 100vh; }
+.app { display: flex; height: 100%; overflow: hidden; background: var(--bg); }
 .sidebar {
   width: 236px; flex-shrink: 0; color: #fff;
   background: linear-gradient(175deg, #1c3faa 0%, #0d366b 45%, #123c8f 100%);
-  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100%; overflow-y: auto;
   box-shadow: 4px 0 20px rgba(6, 22, 58, .22); z-index: 40;
 }
 .brand { display: flex; gap: 10px; align-items: center; padding: 18px 16px; border-bottom: 1px solid rgba(255,255,255,.12); }
@@ -84,7 +87,7 @@ a { color: var(--blue); }
 .pc-bar { height: 6px; background: rgba(255,255,255,.18); border-radius: 999px; overflow: hidden; }
 .pc-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #5598e7, #86e79b); }
 
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
 .topbar {
   position: sticky; top: 0; z-index: 30; background: rgba(252,252,251,.92); backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border); box-shadow: 0 2px 14px rgba(13,54,107,.07);
@@ -236,7 +239,7 @@ a { color: var(--blue); }
 .anomaly-box.critical { background: var(--crit-bg); border: 1px solid var(--crit-bd); }
 
 /* ---------- budget grid ---------- */
-.budget-scroll { max-height: calc(100vh - 320px); overflow: auto; }
+.budget-scroll { max-height: calc(var(--appH) - 300px); overflow: auto; }
 body.no-scroll { overflow: hidden; }
 .budget-card.fullscreen {
   position: fixed; inset: 10px; z-index: 80; margin: 0;
@@ -667,7 +670,7 @@ body.no-scroll { overflow: hidden; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--border); }
 
 /* ---------- login ---------- */
-.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, var(--navy) 0%, #1c5cab 60%, #256abf 100%); padding: 20px; }
+.login-wrap { height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, var(--navy) 0%, #1c5cab 60%, #256abf 100%); padding: 20px; }
 .login-card { background: var(--surface); border-radius: 16px; padding: 34px 36px; width: 430px; max-width: 100%; box-shadow: 0 24px 80px rgba(0,0,0,.35); }
 .login-brand { text-align: center; margin-bottom: 22px; }
 .login-brand h1 { font-size: 21px; color: var(--navy); }
@@ -831,11 +834,11 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 }
 .fs-card.fullscreen .card-body { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .fs-card.fullscreen .fs-scroll { flex:1; max-height:none !important; }
-.fs-scroll { max-height: calc(100vh - 380px); overflow:auto; }
+.fs-scroll { max-height: calc(var(--appH) - 300px); overflow:auto; }
 
 /* ============ Modern Landing / Login (v5.8) ============ */
 .login-wrap {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  height: 100%; display: flex; align-items: center; justify-content: center;
   padding: 24px; position: relative; overflow: hidden;
   background:
     radial-gradient(1100px 560px at 12% 8%, #1c5cab 0%, transparent 55%),
@@ -914,7 +917,7 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 
 /* ============ Landing / Login v7 (ตาม reference ใหม่) ============ */
 .login-wrap.login-v7 {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+  height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px;
   background:
     radial-gradient(1200px 620px at 6% -4%, #17357e 0%, transparent 55%),
     radial-gradient(1000px 720px at 104% 108%, #1b4fca 0%, transparent 52%),

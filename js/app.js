@@ -192,8 +192,21 @@ const App = (() => {
     catch (e) { showFatal(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')); }
   }
 
+  // ล็อกสัดส่วนทั้งเว็บ: scale #root (canvas 1600×900) ให้พอดีจอ — ย่อ/ขยาย/ปรับขนาดจอ ไม่บิด ไม่ต้องเลื่อน
+  function fitStage() {
+    const root = document.getElementById('root'); if (!root) return;
+    const BW = 1600, BH = 900;
+    const s = Math.min(window.innerWidth / BW, window.innerHeight / BH);
+    const x = Math.max(0, (window.innerWidth - BW * s) / 2);
+    const y = Math.max(0, (window.innerHeight - BH * s) / 2);
+    root.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+  }
+  window.addEventListener('resize', fitStage);
+  fitStage();
+
   window.addEventListener('hashchange', safeRender);
   window.addEventListener('DOMContentLoaded', () => {
+    fitStage();
     if (!location.hash) location.hash = '#/login';
     // กันกดบนข้อมูลเก่า: ถ้าต่อ Supabase ให้ขึ้นม่าน "กำลังดึงข้อมูลล่าสุด" จนซิงค์เสร็จก่อน แล้วค่อยเปิดหน้าจอ
     const useOverlay = (typeof Supa !== 'undefined' && Supa.enabled());
