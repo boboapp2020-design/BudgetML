@@ -63,7 +63,7 @@ const UI = (() => {
   ];
 
   /* โลโก้แอป — ถุงเงิน ₭ + เหรียญซ้อน + แท่งกราฟ + ลูกศรขึ้น ในวงกลมน้ำเงิน (inline SVG) */
-  const APP_LOGO = '<img src="logo-app.png?v=7.1" alt="Annual Budget logo" class="app-logo-img">';
+  const APP_LOGO = '<img src="logo-app.png?v=13.9" alt="iBud — Intelligent Budget System" class="app-logo-img">';
 
   /* ---------- ไอคอนประจำแผนก (เลือกจากคำสำคัญในชื่อ — เรียงจากเฉพาะเจาะจงก่อน) ---------- */
   const DEPT_ICONS = [
@@ -138,7 +138,6 @@ const UI = (() => {
       <div class="main">
         <header class="topbar">
           <div class="topbar-left">
-            <img class="topbar-idash" src="Logo%20iDash.png" alt="iDash — AI Dashboard Intelligence Platform">
             <select id="yearSel" class="year-select" title="เลือกปีงบประมาณ">${yearOpts}</select>
             ${typeof Sync !== 'undefined' ? Sync.chipHtml() : ''}
           </div>

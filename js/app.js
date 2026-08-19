@@ -106,8 +106,6 @@ const App = (() => {
 
           <button class="primary-btn big lv-submit" id="deptLoginBtn">🔒 เข้าสู่ระบบ</button>
 
-          <div class="lv-or"><span>ระบบวิเคราะห์และแสดงผลโดย</span></div>
-          <div class="lv-idash"><img src="Logo%20iDash.png" alt="iDash — Intelligent Dashboard System"></div>
           <div class="lv-secure">🛡️ ระบบปลอดภัยด้วยมาตรฐานระดับองค์กร</div>
         </div>
       </div>

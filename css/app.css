@@ -139,6 +139,12 @@ a { color: var(--blue); }
 .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 .kpi-label { font-size: 12px; color: var(--ink-2); margin-bottom: 5px; }
 .kpi-value { font-size: 21px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.2; }
+/* การ์ดผู้จัดการ/ผู้บริหาร — ไม่มีไอคอน เน้นตัวเลขใหญ่ */
+.kpi.kpi-noic { display: block; }
+.kpi-noic .kpi-label { font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; font-weight: 600; }
+.kpi-noic .kpi-value { font-size: 34px; font-weight: 800; letter-spacing: -.6px; line-height: 1.08; }
+.kpi-noic .kpi-value small { font-size: .46em; font-weight: 600; color: #8a97ab; letter-spacing: 0; }
+.kpi-noic .kpi-sub { margin-top: 8px; font-size: 12px; color: #8a97ab; }
 .kpi-sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
 .kpi-good { border-left: 4px solid var(--ok); }
 .kpi-warn { border-left: 4px solid var(--warn-bd); }
@@ -1029,6 +1035,37 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .login-v7 .lv-idash { text-align: center; }
 .login-v7 .lv-idash img { height: 30px; padding: 8px 16px; border: 1.5px solid #e4e9f2; border-radius: 12px; background: #fff; }
 .login-v7 .lv-secure { text-align: center; margin-top: 16px; font-size: 12px; color: #8a97ab; }
+
+/* ===== หน้าแรก "วาว" (glossy / shine) ===== */
+.login-v7 .lv-login { position: relative; overflow: hidden; }
+.login-v7 .lv-login::before {                     /* กลอสด้านบนการ์ด */
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 150px; pointer-events: none; z-index: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,0));
+}
+.login-v7 .lv-login > * { position: relative; z-index: 1; }
+/* โลโก้ iBud: วงแสงหมุนรอบ + ลอยเบา ๆ + ไฮไลต์กระจก */
+.login-v7 .lv-badge { position: relative; background: #0b1a3d; animation: lvFloat 4.6s ease-in-out infinite;
+  box-shadow: 0 22px 46px rgba(21,51,150,.42), inset 0 0 0 1px rgba(255,255,255,.45); }
+.login-v7 .lv-badge::before { content: ''; position: absolute; inset: -9px; border-radius: 30px; z-index: -1;
+  background: conic-gradient(from 0deg, #3f74ff, #22d3ee, #8a6bff, #38bdf8, #3f74ff);
+  filter: blur(13px); opacity: .8; animation: lvSpin 6s linear infinite; }
+.login-v7 .lv-badge::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.6) 0%, rgba(255,255,255,.06) 42%, transparent 62%); }
+@keyframes lvSpin { to { transform: rotate(360deg); } }
+@keyframes lvFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+/* ปุ่มเข้าระบบมีประกายกวาด */
+.login-v7 .lv-submit { position: relative; overflow: hidden; }
+.login-v7 .lv-submit::after { content: ''; position: absolute; top: 0; left: -120%; width: 55%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent); transform: skewX(-18deg);
+  animation: lvBtnShine 3.6s ease-in-out infinite; }
+@keyframes lvBtnShine { 0% { left: -120%; } 45% { left: 135%; } 100% { left: 135%; } }
+/* hero มีแสงวาวเลื่อนผ่าน */
+.login-v7 .lv-hero-img::after { display: block !important; content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.22) 50%, transparent 58%);
+  background-size: 260% 100%; animation: lvHeroShine 7.5s ease-in-out infinite; }
+@keyframes lvHeroShine { 0% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
+/* ออร์บพื้นหลังสว่างขึ้น */
+.login-orbs span { opacity: .55; filter: blur(64px); }
 
 @media (max-width: 820px) {
   .login-v7 .lv-shell { grid-template-columns: 1fr; width: 460px; }

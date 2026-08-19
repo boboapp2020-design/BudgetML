@@ -6,8 +6,9 @@
 const PagesMgr = (() => {
   const { fmt, fmtShort, deltaBadge, esc, card, pageHead, asOf } = UI;
 
+  // การ์ด KPI ผู้จัดการ/ผู้บริหาร — ไม่ใช้ไอคอน เน้นตัวเลขใหญ่ชัด (icon/iconBg คงไว้เพื่อความเข้ากันได้ ไม่ใช้แล้ว)
   function kpiC(icon, iconBg, tint, label, valueHtml, sub) {
-    return `<div class="kpi kpi-c ${tint}"><div class="kpi-ic" style="background:${iconBg}">${icon}</div>
+    return `<div class="kpi kpi-noic ${tint}">
       <div class="kpi-body"><div class="kpi-label">${label}</div>
       <div class="kpi-value">${valueHtml}</div><div class="kpi-sub">${sub}</div></div></div>`;
   }
