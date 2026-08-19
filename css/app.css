@@ -918,11 +918,9 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 /* ============ Landing / Login v7 (ตาม reference ใหม่) ============ */
 .login-wrap.login-v7 {
   height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px;
-  background:
-    radial-gradient(1200px 640px at 8% -6%, #2f6fd6 0%, transparent 55%),
-    radial-gradient(1000px 760px at 104% 108%, #2a5fe0 0%, transparent 52%),
-    linear-gradient(158deg, #123a86 0%, #1a49b0 58%, #2358e6 120%);
+  background: #1a49b0;   /* สีเรียบเดียวกับ body (letterbox) — ไร้รอยต่อ */
 }
+.login-v7 .login-orbs { display: none; }   /* ปิดออร์บที่ทำให้ขอบสีเพี้ยน */
 .login-v7 .lv-shell {
   position: relative; z-index: 1; width: 1400px; max-width: 100%;
   display: grid; grid-template-columns: 1.12fr .9fr;
@@ -1003,17 +1001,18 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .login-v7 .lv-hero-img img { width: 100%; height: auto; margin: auto; display: block; }   /* แสดงเต็มภาพ ไม่ครอป */
 .login-v7 .lv-hero-img::before, .login-v7 .lv-hero-img::after { display: none; }
 .login-v7 .lv-login h2 { text-align: center; font-size: 34px; font-weight: 800; color: #16233a; }
-.login-v7 .lv-sub { text-align: center; font-size: 15.5px; color: #6b7a90; margin: 5px 0 28px; }
+.login-v7 .lv-sub { text-align: center; font-size: 17px; color: #6b7a90; margin: 5px 0 28px; }
 .login-v7 .lv-login .fld { display: block; margin-bottom: 20px; }
-.login-v7 .lv-login .fld > span { display: block; margin-bottom: 8px; color: #35455c; font-weight: 600; font-size: 15px; }
+.login-v7 .lv-login .fld > span { display: block; margin-bottom: 8px; color: #35455c; font-weight: 600; font-size: 17.5px; }
 .login-v7 .lv-login select {
-  width: 100%; border-radius: 13px; border: 1.7px solid #dde5f1; padding: 15px 15px; font-size: 15.5px; background: #fff;
+  width: 100%; border-radius: 13px; border: 1.7px solid #dde5f1; padding: 16px 16px; font-size: 17.5px; background: #fff;
   box-shadow: inset 0 1px 3px rgba(15,50,105,.05); transition: border-color .15s, box-shadow .15s;
 }
+.login-v7 .lv-login .fld select, .login-v7 .lv-login select, .login-v7 .lv-pass input { font-size: 17.5px !important; }   /* กันโดน .fld select (font:inherit) ทับ */
 .login-v7 .lv-pass { position: relative; display: flex; align-items: center; }
 .login-v7 .lv-pass .lv-lock { position: absolute; left: 13px; font-size: 14px; opacity: .55; pointer-events: none; }
 .login-v7 .lv-pass input {
-  width: 100%; border-radius: 13px; border: 1.7px solid #dde5f1; padding: 15px 44px 15px 40px; font-size: 15.5px; background: #fff;
+  width: 100%; border-radius: 13px; border: 1.7px solid #dde5f1; padding: 16px 46px 16px 42px; font-size: 17.5px; background: #fff;
   box-shadow: inset 0 1px 3px rgba(15,50,105,.05); transition: border-color .15s, box-shadow .15s;
 }
 .login-v7 .lv-pass .lv-eye { position: absolute; right: 8px; background: none; border: none; cursor: pointer;
@@ -1022,9 +1021,9 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .login-v7 .lv-login select:focus, .login-v7 .lv-pass input:focus {
   border-color: #2b5cf0; box-shadow: 0 0 0 4px rgba(43,92,240,.16); outline: none;
 }
-.login-v7 .lv-row { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 18px; font-size: 13px; }
-.login-v7 .lv-remember { display: flex; align-items: center; gap: 7px; color: #4a5a72; cursor: pointer; }
-.login-v7 .lv-remember input { width: 15px; height: 15px; accent-color: #2b5cf0; }
+.login-v7 .lv-row { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 18px; font-size: 15.5px; }
+.login-v7 .lv-remember { display: flex; align-items: center; gap: 9px; color: #4a5a72; cursor: pointer; }
+.login-v7 .lv-remember input { width: 18px; height: 18px; accent-color: #2b5cf0; }
 .login-v7 .lv-forgot { color: #2b5cf0; font-weight: 600; cursor: pointer; }
 .login-v7 .lv-forgot:hover { text-decoration: underline; }
 .login-v7 .lv-submit {
@@ -1038,7 +1037,7 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .login-v7 .lv-or::before, .login-v7 .lv-or::after { content: ''; flex: 1; height: 1px; background: #e4e9f2; }
 .login-v7 .lv-idash { text-align: center; }
 .login-v7 .lv-idash img { height: 30px; padding: 8px 16px; border: 1.5px solid #e4e9f2; border-radius: 12px; background: #fff; }
-.login-v7 .lv-secure { text-align: center; margin-top: 16px; font-size: 12px; color: #8a97ab; }
+.login-v7 .lv-secure { text-align: center; margin-top: 16px; font-size: 14px; color: #8a97ab; }
 
 /* ===== หน้าแรก "วาว" (glossy / shine) ===== */
 .login-v7 .lv-login { position: relative; overflow: hidden; }
