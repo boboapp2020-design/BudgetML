@@ -1207,9 +1207,13 @@ const Store = (() => {
     return [...set].sort((a, b) => a - b);
   }
   const windowOfMonth = m => (CHANGE_WINDOWS.find(w => w.months.includes(Number(m))) || {}).key || null;
+  // ปิดรอบการตั้งงบแล้วหรือยัง (Lock งบ = period.status CLOSED) — เงื่อนไขก่อนเปิดรับคำร้องปรับงบ
+  function budgetRoundClosed(year) { const p = period(year); return !!p && p.status === 'CLOSED'; }
   function setChangeWindow(actor, year, key, open) {
     assertAccounting(actor);
     if (!CHANGE_WINDOWS.some(w => w.key === key)) throw new Error('ช่วงเวลาไม่ถูกต้อง');
+    if (open && !budgetRoundClosed(year))
+      throw new Error('ต้องปิดรอบการตั้งงบ (Lock งบ) ก่อน จึงจะเปิดรับคำร้องปรับงบได้ — ไปที่ Budget Control เพื่อ Lock รอบปีนี้');
     if (!db.changeWindows) db.changeWindows = [];
     let w = db.changeWindows.find(x => x.year === Number(year) && x.window === key);
     if (!w) { w = { year: Number(year), window: key, open: false }; db.changeWindows.push(w); }
@@ -1393,7 +1397,7 @@ const Store = (() => {
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt,
     myNotifications, markNotificationsRead, notify,
-    CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow,
+    CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow, budgetRoundClosed,
     changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,
     createChangeRequest, mgrApproveRequest, mgrRejectRequest, accApproveRequest, accRejectRequest, cancelChangeRequest, reqAdjustmentsFor,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,

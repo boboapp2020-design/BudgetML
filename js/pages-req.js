@@ -135,10 +135,15 @@ const PagesReq = (() => {
 
   /* ---------- ACCOUNTING: คุมหน้าต่าง + ดำเนินการ ---------- */
   function accView(user, year, open) {
+    const locked = Store.budgetRoundClosed(year);   // ปิดรอบการตั้งงบ (Lock) แล้วหรือยัง
+    const lockWarn = !locked
+      ? `<div class="lock-banner">🔒 ปีงบ ${year} <b>ยังไม่ได้ปิดรอบการตั้งงบ (Lock)</b> — เปิดรับคำร้องปรับงบไม่ได้ · ไปที่ <b>Budget Control</b> เพื่อ Lock รอบก่อน</div>`
+      : '';
     const winCtl = Store.CHANGE_WINDOWS.map(w => {
       const st = Store.changeWindowState(year, w.key);
+      const disableOpen = !st.open && !locked;
       return `<div class="req-win"><span>${st.open ? '🟢' : '⚪'} <b>${esc(w.label)}</b>${st.openedBy ? ` <small class="muted">· ${st.open ? 'เปิดโดย' : 'ปิดโดย'} ${esc(st.openedBy)}</small>` : ''}</span>
-        <button class="${st.open ? 'ghost-btn' : 'primary-btn'} small" data-win="${w.key}" data-open="${st.open ? '0' : '1'}">${st.open ? '🔒 ปิดรับ' : '🟢 เปิดรับ'}</button></div>`;
+        <button class="${st.open ? 'ghost-btn' : 'primary-btn'} small" data-win="${w.key}" data-open="${st.open ? '0' : '1'}" ${disableOpen ? 'disabled title="ต้องปิดรอบการตั้งงบ (Lock) ก่อน"' : ''}>${st.open ? '🔒 ปิดรับ' : '🟢 เปิดรับ'}</button></div>`;
     }).join('');
 
     const pendAcc = Store.requestsByStatus('PENDING_ACC').filter(r => r.year === year);
@@ -151,7 +156,7 @@ const PagesReq = (() => {
     const done = Store.changeRequests().filter(r => r.year === year && ['APPROVED', 'REJECTED', 'CANCELLED'].includes(r.status)).slice(0, 20);
     const doneBody = done.length ? done.map(r => reqCard(r, '')).join('') : `<p class="muted" style="padding:10px">ยังไม่มีประวัติ</p>`;
 
-    return card(`🎚️ หน้าต่างปรับงบ ปี ${year}`, `<p class="muted small" style="margin:0 0 8px">เปิด/ปิดช่วงที่ให้หน่วยงานยื่นคำร้อง — เปิดแล้วทุกหน่วยงานได้รับแจ้งเตือน</p>${winCtl}`)
+    return card(`🎚️ หน้าต่างปรับงบ ปี ${year}`, `${lockWarn}<p class="muted small" style="margin:0 0 8px">เปิด/ปิดช่วงที่ให้หน่วยงานยื่นคำร้อง — เปิดแล้วทุกหน่วยงานได้รับแจ้งเตือน · <b>เปิดได้เมื่อปิดรอบการตั้งงบ (Lock) แล้วเท่านั้น</b></p>${winCtl}`)
       + card(`📥 รอบัญชีดำเนินการ ปี ${year} (${pendAcc.length})`, pendBody)
       + card(`🗂️ ประวัติคำร้อง ปี ${year} (ล่าสุด ${done.length})`, doneBody);
   }
