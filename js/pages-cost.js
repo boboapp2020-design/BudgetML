@@ -91,7 +91,7 @@ const PagesCost = (() => {
 
     const perCane = (a, div) => { const d = DIV[div]; return (a == null || d == null || d <= 0) ? null : a / d; };
     const perSugar = a => (a == null || DIV.sugar == null || DIV.sugar <= 0) ? null : a / DIV.sugar;
-    const divCell = v => v == null ? '<span class="muted">— รอส่ง</span>' : fmt(Math.round(v));
+    const divCell = v => v == null ? '<span class="muted">— ยังไม่ส่ง</span>' : fmt(Math.round(v));
     const tonCell = (a, div) => `<td class="num uc-ton">${perCane(a, div) === null ? '—' : fmt(Math.round(perCane(a, div)))}</td>
         <td class="num uc-ton">${perSugar(a) === null ? '—' : fmt(Math.round(perSugar(a)))}</td>`;
     const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม)</small>' : '';
@@ -124,7 +124,7 @@ const PagesCost = (() => {
       if (yearLocked) return '';
       const arr = editorsCfg[key] || [];
       if (!arr.length) return '';
-      return metricSubmitted(key) ? ' <span class="uc-st uc-st-ok">✅ ส่งแล้ว (หารแล้ว)</span>' : ' <span class="uc-st uc-st-wait">⏳ รอส่งจึงจะหาร</span>';
+      return metricSubmitted(key) ? ' <span class="uc-st uc-st-ok">✅ ส่งแล้ว</span>' : ' <span class="uc-st uc-st-wait">⏳ ยังไม่ส่ง</span>';
     };
     const volRows = Store.VOLUME_METRICS.map(m => {
       const v = Store.volume(year, m.key), pv = Store.volume(year - 1, m.key);
