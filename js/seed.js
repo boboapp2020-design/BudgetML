@@ -28,11 +28,13 @@ const SEED = (() => {
   }));
 
   // ---------- GL master (173 บัญชี + Type + Group PPT/Sap) ----------
+  const pptCodeOf = (typeof PPT_MAP !== 'undefined') ? PPT_MAP.glCode : {};
   const glAccounts = SEED_DATA.glMaster.map(g => ({
     id: 'g' + g.code, code: g.code, name: g.name,
-    glGroup: g.group || 'อื่นๆ',      // Group GL PPT
+    glGroup: g.group || 'อื่นๆ',      // Group GL PPT (ชื่อกลุ่ม)
     glGroupSap: g.grpSap || '',        // Group Sap
     glType: g.type || '',              // Type (VC-Exp / FC / SAL / ...)
+    pptCode: pptCodeOf[g.code] || null, // รหัสหมวด PPT 1-33 (ตัวแยกไร่บริษัท/ส่งเสริม — ใช้หน้าต้นทุนต่อหน่วย)
     ioGroup: 'ไม่คุม',
     active: true,
   }));
@@ -184,8 +186,14 @@ const SEED = (() => {
       company: COMPANY, currency: 'LAK',
       yearCurrent: Y_CUR, yearPrevious: Y_PREV,
       sides: SEED_DATA.sides,
-      // แผนก (รหัส F) ที่กรอก "ปริมาณผลิต" ได้ นอกเหนือจากแอดมินบัญชี — แก้ที่นี่ที่เดียว
-      volumeEditors: [],   // ตอนนี้: แอดมินบัญชีกรอกคนเดียว · ภายหลังจะแบ่งให้คนเกี่ยวข้อง → ใส่รหัสแผนก เช่น ['2712','3221']
+      // สิทธิ์กรอก "ปริมาณผลิต" ราย metric (นอกจากแอดมินบัญชี) — รหัสแผนก F · แก้ที่นี่ที่เดียว
+      volumeEditors: {
+        caneCompany: ['2712'],    // ตันอ้อยไร่บริษัท → แผนกบริการไร่
+        caneCommunity: ['2712'],  // ตันอ้อยไร่ส่งเสริม → แผนกบริการไร่
+        sugarProduce: [],         // ตันน้ำตาลผลิต → ฝ่ายผลิต (ยังไม่กำหนด = เว้นว่าง รอ link)
+        sugarTrading: [],         // ตันน้ำตาล Trading → ฝ่ายผลิต (ยังไม่กำหนด)
+      },
+      pptCategories: (typeof PPT_MAP !== 'undefined') ? PPT_MAP.codeName : {},  // รหัสหมวด PPT → ชื่อ
     },
     oversight: OVERSIGHT,
     users, departments, glAccounts, cctMaster, departmentRows, departmentGL,

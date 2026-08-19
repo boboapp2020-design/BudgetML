@@ -992,16 +992,24 @@ const Store = (() => {
     return (db.prodVolumes || []).find(v => v.year === Number(year) && v.metric === metric)
       || { year: Number(year), metric, plan: null, actual: null };
   }
-  // สิทธิ์กรอกปริมาณ: แอดมินบัญชี หรือ แผนกใน meta.volumeEditors (ตั้งใน seed.js)
-  function canEditVolume(actor) {
+  // สิทธิ์กรอกปริมาณ: แอดมินบัญชี หรือ แผนกใน meta.volumeEditors (map ราย metric ใน seed.js)
+  //  volumeEditors = { caneCompany:['2712'], sugarProduce:[], ... } (รองรับแบบ array เดิม = ใช้กับทุก metric)
+  function volumeEditorsFor(metric) {
+    const cfg = (db.meta && db.meta.volumeEditors) || {};
+    if (Array.isArray(cfg)) return cfg;
+    return cfg[metric] || [];
+  }
+  function canEditVolume(actor, metric) {
     if (!actor) return false;
     if (actor.role === 'ACCOUNTING') return true;
-    const editors = (db.meta && db.meta.volumeEditors) || [];
-    const d = actor.departmentId ? dept(actor.departmentId) : null;
-    return actor.role === 'USER' && d && editors.includes(d.code);
+    if (actor.role !== 'USER' || !actor.departmentId) return false;
+    const d = dept(actor.departmentId); if (!d) return false;
+    if (metric) return volumeEditorsFor(metric).includes(d.code);
+    // ไม่ระบุ metric → แก้ได้อย่างน้อย 1 metric
+    return VOLUME_METRICS.some(m => volumeEditorsFor(m.key).includes(d.code));
   }
   function setVolume(actor, year, metric, field, value) {
-    if (!canEditVolume(actor)) throw new Error('เฉพาะแผนกบัญชี (Admin) หรือแผนกที่ได้รับมอบหมายเท่านั้นที่กรอกปริมาณได้');
+    if (!canEditVolume(actor, metric)) throw new Error('เฉพาะแผนกบัญชี (Admin) หรือแผนกที่ได้รับมอบหมายเท่านั้นที่กรอกปริมาณนี้ได้');
     if (!VOLUME_METRICS.some(m => m.key === metric)) throw new Error('metric ไม่ถูกต้อง');
     if (field !== 'plan' && field !== 'actual') throw new Error('field ไม่ถูกต้อง');
     if (value !== null && (typeof value !== 'number' || !isFinite(value) || value < 0)) throw new Error('ค่าไม่ถูกต้อง');

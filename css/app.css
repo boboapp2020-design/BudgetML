@@ -1120,9 +1120,11 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .uc-table th.uc-h2{background:#e2efda;color:#375623}
 .uc-table th.uc-h3{background:#bdd7ee;color:#1f3864}
 .uc-table td.uc-ton{color:#3556a8;background:#fafcff}
-.uc-table tr.uc-block td{background:#eef2fb;border-top:2px solid #d7deea;font-size:13px}
-.uc-table tr.uc-block td small{font-size:11px}
-.uc-table tr.uc-row td.uc-item{padding-left:26px;color:#42526b}
+.uc-table tr.uc-cat td.uc-item{padding-left:24px;color:#42526b;font-size:12.5px}
+.uc-table tr.uc-sum td{background:#eef2fb;font-size:13px;border-top:1px solid #d7deea}
+.uc-table tr.uc-strong td{background:#e2eafc;border-top:2px solid #c3d0ee}
+.uc-table tr.uc-grand td{background:#dbe6fb;border-top:2px solid #9db6e6;border-bottom:2px solid #9db6e6;font-size:13.5px}
+.uc-table tr.uc-sum td small,.uc-table tr.uc-strong td small{font-size:11px;font-weight:400}
 .uc-vol{font:inherit;font-size:13px;text-align:right;width:130px;padding:6px 8px;border:1px solid #d7deea;border-radius:8px}
 .uc-vol:focus{outline:none;border-color:#2b5cf0;box-shadow:0 0 0 3px rgba(43,92,240,.12)}
 
