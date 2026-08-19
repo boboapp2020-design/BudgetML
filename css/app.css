@@ -1152,3 +1152,32 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .uc-st-ok{background:#e6f7ec;color:#1e7d46;border:1px solid #b6e2c6}
 .uc-st-wait{background:#fff3d6;color:#8a5a00;border:1px solid #f0d38a}
 .uc-hint-calc{background:#eef4fd;border:1px solid #c5d8f5;border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:12.5px;color:#274b7a;line-height:1.6}
+/* ---- คำร้องปรับงบ ---- */
+.req-form{display:flex;flex-direction:column;gap:10px}
+.req-form .fld{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.req-form .fld>span{font-weight:600;color:#48506a}
+.req-form select,.req-form input,.req-form textarea{padding:8px 10px;border:1px solid #e6e9f0;border-radius:8px;font:inherit;font-size:13px}
+.req-req{color:#c0322b}
+.req-grid3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.req-tr{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:8px}
+.req-tr-side{background:#f7f9fe;border:1px solid #e6e9f0;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.req-tr-h{font-weight:700;font-size:12.5px;color:#48506a}
+.req-tr-arrow{font-size:22px;color:#2563eb;text-align:center}
+.req-card{border:1px solid #e6e9f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
+.req-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.req-items{margin:8px 0;display:flex;flex-direction:column;gap:4px}
+.req-item{display:flex;justify-content:space-between;gap:10px;background:#f7f9fe;border-radius:7px;padding:5px 10px;font-size:13px}
+.req-plus{color:#1e7d46;font-weight:700}
+.req-minus{color:#c0322b;font-weight:700}
+.req-reason{font-size:12.5px;color:#3a4256;margin-top:4px}
+.req-note{font-size:12px;margin-top:4px}
+.req-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.req-win{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 4px;border-bottom:1px solid #eef1f6;font-size:13.5px}
+.req-win:last-child{border-bottom:none}
+.req-st{display:inline-block;font-size:11px;font-weight:600;padding:1px 9px;border-radius:20px;white-space:nowrap;margin-left:6px}
+.req-st.st-wait{background:#fff3d6;color:#8a5a00;border:1px solid #f0d38a}
+.req-st.st-acc{background:#e6f1ff;color:#1d4fd0;border:1px solid #bcd4ff}
+.req-st.st-ok{background:#e6f7ec;color:#1e7d46;border:1px solid #b6e2c6}
+.req-st.st-no{background:#fde8e6;color:#c0322b;border:1px solid #f3b8b2}
+.req-st.st-cancel{background:#eef1f6;color:#6b7488;border:1px solid #dfe3ec}
+@media(max-width:640px){ .req-grid3{grid-template-columns:1fr} .req-tr{grid-template-columns:1fr} .req-tr-arrow{transform:rotate(90deg)} }

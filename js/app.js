@@ -34,6 +34,7 @@ const App = (() => {
     '#/acc/audit':       { role: 'ACCOUNTING', page: () => PagesAcc.audit,        bind: null },
     '#/acc/actuals':     { role: 'ACCOUNTING', page: () => PagesAcc.actuals,      bind: () => PagesAcc.actualsBind },
     '#/unitcost':        { role: '*',          page: () => PagesCost.unitCost,    bind: () => PagesCost.unitCostBind },
+    '#/requests':        { role: '*',          page: () => PagesReq.requests,     bind: () => PagesReq.requestsBind },
   };
 
   function loginPage() {

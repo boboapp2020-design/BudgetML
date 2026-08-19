@@ -43,10 +43,12 @@ const UI = (() => {
     { hash: '#/review',    icon: '✅', label: 'ตรวจสอบงบประมาณ', sub: 'Review & Submit' },
     { hash: '#/dashboard', icon: '📊', label: 'Dashboard',        sub: 'ภาพรวมหน่วยงาน' },
     { hash: '#/unitcost',  icon: '🏭', label: 'ต้นทุนต่อหน่วย',  sub: 'กีบ/ตันอ้อย · น้ำตาล' },
+    { hash: '#/requests',  icon: '📝', label: 'คำร้องปรับงบ',    sub: 'ขอเพิ่ม/ลด/โยก' },
   ];
   const NAV_MGR = [
     { hash: '#/mgr/dashboard', icon: '📊', label: 'ภาพรวมฝ่าย', sub: 'Division Overview' },
     { hash: '#/unitcost',      icon: '🏭', label: 'ต้นทุนต่อหน่วย', sub: 'กีบ/ตันอ้อย · น้ำตาล' },
+    { hash: '#/requests',      icon: '📝', label: 'อนุมัติคำร้องปรับงบ', sub: 'Approve requests' },
   ];
   const NAV_ACC = [
     { hash: '#/acc/dashboard',   icon: '📊', label: 'Executive Dashboard', sub: 'ภาพรวมทั้งบริษัท' },
@@ -54,6 +56,7 @@ const UI = (() => {
     { hash: '#/acc/analysis',    icon: '📈', label: 'วิเคราะห์งบประมาณ',  sub: 'Analysis' },
     { hash: '#/acc/pnl',         icon: '📑', label: 'งบการเงินตามงบ',     sub: 'Budget P&L' },
     { hash: '#/unitcost',        icon: '🏭', label: 'ต้นทุนต่อหน่วย',     sub: 'กีบ/ตันอ้อย · น้ำตาล' },
+    { hash: '#/requests',        icon: '📝', label: 'คำร้องปรับงบ',       sub: 'ดำเนินการ/คุมหน้าต่าง' },
     { hash: '#/acc/variance',    icon: '🎯', label: 'ควบคุมงบ (เกิดจริง)', sub: 'Budget vs Actual' },
     { hash: '#/acc/control',     icon: '⚙️', label: 'Budget Control',      sub: 'จัดการระบบ' },
     { hash: '#/acc/audit',       icon: '📜', label: 'Audit Log',           sub: 'ประวัติการแก้ไข' },

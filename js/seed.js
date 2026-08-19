@@ -214,6 +214,8 @@ const SEED = (() => {
       { year: Y_PREV, metric: 'sugarProduce',  plan: null, actual: 72501.216,  updatedAt: null, updatedBy: 'ไฟล์ Revise 2025 (ชีท PPT)' },
       { year: Y_PREV, metric: 'sugarTrading',  plan: null, actual: null,        updatedAt: null, updatedBy: 'ไฟล์ Revise 2025 (ชีท PPT)' },
     ],
+    changeRequests: [],   // คำร้องปรับงบกลางปี (ขอเพิ่ม/ลด/โยก) — sync ตาราง change_requests
+    changeWindows: [],    // สถานะเปิด/ปิดหน้าต่างปรับงบ ราย ปี×ช่วง — sync ตาราง change_windows
     exchangeRates, fuelPrices, auditLogs, notifications,
   };
 })();

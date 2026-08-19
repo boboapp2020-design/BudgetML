@@ -1190,6 +1190,152 @@ const Store = (() => {
     download(`budget_pnl_${year}.csv`, csv(rows));
   }
 
+  /* ---------- คำร้องปรับงบกลางปี (ขอเพิ่ม/ลด/โยก · 2 หน้าต่าง: เดือน 1-3, 5-12) ---------- */
+  const CHANGE_WINDOWS = [
+    { key: 'm1_3',  label: 'ช่วงที่ 1 · เดือน 1-3',  months: [1, 2, 3] },
+    { key: 'm5_12', label: 'ช่วงที่ 2 · เดือน 5-12', months: [5, 6, 7, 8, 9, 10, 11, 12] },
+  ];
+  const REQ_TYPE = { increase: '➕ ขอเพิ่มงบ', decrease: '➖ ขอลดงบ', transfer: '🔄 ขอโยกงบ' };
+  const reqTypeLabel = t => REQ_TYPE[t] || t;
+  function changeWindowState(year, key) {
+    return (db.changeWindows || []).find(w => w.year === Number(year) && w.window === key) || { year: Number(year), window: key, open: false };
+  }
+  function changeWindowsOpen(year) { return CHANGE_WINDOWS.filter(w => changeWindowState(year, w.key).open); }
+  function monthsAllowed(year) {
+    const set = new Set();
+    changeWindowsOpen(year).forEach(w => w.months.forEach(m => set.add(m)));  // w = CHANGE_WINDOWS entry (มี .months)
+    return [...set].sort((a, b) => a - b);
+  }
+  const windowOfMonth = m => (CHANGE_WINDOWS.find(w => w.months.includes(Number(m))) || {}).key || null;
+  function setChangeWindow(actor, year, key, open) {
+    assertAccounting(actor);
+    if (!CHANGE_WINDOWS.some(w => w.key === key)) throw new Error('ช่วงเวลาไม่ถูกต้อง');
+    if (!db.changeWindows) db.changeWindows = [];
+    let w = db.changeWindows.find(x => x.year === Number(year) && x.window === key);
+    if (!w) { w = { year: Number(year), window: key, open: false }; db.changeWindows.push(w); }
+    w.open = !!open; w.openedAt = new Date().toISOString(); w.openedBy = actor.name;
+    const lbl = CHANGE_WINDOWS.find(x => x.key === key).label;
+    audit(actor, open ? 'เปิดหน้าต่างปรับงบ' : 'ปิดหน้าต่างปรับงบ', { newValue: `ปี ${year} · ${lbl}` });
+    if (open) activeDepartments().forEach(d => notify({ deptId: d.id }, `เปิดให้ยื่นคำร้องปรับงบปี ${year} — ${lbl} · ยื่นขอเพิ่ม/ลด/โยกงบได้แล้ว`));
+    save();
+  }
+
+  const changeRequests = () => db.changeRequests || [];
+  const requestById = id => changeRequests().find(r => r.id === id) || null;
+  function myRequests(user) { return user.departmentId ? changeRequests().filter(r => r.deptId === user.departmentId) : []; }
+  function requestsForMgr(user) {
+    if (user.role !== 'MANAGER') return [];
+    const codes = subtreeDeptCodes(user.orgUnit);
+    return changeRequests().filter(r => r.status === 'PENDING_MGR' && codes.includes(dept(r.deptId)?.code));
+  }
+  const requestsByStatus = status => changeRequests().filter(r => !status || r.status === status);
+
+  function createChangeRequest(actor, data) {
+    if (actor.role !== 'USER' || !actor.departmentId) throw new Error('เฉพาะหน่วยงานเท่านั้นที่ยื่นคำร้องได้');
+    const year = Number(data.year);
+    const allowed = monthsAllowed(year);
+    if (!allowed.length) throw new Error('ยังไม่เปิดหน้าต่างปรับงบสำหรับปีนี้ (ติดต่อแผนกบัญชี)');
+    const type = data.type;
+    if (!['increase', 'decrease', 'transfer'].includes(type)) throw new Error('ประเภทคำร้องไม่ถูกต้อง');
+    if (!String(data.reason || '').trim()) throw new Error('กรุณาระบุเหตุผลของคำร้อง');
+    const chkMonth = m => { if (!allowed.includes(Number(m))) throw new Error(`เดือน ${m} อยู่นอกช่วงที่เปิดให้ปรับ (เปิด: เดือน ${allowed.join(', ')})`); };
+    const amt = v => { const n = Number(String(v).replace(/[,\s]/g, '')); if (!isFinite(n) || n <= 0) throw new Error('จำนวนเงินต้องมากกว่า 0'); return n; };
+    const items = [];
+    if (type === 'transfer') {
+      const a = amt(data.amount);
+      chkMonth(data.fromMonth); chkMonth(data.toMonth);
+      if (!data.fromKey || !data.toKey) throw new Error('เลือกช่องต้นทาง/ปลายทางให้ครบ');
+      if (data.fromKey === data.toKey && Number(data.fromMonth) === Number(data.toMonth)) throw new Error('ต้นทางและปลายทางต้องไม่ใช่ช่องเดียวกัน');
+      const [fg, fc] = splitKey(data.fromKey), [tg, tc] = splitKey(data.toKey);
+      items.push({ deptId: actor.departmentId, glId: fg, cct: fc, month: Number(data.fromMonth), delta: -a });
+      items.push({ deptId: actor.departmentId, glId: tg, cct: tc, month: Number(data.toMonth), delta: a });
+    } else {
+      const a = amt(data.amount);
+      chkMonth(data.month);
+      if (!data.rowKey) throw new Error('เลือกช่องงบที่จะปรับ');
+      const [g, c] = splitKey(data.rowKey);
+      items.push({ deptId: actor.departmentId, glId: g, cct: c, month: Number(data.month), delta: type === 'increase' ? a : -a });
+    }
+    items.forEach(it => {
+      if (it.delta < 0) {
+        const cur = rowMonths(year, it.deptId, it.glId + '@' + it.cct)[it.month - 1] || 0;
+        if (cur + it.delta < 0) throw new Error(`ลด/โยกเกินยอดของช่องนั้น (คงเหลือ ${Math.round(cur).toLocaleString()} กีบ)`);
+      }
+    });
+    const req = {
+      id: 'req' + Date.now() + Math.random().toString(36).slice(2, 6),
+      year, window: windowOfMonth(items[0].month), type,
+      deptId: actor.departmentId, createdBy: actor.name, createdAt: new Date().toISOString(),
+      reason: String(data.reason).trim(), memoNote: String(data.memoNote || '').trim(),
+      items, toDeptId: null, status: 'PENDING_MGR',
+      mgrBy: null, mgrAt: null, mgrNote: null, accBy: null, accAt: null, accNote: null, appliedAt: null,
+    };
+    if (!db.changeRequests) db.changeRequests = [];
+    db.changeRequests.unshift(req);
+    audit(actor, 'ยื่นคำร้องปรับงบ', { deptId: actor.departmentId, newValue: `${reqTypeLabel(type)} ปี ${year}` });
+    notify({ role: 'MANAGER' }, `${dept(actor.departmentId).name} ยื่นคำร้องปรับงบปี ${year} (${reqTypeLabel(type)}) — รอหัวหน้าฝ่ายอนุมัติ`);
+    save();
+    return req;
+  }
+  function reqAssertMgrScope(actor, req) {
+    if (actor.role !== 'MANAGER') throw new Error('เฉพาะหัวหน้าฝ่ายเท่านั้น');
+    if (!subtreeDeptCodes(actor.orgUnit).includes(dept(req.deptId)?.code)) throw new Error('คำร้องนี้อยู่นอกฝ่ายที่ท่านดูแล');
+  }
+  function mgrApproveRequest(actor, id) {
+    const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
+    reqAssertMgrScope(actor, req);
+    if (req.status !== 'PENDING_MGR') throw new Error('คำร้องนี้ไม่ได้อยู่สถานะรอหัวหน้าฝ่าย');
+    req.status = 'PENDING_ACC'; req.mgrBy = actor.name; req.mgrAt = new Date().toISOString();
+    audit(actor, 'หัวหน้าฝ่ายอนุมัติคำร้องปรับงบ', { deptId: req.deptId, newValue: req.id });
+    notify({ role: 'ACCOUNTING' }, `คำร้องปรับงบของ ${dept(req.deptId).name} ผ่านหัวหน้าฝ่าย (${actor.name}) — รอแผนกบัญชีดำเนินการ`);
+    notify({ deptId: req.deptId }, `คำร้องปรับงบปี ${req.year} ผ่านการอนุมัติจากหัวหน้าฝ่ายแล้ว — รอแผนกบัญชีดำเนินการ`);
+    save();
+  }
+  function mgrRejectRequest(actor, id, noteMsg) {
+    const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
+    reqAssertMgrScope(actor, req);
+    if (req.status !== 'PENDING_MGR') throw new Error('คำร้องนี้ไม่ได้อยู่สถานะรอหัวหน้าฝ่าย');
+    req.status = 'REJECTED'; req.mgrBy = actor.name; req.mgrAt = new Date().toISOString(); req.mgrNote = noteMsg || null;
+    audit(actor, 'หัวหน้าฝ่ายปฏิเสธคำร้องปรับงบ', { deptId: req.deptId, newValue: noteMsg || '' });
+    notify({ deptId: req.deptId }, `คำร้องปรับงบปี ${req.year} ถูกหัวหน้าฝ่ายปฏิเสธ${noteMsg ? ' — ' + noteMsg : ''}`);
+    save();
+  }
+  function accApproveRequest(actor, id) {
+    assertAccounting(actor);
+    const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
+    if (req.status !== 'PENDING_ACC') throw new Error('คำร้องนี้ยังไม่ผ่านหัวหน้าฝ่าย หรือดำเนินการไปแล้ว');
+    req.items.forEach(it => {
+      const row = ensureRow(req.year, it.deptId, it.glId + '@' + it.cct);
+      const i = it.month - 1, old = row.months[i] || 0;
+      let nv = old + it.delta; if (nv < 0) nv = 0;
+      row.months[i] = nv;
+      row.updatedAt = new Date().toISOString(); row.updatedBy = `คำร้อง ${req.id} (${actor.name})`;
+      audit(actor, 'ปรับงบตามคำร้อง', { deptId: it.deptId, glCode: gl(it.glId)?.code, month: it.month, oldValue: old, newValue: nv });
+    });
+    req.status = 'APPROVED'; req.accBy = actor.name; req.accAt = new Date().toISOString(); req.appliedAt = req.accAt;
+    notify({ deptId: req.deptId }, `คำร้องปรับงบปี ${req.year} ได้รับอนุมัติและปรับงบให้เรียบร้อยแล้ว ✅`);
+    [...new Set(req.items.map(it => it.deptId))].filter(d => d !== req.deptId)
+      .forEach(d => notify({ deptId: d }, `มีการโยกงบเข้ามายังหน่วยงานของท่าน (ปี ${req.year}) ตามคำร้องที่อนุมัติแล้ว`));
+    save();
+  }
+  function accRejectRequest(actor, id, noteMsg) {
+    assertAccounting(actor);
+    const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
+    if (!['PENDING_ACC', 'PENDING_MGR'].includes(req.status)) throw new Error('คำร้องนี้ดำเนินการไปแล้ว');
+    req.status = 'REJECTED'; req.accBy = actor.name; req.accAt = new Date().toISOString(); req.accNote = noteMsg || null;
+    audit(actor, 'บัญชีปฏิเสธคำร้องปรับงบ', { deptId: req.deptId, newValue: noteMsg || '' });
+    notify({ deptId: req.deptId }, `คำร้องปรับงบปี ${req.year} ถูกแผนกบัญชีปฏิเสธ${noteMsg ? ' — ' + noteMsg : ''}`);
+    save();
+  }
+  function cancelChangeRequest(actor, id) {
+    const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
+    if (actor.role !== 'USER' || req.deptId !== actor.departmentId) throw new Error('ยกเลิกได้เฉพาะคำร้องของหน่วยงานตนเอง');
+    if (req.status !== 'PENDING_MGR') throw new Error('ยกเลิกได้เฉพาะคำร้องที่ยังรอหัวหน้าฝ่าย');
+    req.status = 'CANCELLED';
+    audit(actor, 'ยกเลิกคำร้องปรับงบ', { deptId: req.deptId, newValue: req.id });
+    save();
+  }
+
   load();
 
   return {
@@ -1211,6 +1357,9 @@ const Store = (() => {
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt,
     myNotifications, markNotificationsRead, notify,
+    CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow,
+    changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,
+    createChangeRequest, mgrApproveRequest, mgrRejectRequest, accApproveRequest, accRejectRequest, cancelChangeRequest,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
     MONTH_TH, MONTH_S,
   };
