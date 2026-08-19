@@ -208,11 +208,12 @@ const SEED = (() => {
       .map((a, i) => ({ year: Y_PREV, code: i + 1, amount: a, updatedAt: null, updatedBy: 'ไฟล์ Revise 2025 (ชีท PPT)' })),
     pptSubmits: [],   // สถานะส่งต้นทุน PPT รายแผนก/ปี (ส่งแล้ว = ล็อก · แอดมินปลดล็อก)
     // ปริมาณผลิตปี 2025 (จากชีทสรุป PPT ไฟล์ Revise 2025) — ฐานเทียบต้นทุนต่อหน่วย
+    // ปริมาณผลิต Revise 2025 (ชีท PPT คอลัมน์ BE แถว 62-67) — ตัวหารให้ /ตัน ตรงไฟล์
     prodVolumes: [
-      { year: Y_PREV, metric: 'caneCompany',   plan: null, actual: 119149.74, updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
-      { year: Y_PREV, metric: 'caneCommunity', plan: null, actual: 218879.94, updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
-      { year: Y_PREV, metric: 'sugarProduce',  plan: null, actual: 45155.78,  updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
-      { year: Y_PREV, metric: 'sugarTrading',  plan: null, actual: null,      updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },
+      { year: Y_PREV, metric: 'caneCompany',   plan: null, actual: 111555.65,  updatedAt: null, updatedBy: 'ไฟล์ Revise 2025 (ชีท PPT)' },
+      { year: Y_PREV, metric: 'caneCommunity', plan: null, actual: 453736.175, updatedAt: null, updatedBy: 'ไฟล์ Revise 2025 (ชีท PPT)' },
+      { year: Y_PREV, metric: 'sugarProduce',  plan: null, actual: 72501.216,  updatedAt: null, updatedBy: 'ไฟล์ Revise 2025 (ชีท PPT)' },
+      { year: Y_PREV, metric: 'sugarTrading',  plan: null, actual: null,        updatedAt: null, updatedBy: 'ไฟล์ Revise 2025 (ชีท PPT)' },
     ],
     exchangeRates, fuelPrices, auditLogs, notifications,
   };
