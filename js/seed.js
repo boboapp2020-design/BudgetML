@@ -194,12 +194,16 @@ const SEED = (() => {
         sugarTrading: [],         // ตันน้ำตาล Trading → ฝ่ายผลิต (ยังไม่กำหนด)
       },
       pptCategories: (typeof PPT_MAP !== 'undefined') ? PPT_MAP.codeName : {},  // รหัสหมวด PPT → ชื่อ
+      // สิทธิ์กรอก "จำนวนเงิน" หน้าต้นทุนต่อหน่วย รายหมวด PPT (รหัส → รหัสแผนก F) — แก้ที่นี่ที่เดียว
+      //  ตอนนี้: บริการไร่ (2712) กรอกเฉพาะค่าอ้อย หมวด 1-6 · หมวดอื่นรอมอบหมาย (แอดมินกรอกได้เสมอ)
+      pptEditors: { '1': ['2712'], '2': ['2712'], '3': ['2712'], '4': ['2712'], '5': ['2712'], '6': ['2712'] },
     },
     oversight: OVERSIGHT,
     users, departments, glAccounts, cctMaster, departmentRows, departmentGL,
     budgetPeriods, budgets, glNotes, deptStatus, cellDetails,
     budgetSnapshots: [],
     actuals: [],
+    pptAmounts: [],   // จำนวนเงินหน้าต้นทุนต่อหน่วย (กรอกมือ) — เริ่มว่าง user กรอกเอง
     // ปริมาณผลิตปี 2025 (จากชีทสรุป PPT ไฟล์ Revise 2025) — ฐานเทียบต้นทุนต่อหน่วย
     prodVolumes: [
       { year: Y_PREV, metric: 'caneCompany',   plan: null, actual: 119149.74, updatedAt: null, updatedBy: 'ไฟล์ Revise 2025' },

@@ -53,7 +53,9 @@ const Store = (() => {
       db.meta.company = SEED.meta.company;   // ป้ายชื่อบริษัท/แอป = static จากโค้ด (Supabase ไม่ต้องเก็บ Thai ให้ถูก)
       db.meta.currency = SEED.meta.currency;
       db.meta.appName = SEED.meta.appName;
-      db.meta.volumeEditors = clone(SEED.meta.volumeEditors || []);   // สิทธิ์กรอกปริมาณผลิต = config จากโค้ด
+      db.meta.volumeEditors = clone(SEED.meta.volumeEditors || {});   // สิทธิ์กรอกปริมาณผลิต = config จากโค้ด
+      db.meta.pptEditors = clone(SEED.meta.pptEditors || {});          // สิทธิ์กรอกจำนวนเงิน PPT รายหมวด
+      db.meta.pptCategories = clone(SEED.meta.pptCategories || {});
     }
   }
   let afterSave = null; // hook สำหรับ Sync (ตั้งค่าโดย sync.js)
@@ -1015,6 +1017,36 @@ const Store = (() => {
     if (metric) return volumeEditorsFor(metric).includes(d.code);
     return VOLUME_METRICS.some(m => volumeEditorsFor(m.key).includes(d.code));
   }
+  /* ---------- จำนวนเงินหน้า "ต้นทุนต่อหน่วย" (กรอกมือ รายหมวด PPT 1-33, แยกจากระบบงบ) ---------- */
+  function pptAmount(year, code) {
+    return (db.pptAmounts || []).find(x => x.year === Number(year) && x.code === Number(code))
+      || { year: Number(year), code: Number(code), amount: null };
+  }
+  function pptEditorsFor(code) {
+    const cfg = (db.meta && db.meta.pptEditors) || {};
+    return cfg[String(code)] || [];
+  }
+  function canEditPpt(actor, code, year) {
+    if (!actor) return false;
+    const yearOk = year == null ? true : isYearEditable(year);
+    if (actor.role === 'ACCOUNTING') return true;
+    if (actor.role !== 'USER' || !actor.departmentId || !yearOk) return false;
+    const d = dept(actor.departmentId); if (!d) return false;
+    if (code != null) return pptEditorsFor(code).includes(d.code);
+    const cfg = (db.meta && db.meta.pptEditors) || {};
+    return Object.keys(cfg).some(c => (cfg[c] || []).includes(d.code));
+  }
+  function setPptAmount(actor, year, code, amount) {
+    if (!canEditPpt(actor, code, year)) throw new Error('กรอกจำนวนเงินนี้ไม่ได้ — ต้องเป็นแผนกที่ได้รับมอบหมายหมวดนี้ และรอบปีต้องเปิดอยู่ (แอดมินแก้ได้เสมอ)');
+    if (amount !== null && (typeof amount !== 'number' || !isFinite(amount))) throw new Error('ค่าไม่ถูกต้อง');
+    if (!db.pptAmounts) db.pptAmounts = [];
+    let x = db.pptAmounts.find(v => v.year === Number(year) && v.code === Number(code));
+    if (!x) { x = { year: Number(year), code: Number(code), amount: null }; db.pptAmounts.push(x); }
+    x.amount = amount; x.updatedAt = new Date().toISOString(); x.updatedBy = actor.name;
+    audit(actor, 'กรอกต้นทุน PPT', { newValue: `${year} หมวด${code} = ${amount}` });
+    save();
+  }
+
   function setVolume(actor, year, metric, field, value) {
     if (!canEditVolume(actor, metric, year)) throw new Error('กรอกปริมาณนี้ไม่ได้ — ต้องเป็นแผนกที่ได้รับมอบหมาย และรอบปีต้องเปิดอยู่ (แอดมินแก้ได้เสมอ)');
     if (!VOLUME_METRICS.some(m => m.key === metric)) throw new Error('metric ไม่ถูกต้อง');
@@ -1140,6 +1172,7 @@ const Store = (() => {
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
+    pptAmount, canEditPpt, setPptAmount,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
     MONTH_TH, MONTH_S,

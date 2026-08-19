@@ -1116,15 +1116,16 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .glrow-form label small{color:#c2820a;font-weight:600}
 
 /* ===== หน้า ต้นทุนต่อหน่วย (unit cost) ===== */
-.uc-table th.uc-h1{background:#ddebf7;color:#1f3864}
-.uc-table th.uc-h2{background:#e2efda;color:#375623}
-.uc-table th.uc-h3{background:#bdd7ee;color:#1f3864}
 .uc-table td.uc-ton{color:#3556a8;background:#fafcff}
+.uc-table tr.uc-cat td{background:#fff}                         /* ⬜ ขาว = แถวกรอก */
 .uc-table tr.uc-cat td.uc-item{padding-left:24px;color:#42526b;font-size:12.5px}
-.uc-table tr.uc-sum td{background:#eef2fb;font-size:13px;border-top:1px solid #d7deea}
-.uc-table tr.uc-strong td{background:#e2eafc;border-top:2px solid #c3d0ee}
-.uc-table tr.uc-grand td{background:#dbe6fb;border-top:2px solid #9db6e6;border-bottom:2px solid #9db6e6;font-size:13.5px}
-.uc-table tr.uc-sum td small,.uc-table tr.uc-strong td small{font-size:11px;font-weight:400}
+.uc-table tr.uc-cat td.uc-white{background:#fff}
+.uc-table tr.uc-sum td{background:#fff7cc;font-size:13px;border-top:1px solid #ecdd97;font-weight:600}   /* 🟨 เหลือง = รวมหมวด */
+.uc-table tr.uc-grand td{background:#fbe0ec;border-top:2px solid #eeaecb;border-bottom:2px solid #eeaecb;font-size:13.5px}  /* 🟥 ชมพู = รวมใหญ่ */
+.uc-table tr.uc-sum td small,.uc-table tr.uc-grand td small{font-size:11px;font-weight:400}
+.uc-white{background:#fff}
+.uc-amt{font:inherit;font-size:13px;text-align:right;width:100%;max-width:170px;padding:6px 8px;border:1px solid #cdd6e6;border-radius:7px;background:#fff}
+.uc-amt:focus{outline:none;border-color:#2b5cf0;box-shadow:0 0 0 3px rgba(43,92,240,.12)}
 .uc-vol{font:inherit;font-size:13px;text-align:right;width:130px;padding:6px 8px;border:1px solid #d7deea;border-radius:8px}
 .uc-vol:focus{outline:none;border-color:#2b5cf0;box-shadow:0 0 0 3px rgba(43,92,240,.12)}
 
@@ -1142,3 +1143,5 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .uc-round-open{background:#e6f7ec;color:#1e7d46;border:1px solid #b6e2c6}
 .uc-round-lock{background:#eef1f6;color:#5a6b85;border:1px solid #d3dae7}
 .uc-round-rv{background:#fff3e0;color:#a05a00;border:1px solid #f0cf94}
+.uc-auto{color:#1e7d46;font-weight:600}
+.uc-table tr.uc-auto-row td{background:#f3faf5}

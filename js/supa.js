@@ -217,6 +217,11 @@ const Supa = (() => {
     { name: 'budget_snapshots', pk: ['year', 'label'],
       list: db => (db.budgetSnapshots || []).map(s => ({ year: s.year, label: s.label, created_at: nz(s.createdAt) })),
     },
+    { name: 'ppt_amounts', pk: ['year', 'code'], assign: 'pptAmounts', optional: true, // จำนวนเงินหน้าต้นทุนต่อหน่วย (กรอกมือ)
+      list: db => db.pptAmounts || [],
+      toRow: p => ({ year: p.year, code: p.code, amount: nz(p.amount), updated_at: nz(p.updatedAt), updated_by: nz(p.updatedBy) }),
+      fromRow: r => ({ year: r.year, code: r.code, amount: r.amount, updatedAt: r.updated_at, updatedBy: r.updated_by }),
+    },
     { name: 'prod_volumes', pk: ['year', 'metric'], assign: 'prodVolumes', optional: true, // ตารางใหม่ — ข้ามเงียบๆ ถ้ายังไม่รัน prod-volumes.sql
       list: db => db.prodVolumes || [],
       toRow: p => ({ year: p.year, metric: p.metric, plan: nz(p.plan), actual: nz(p.actual), updated_at: nz(p.updatedAt), updated_by: nz(p.updatedBy) }),
