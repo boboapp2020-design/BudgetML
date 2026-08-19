@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>รายชื่อผู้ใช้ระบบงบประมาณ — เลือก/ลบ + อีเมล</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#fff; --ink:#1c2333; --muted:#6b7488; --line:#e6e9f0;
+    --blue:#2563eb; --blue-soft:#eaf1ff; --green:#1e7d46; --green-soft:#e6f7ec;
+    --amber:#8a5a00; --amber-soft:#fff3d6; --purple:#6d28d9; --purple-soft:#f0eafe;
+    --red:#c0322b; --red-soft:#fde8e6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"IBM Plex Sans Thai","Segoe UI",Tahoma,sans-serif;font-size:14px;line-height:1.5}
+  .wrap{max-width:1120px;margin:0 auto;padding:20px 16px 80px}
+  header.top{background:linear-gradient(120deg,#1e3a8a,#2563eb);color:#fff;border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:0 8px 24px rgba(37,99,235,.18)}
+  header.top h1{margin:0 0 4px;font-size:22px}
+  header.top p{margin:0;opacity:.9;font-size:13px}
+  .stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .stat{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 14px;font-size:13px}
+  .stat b{font-size:18px;display:block}
+  .toolbar{position:sticky;top:0;z-index:5;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;box-shadow:0 2px 10px rgba(20,30,60,.05)}
+  .toolbar input[type=search]{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font:inherit}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink)}
+  .btn:hover{background:#f0f3fa}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn.primary:hover{background:#1d4fd0}
+  .btn.ghost{background:transparent}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:none;background:#fff;padding:8px 12px;cursor:pointer;font:inherit;font-size:13px;color:var(--muted)}
+  .seg button.on{background:var(--blue-soft);color:var(--blue);font-weight:600}
+  section.grp{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:16px;overflow:hidden}
+  .grp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);background:#fbfcfe;cursor:pointer;user-select:none}
+  .grp-head h2{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+  .grp-head .cnt{color:var(--muted);font-size:12.5px;font-weight:400}
+  .grp-head .caret{transition:.15s;color:var(--muted)}
+  section.grp.collapsed .grp-body{display:none}
+  section.grp.collapsed .caret{transform:rotate(-90deg)}
+  .subgrp{padding:6px 16px 2px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em;border-top:1px dashed var(--line);background:#fcfdff}
+  .subgrp:first-child{border-top:none}
+  table{width:100%;border-collapse:collapse}
+  td,th{padding:9px 12px;text-align:left;vertical-align:middle}
+  tbody tr{border-top:1px solid var(--line)}
+  tbody tr:hover{background:#f7f9fe}
+  tr.off{opacity:.42}
+  tr.off .nm{text-decoration:line-through}
+  td.chk{width:40px}
+  td.chk input{width:18px;height:18px;cursor:pointer;accent-color:var(--blue)}
+  .nm{font-weight:600}
+  .code{display:inline-block;background:#eef1f6;color:#48506a;border-radius:6px;padding:1px 7px;font-size:12px;margin-left:6px;font-variant-numeric:tabular-nums}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+  .b-admin{background:var(--red-soft);color:var(--red)}
+  .b-view{background:var(--purple-soft);color:var(--purple)}
+  .b-fill{background:var(--green-soft);color:var(--green)}
+  .b-cost{background:var(--amber-soft);color:var(--amber);margin-left:6px}
+  td.email input{width:100%;min-width:190px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
+  td.email input:focus{outline:2px solid var(--blue-soft);border-color:var(--blue)}
+  td.email input.bad{border-color:var(--red);background:var(--red-soft)}
+  .role-col{width:150px}
+  .hint{font-size:12.5px;color:var(--muted);margin:2px 4px 14px}
+  .footbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(20,30,60,.06);z-index:20}
+  .footbar .info{color:var(--muted);font-size:13px}
+  .saved{color:var(--green);font-size:12.5px}
+  @media(max-width:640px){ td.role-col,th.role-col{display:none} .wrap{padding-bottom:120px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>👥 รายชื่อผู้ใช้ระบบงบประมาณประจำปี</h1>
+    <p>บริษัท น้ำตาลมิตรลาว จำกัด · ติ๊กเลือกคนที่จะใช้งาน (เอาติ๊กออก = จะลบ) · ใส่อีเมลไว้สำหรับล็อกอินผ่านอีเมลในอนาคต</p>
+    <div class="stat-row" id="stats"></div>
+  </header>
+
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="🔎 ค้นหาชื่อ / รหัสแผนก…">
+    <div class="seg" id="roleFilter">
+      <button data-r="all" class="on">ทั้งหมด</button>
+      <button data-r="admin">แอดมิน</button>
+      <button data-r="viewer">ผู้ดู</button>
+      <button data-r="filler">ผู้กรอก</button>
+    </div>
+    <button class="btn" id="selAll">✔ เลือกทั้งหมด</button>
+    <button class="btn" id="selNone">✖ เอาออกทั้งหมด</button>
+  </div>
+  <div class="hint">💡 การติ๊กและอีเมลจะถูกบันทึกอัตโนมัติในเครื่องนี้ (ไม่หายเมื่อปิด) · กด “ส่งออก CSV/JSON” เพื่อเก็บไฟล์หรือส่งให้ผมนำเข้าระบบต่อ</div>
+
+  <div id="list"></div>
+</div>
+
+<div class="footbar">
+  <span class="info">เลือกไว้ <b id="selCount">0</b> คน · กรอกอีเมลแล้ว <b id="emailCount">0</b></span>
+  <button class="btn primary" id="expCsv">⬇ ส่งออก CSV</button>
+  <button class="btn" id="expJson">⬇ ส่งออก JSON</button>
+  <button class="btn ghost" id="resetBtn">↺ ล้างค่าที่บันทึก</button>
+  <span class="saved" id="savedMsg"></span>
+</div>
+
+<script>
+// ===== ข้อมูลผู้ใช้จริงจากระบบ (ดึงจากหน้า login) =====
+// role: admin | viewer | filler   · cost:true = แผนกที่กรอกปริมาณหน้าต้นทุนต่อหน่วย
+const DATA = [
+  // ---------- แอดมิน ----------
+  { id:'accounting', code:'—', name:'ผู้ดูแลระบบ — แผนกบัญชี', role:'admin', sub:'ผู้ดูแลระบบ' },
+
+  // ---------- ผู้ดู / ผู้อนุมัติ (หน่วยกำกับดูแล) ----------
+  { id:'MGR:co', code:'บริษัท', name:'บริษัท น้ำตาลมิตรลาว จำกัด (ภาพรวมทั้งบริษัท)', role:'viewer', sub:'ระดับบริษัท' },
+
+  { id:'MGR:area_3', code:'สังกัด', name:'ด้านโรงงาน', role:'viewer', sub:'ระดับสังกัด (Area)' },
+  { id:'MGR:area_2', code:'สังกัด', name:'ด้านอ้อย', role:'viewer', sub:'ระดับสังกัด (Area)' },
+  { id:'MGR:area_1', code:'สังกัด', name:'บริหารสำนักงาน', role:'viewer', sub:'ระดับสังกัด (Area)' },
+  { id:'MGR:area_4', code:'สังกัด', name:'สังกัด กจก.', role:'viewer', sub:'ระดับสังกัด (Area)' },
+
+  { id:'MGR:div_6',  code:'ฝ่าย', name:'ด้านโรงงาน', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_8',  code:'ฝ่าย', name:'ผอ.ประจำบริษัทน้ำตาลมิตรลาว', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_16', code:'ฝ่าย', name:'ฝ่ายผลิต (ด้านโรงงาน)', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_7',  code:'ฝ่าย', name:'ฝ่ายวิศวกรรมและซ่อมบำรุง', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_12', code:'ฝ่าย', name:'ศูนย์ประกันคุณภาพ', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_20', code:'ฝ่าย', name:'โครงการจัดการโรคใบขาว', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_14', code:'ฝ่าย', name:'โครงการอ้อยอินทรีย์', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_21', code:'ฝ่าย', name:'ผู้อำนวยการด้านอ้อย', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_11', code:'ฝ่าย', name:'ฝ่ายเครื่องมือเกษตรและเก็บเกี่ยว', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_5',  code:'ฝ่าย', name:'ฝ่ายชลประทาน', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_2',  code:'ฝ่าย', name:'ไร่บริษัท', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_18', code:'ฝ่าย', name:'ไร่ส่งเสริม', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_10', code:'ฝ่าย', name:'ศูนย์พันธุ์อ้อย', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_17', code:'ฝ่าย', name:'สำนักงานด้านอ้อย', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_9',  code:'ฝ่าย', name:'ผจก.ฝ่ายประจำโรงงาน', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_1',  code:'ฝ่าย', name:'ผอ.ด้านบริหารสำนักงาน', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_22', code:'ฝ่าย', name:'แผนกทรัพยากรบุคคล', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_15', code:'ฝ่าย', name:'ฝ่ายบัญชีและการเงิน', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_13', code:'ฝ่าย', name:'ฝ่ายผลิต (บรรจุ)', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_19', code:'ฝ่าย', name:'ฝ่ายสำนักงาน', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_3',  code:'ฝ่าย', name:'กจ.บริษัท น้ำตาลมิตรลาว จำกัด', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+  { id:'MGR:div_4',  code:'ฝ่าย', name:'นิติกร/ประสานงาน', role:'viewer', sub:'ระดับฝ่าย (ผู้อนุมัติ)' },
+
+  // ---------- ผู้กรอกข้อมูล (แผนก/หน่วยงาน) ----------
+  // สังกัด กจก.
+  { id:'1111', code:'1111', name:'กจ. บจ.น้ำตาลมิตรลาว', role:'filler', sub:'สังกัด กจก.' },
+  { id:'1112', code:'1112', name:'PERSONAL ASSISTANT', role:'filler', sub:'สังกัด กจก.' },
+  { id:'1122', code:'1122', name:'นิติกร/ประสานงาน', role:'filler', sub:'สังกัด กจก.' },
+  { id:'1172', code:'1172', name:'นิติกร', role:'filler', sub:'สังกัด กจก.' },
+  // บริหารสำนักงาน
+  { id:'1141', code:'1141', name:'แผนกธุรการและบริการ', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1142', code:'1142', name:'งานจัดชื้อท้องถิ่น', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1143', code:'1143', name:'งานการตลาด', role:'filler', sub:'บริหารสำนักงาน', cost:'กรอกตันน้ำตาล Trading' },
+  { id:'1144', code:'1144', name:'แผนก LOGISTIC', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1146', code:'1146', name:'งานจัดหาเชื่อเพลิง', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1155', code:'1155', name:'แผนกทรัพยากรบุคคล', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1161', code:'1161', name:'แผนกบัญชีทั่วไปและการเงิน', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1162', code:'1162', name:'แผนกบัญชีอ้อย', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1164', code:'1164', name:'หน่วยสารสนเทศ', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1171', code:'1171', name:'ผอ.ด้านบริหารสำนักงาน', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1181', code:'1181', name:'ผจก.ฝ่ายประจำโรงงาน', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1194', code:'1194', name:'ผจ.บัญชีและการเงิน', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'1227', code:'1227', name:'บรรจุ', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'2271', code:'2271', name:'ผอ.ด้านบริหารสำนักงาน', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'3371', code:'3371', name:'ผอ.ด้านบริหารสำนักงาน', role:'filler', sub:'บริหารสำนักงาน' },
+  { id:'4471', code:'4471', name:'ผอ.ด้านบริหารสำนักงาน', role:'filler', sub:'บริหารสำนักงาน' },
+  // ด้านอ้อย
+  { id:'2111', code:'2111', name:'ศูนย์ผลิตพันธุ์อ้อย 70', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2122', code:'2122', name:'โครงการอ้อยอินทรีย์', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2211', code:'2211', name:'ผู้อำนวยการด้านอ้อย', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2223', code:'2223', name:'โครงการจัดการโรคใบขาว', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2311', code:'2311', name:'ไร่ 1', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2322', code:'2322', name:'ไร่ 2', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2333', code:'2333', name:'ไร่ 3', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2344', code:'2344', name:'ไร่ 4', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2366', code:'2366', name:'ไร่ 6', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2400', code:'2400', name:'ผู้จัดการฝ่ายส่งเสริมอ้อย', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2411', code:'2411', name:'เขตส่งเสริมอ้อย 1', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2422', code:'2422', name:'เขตส่งเสริมอ้อย 2', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2433', code:'2433', name:'เขตส่งเสริมอ้อย 3', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2444', code:'2444', name:'เขตส่งเสริมอ้อย 4', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2455', code:'2455', name:'เขตส่งเสริมอ้อย 5', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2466', code:'2466', name:'เขตส่งเสริมอ้อย 6', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2477', code:'2477', name:'เขตส่งเสริมอ้อย 7', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2488', code:'2488', name:'เขตส่งเสริมอ้อย 8', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2499', code:'2499', name:'เขตส่งเสริมอ้อย 9', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2511', code:'2511', name:'ผจก.ฝ่ายเครื่องมือการเกษตรและเก็บเกี่ยว', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2512', code:'2512', name:'แผนกเครื่องมือการเกษตร', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2513', code:'2513', name:'แผนกเก็บเกี่ยวอ้อย', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2611', code:'2611', name:'แผนกสำรวจและโยธา', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2711', code:'2711', name:'สำนักงานด้านอ้อย', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2712', code:'2712', name:'แผนกบริการไร่', role:'filler', sub:'ด้านอ้อย', cost:'กรอกตันอ้อย ไร่บริษัท+ส่งเสริม' },
+  { id:'2713', code:'2713', name:'แผนกสารสนเทศและระบบ GIS', role:'filler', sub:'ด้านอ้อย' },
+  { id:'2714', code:'2714', name:'ศูนย์การเรียนรู้โครงการเลี้ยงวัว', role:'filler', sub:'ด้านอ้อย' },
+  // ด้านโรงงาน
+  { id:'1131', code:'1131', name:'งานสิ่งแวดล้อมและความปลอดภัย', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'1132', code:'1132', name:'แผนกบริหารคุณภาพ', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'1133', code:'1133', name:'แผนกวิเคราะห์คุณภาพ', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3111', code:'3111', name:'ด้านโรงงาน', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3122', code:'3122', name:'ผู้จัดการฝ่ายผลิต', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'32',   code:'32',   name:'ผอ.ประจำบริษัทน้ำตาลมิตรลาว', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3221', code:'3221', name:'แผนกลูกหีบ', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3222', code:'3222', name:'แผนกหม้อต้ม', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3223', code:'3223', name:'แผนกหม้อเคี่ยว', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3224', code:'3224', name:'แผนกหม้อปั่น', role:'filler', sub:'ด้านโรงงาน', cost:'กรอกตันน้ำตาลผลิต' },
+  { id:'3311', code:'3311', name:'แผนกหม้อไอน้ำ', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3312', code:'3312', name:'แผนกไฟฟ้าผลิต', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3313', code:'3313', name:'แผนกซ่อมบำรุงไฟฟ้า', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3314', code:'3314', name:'แผนกเครื่องมือควบคุม', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3315', code:'3315', name:'แผนกซ่อมบำรุงเครื่องกล', role:'filler', sub:'ด้านโรงงาน' },
+  { id:'3411', code:'3411', name:'หน่วยงาน TPM', role:'filler', sub:'ด้านโรงงาน' },
+];
+
+const ROLE_META = {
+  admin:  { label:'แอดมิน', badge:'b-admin', icon:'👑', head:'👑 แอดมิน (ผู้ดูแลระบบ)' },
+  viewer: { label:'ผู้ดู',   badge:'b-view',  icon:'👁️', head:'👁️ ผู้ดู / ผู้อนุมัติ (ดูภาพรวม–อนุมัติ ไม่กรอกข้อมูล)' },
+  filler: { label:'ผู้กรอก', badge:'b-fill',  icon:'✏️', head:'✏️ ผู้กรอกข้อมูล (แผนก/หน่วยงาน — กรอกงบของตัวเอง)' },
+};
+const SUB_ORDER = ['สังกัด กจก.','บริหารสำนักงาน','ด้านอ้อย','ด้านโรงงาน'];
+const LS_KEY = 'ml_userlist_v1';
+
+// ===== state (persisted) =====
+let state = {};   // id -> { on:bool, email:string }
+try { state = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ state = {}; }
+DATA.forEach(u => { if (!state[u.id]) state[u.id] = { on:true, email:'' }; });
+
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  const m = document.getElementById('savedMsg');
+  m.textContent = '✓ บันทึกแล้ว'; clearTimeout(save._t);
+  save._t = setTimeout(()=> m.textContent = '', 1200);
+}
+const emailOk = e => e === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let filterRole = 'all', query = '';
+
+function render(){
+  const list = document.getElementById('list');
+  const q = query.trim().toLowerCase();
+  const match = u => (filterRole==='all'||u.role===filterRole) &&
+    (!q || u.name.toLowerCase().includes(q) || String(u.code).toLowerCase().includes(q));
+
+  let html = '';
+  ['admin','viewer','filler'].forEach(role => {
+    const rows = DATA.filter(u => u.role===role && match(u));
+    if (!rows.length) return;
+    const rm = ROLE_META[role];
+    const total = DATA.filter(u=>u.role===role).length;
+    html += `<section class="grp" data-role="${role}">
+      <div class="grp-head"><h2>${rm.head} <span class="cnt">แสดง ${rows.length} / ${total}</span></h2>
+      <span class="caret">▾</span></div><div class="grp-body">`;
+
+    // group by sub within filler
+    if (role==='filler'){
+      const subs = [...new Set(rows.map(u=>u.sub))].sort((a,b)=>SUB_ORDER.indexOf(a)-SUB_ORDER.indexOf(b));
+      subs.forEach(sub => {
+        html += `<div class="subgrp">${esc(sub)}</div>` + tableFor(rows.filter(u=>u.sub===sub));
+      });
+    } else {
+      html += tableFor(rows);
+    }
+    html += `</div></section>`;
+  });
+  list.innerHTML = html || `<div class="hint" style="text-align:center;padding:30px">ไม่พบผู้ใช้ที่ตรงกับการค้นหา</div>`;
+  bindRows();
+  updateStats();
+}
+
+function tableFor(rows){
+  let h = `<table><tbody>`;
+  rows.forEach(u => {
+    const st = state[u.id];
+    const rm = ROLE_META[u.role];
+    h += `<tr data-id="${esc(u.id)}" class="${st.on?'':'off'}">
+      <td class="chk"><input type="checkbox" ${st.on?'checked':''}></td>
+      <td><span class="nm">${esc(u.name)}</span>${u.code&&u.code!=='—'&&!/^[ก-๙]/.test(u.code)?`<span class="code">${esc(u.code)}</span>`:''}
+        ${u.cost?`<span class="badge b-cost" title="${esc(u.cost)}">🏭 ${esc(u.cost)}</span>`:''}</td>
+      <td class="role-col"><span class="badge ${rm.badge}">${rm.icon} ${rm.label}</span></td>
+      <td class="email"><input type="email" placeholder="อีเมลผู้ใช้ (เช่น name@mitrlao.com)" value="${esc(st.email||'')}" ${emailOk(st.email)?'':'class="bad"'}></td>
+    </tr>`;
+  });
+  return h + `</tbody></table>`;
+}
+
+function bindRows(){
+  document.querySelectorAll('tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelector('.chk input').addEventListener('change', e => {
+      state[id].on = e.target.checked; tr.classList.toggle('off', !e.target.checked); save(); updateStats();
+    });
+    const em = tr.querySelector('.email input');
+    em.addEventListener('input', e => {
+      state[id].email = e.target.value.trim();
+      em.classList.toggle('bad', !emailOk(state[id].email));
+      save(); updateStats();
+    });
+  });
+  document.querySelectorAll('.grp-head').forEach(h =>
+    h.addEventListener('click', () => h.closest('.grp').classList.toggle('collapsed')));
+}
+
+function updateStats(){
+  const on = DATA.filter(u=>state[u.id].on);
+  const withEmail = DATA.filter(u=>state[u.id].email && emailOk(state[u.id].email));
+  document.getElementById('selCount').textContent = on.length;
+  document.getElementById('emailCount').textContent = withEmail.length;
+  const by = r => ({ tot:DATA.filter(u=>u.role===r).length, on:on.filter(u=>u.role===r).length });
+  const a=by('admin'), v=by('viewer'), f=by('filler');
+  document.getElementById('stats').innerHTML =
+    `<div class="stat"><b>${DATA.length}</b> ผู้ใช้ทั้งหมด</div>
+     <div class="stat"><b>${on.length}</b> เลือกไว้ใช้งาน</div>
+     <div class="stat"><b>${v.on}/${v.tot}</b> ผู้ดู</div>
+     <div class="stat"><b>${f.on}/${f.tot}</b> ผู้กรอก</div>
+     <div class="stat"><b>${withEmail.length}</b> มีอีเมลแล้ว</div>`;
+}
+
+// ===== toolbar =====
+document.getElementById('q').addEventListener('input', e => { query = e.target.value; render(); });
+document.getElementById('roleFilter').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#roleFilter button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); filterRole = b.dataset.r; render();
+});
+document.getElementById('selAll').addEventListener('click', () => { visibleIds().forEach(id=>state[id].on=true); save(); render(); });
+document.getElementById('selNone').addEventListener('click', () => { visibleIds().forEach(id=>state[id].on=false); save(); render(); });
+function visibleIds(){
+  const q = query.trim().toLowerCase();
+  return DATA.filter(u => (filterRole==='all'||u.role===filterRole) &&
+    (!q || u.name.toLowerCase().includes(q) || String(u.code).toLowerCase().includes(q))).map(u=>u.id);
+}
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(!confirm('ล้างการติ๊กและอีเมลทั้งหมดที่บันทึกไว้ กลับเป็นค่าเริ่มต้น (เลือกทุกคน อีเมลว่าง)?')) return;
+  state = {}; DATA.forEach(u=>state[u.id]={on:true,email:''}); save(); render();
+});
+
+// ===== export =====
+function download(name, text, type){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type}));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+document.getElementById('expCsv').addEventListener('click', () => {
+  const rows = [['role','code','name','sub','selected','email','cost_role']];
+  DATA.forEach(u => { const s=state[u.id];
+    rows.push([ROLE_META[u.role].label, u.code, u.name, u.sub||'', s.on?'YES':'NO', s.email||'', u.cost||'']); });
+  const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  download('users-mitrlao.csv', csv, 'text/csv;charset=utf-8');
+});
+document.getElementById('expJson').addEventListener('click', () => {
+  const out = DATA.map(u => ({ id:u.id, role:u.role, code:u.code, name:u.name, sub:u.sub||null,
+    selected:state[u.id].on, email:state[u.id].email||null, costRole:u.cost||null }));
+  download('users-mitrlao.json', JSON.stringify(out, null, 2), 'application/json');
+});
+
+render();
+</script>
+</body>
+</html>
