@@ -999,17 +999,24 @@ const Store = (() => {
     if (Array.isArray(cfg)) return cfg;
     return cfg[metric] || [];
   }
-  function canEditVolume(actor, metric) {
+  // รอบปีนี้เปิดให้กรอกไหม (เหมือนงบ: OPEN หรืออยู่ในรอบ Revise/Landing = แก้ได้)
+  function isYearEditable(year) {
+    const p = period(year);
+    if (!p) return false;
+    return p.status === 'OPEN' || revisePhase(year).on;
+  }
+  //  แก้ปริมาณได้เมื่อ: (แอดมิน = ได้เสมอ) · หรือ (แผนกที่ได้รับมอบหมาย metric นั้น + รอบปีเปิดอยู่)
+  function canEditVolume(actor, metric, year) {
     if (!actor) return false;
-    if (actor.role === 'ACCOUNTING') return true;
-    if (actor.role !== 'USER' || !actor.departmentId) return false;
+    const yearOk = year == null ? true : isYearEditable(year);
+    if (actor.role === 'ACCOUNTING') return true;   // แอดมินข้าม lock (เหมือน Unlock งบ)
+    if (actor.role !== 'USER' || !actor.departmentId || !yearOk) return false;
     const d = dept(actor.departmentId); if (!d) return false;
     if (metric) return volumeEditorsFor(metric).includes(d.code);
-    // ไม่ระบุ metric → แก้ได้อย่างน้อย 1 metric
     return VOLUME_METRICS.some(m => volumeEditorsFor(m.key).includes(d.code));
   }
   function setVolume(actor, year, metric, field, value) {
-    if (!canEditVolume(actor, metric)) throw new Error('เฉพาะแผนกบัญชี (Admin) หรือแผนกที่ได้รับมอบหมายเท่านั้นที่กรอกปริมาณนี้ได้');
+    if (!canEditVolume(actor, metric, year)) throw new Error('กรอกปริมาณนี้ไม่ได้ — ต้องเป็นแผนกที่ได้รับมอบหมาย และรอบปีต้องเปิดอยู่ (แอดมินแก้ได้เสมอ)');
     if (!VOLUME_METRICS.some(m => m.key === metric)) throw new Error('metric ไม่ถูกต้อง');
     if (field !== 'plan' && field !== 'actual') throw new Error('field ไม่ถูกต้อง');
     if (value !== null && (typeof value !== 'number' || !isFinite(value) || value < 0)) throw new Error('ค่าไม่ถูกต้อง');
@@ -1132,7 +1139,7 @@ const Store = (() => {
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
-    VOLUME_METRICS, volume, canEditVolume, setVolume,
+    VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     myNotifications, markNotificationsRead, notify,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
     MONTH_TH, MONTH_S,

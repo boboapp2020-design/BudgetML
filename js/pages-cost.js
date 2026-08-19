@@ -65,7 +65,15 @@ const PagesCost = (() => {
     const year = UI.year();
     const acc = byCode(year);
     const names = (Store.db.meta.pptCategories) || {};
-    const canEditAny = Store.canEditVolume(user);   // แก้ได้อย่างน้อย 1 metric
+    const canEditAny = Store.canEditVolume(user, null, year);   // แก้ได้อย่างน้อย 1 metric ในปีนี้
+    // สถานะรอบปี (เหมือนงบประจำปี)
+    const pd = (Store.db.budgetPeriods || []).find(p => p.year === year) || {};
+    const rv = Store.revisePhase(year);
+    const yearOpen = Store.isYearEditable(year);
+    const roundChip = rv.on
+      ? `<span class="uc-round uc-round-rv">🔁 รอบ ${rv.kind === 'LANDING' ? 'ปิดยอด' : 'Revise'} · เกิดจริงถึง ด.${rv.thru}</span>`
+      : yearOpen ? `<span class="uc-round uc-round-open">🟢 ปีงบ ${year} · เปิดกรอก</span>`
+        : `<span class="uc-round uc-round-lock">🔒 ปีงบ ${year} · ปิดรอบแล้ว</span>`;
     const vol = m => Store.volume(year, m);
     const vPrev = m => Store.volume(year - 1, m);
     const pick = (m, pa) => { const v = vol(m); const a = v.actual ?? null, p = v.plan ?? null; return pa ? (a ?? p ?? 0) : (p ?? a ?? 0); };
@@ -101,7 +109,7 @@ const PagesCost = (() => {
     // ฟอร์มปริมาณ
     const volRows = Store.VOLUME_METRICS.map(m => {
       const v = vol(m.key), pv = vPrev(m.key);
-      const canM = Store.canEditVolume(user, m.key);
+      const canM = Store.canEditVolume(user, m.key, year);
       const isSugar = m.key.indexOf('sugar') === 0;
       const inp = f => canM
         ? `<input class="uc-vol" data-vol="${m.key}" data-field="${f}" inputmode="decimal" value="${v[f] ?? ''}" placeholder="กรอก">`
@@ -112,8 +120,10 @@ const PagesCost = (() => {
     }).join('');
 
     return UI.pageHead(`ต้นทุนต่อหน่วย ปี ${year} 🏭`,
-        `ตรงชีท "สรุป PPT รายฝ่าย" · 33 หมวด · แยกไร่บริษัท/ไร่ส่งเสริม · กีบ//ตันอ้อย//ตันน้ำตาล · ทุก user เห็นชุดเดียวกัน`)
-      + card(`📥 ปริมาณผลิต (ตัวหาร) — ${canEditAny ? '✏️ คุณมีสิทธิ์กรอกบางรายการ' : 'ดูอย่างเดียว'} · อ้อย=บริการไร่ · น้ำตาล=ฝ่ายผลิต`, `
+        `ตรงชีท "สรุป PPT รายฝ่าย" · 33 หมวด · แยกไร่บริษัท/ไร่ส่งเสริม · กีบ//ตันอ้อย//ตันน้ำตาล · ทุก user เห็นชุดเดียวกัน`,
+        roundChip)
+      + card(`📥 ปริมาณผลิต ปี ${year} (ตัวหาร) — ${canEditAny ? '✏️ คุณมีสิทธิ์กรอกบางรายการ' : 'ดูอย่างเดียว'} · อ้อย=บริการไร่ · น้ำตาล=ฝ่ายผลิต`, `
+          ${!yearOpen && user.role !== 'ACCOUNTING' ? `<div class="lock-banner">🔒 ปีงบ ${year} ปิดรอบแล้ว — ปริมาณอ่านอย่างเดียว · แก้ไขได้เมื่อเปิดรอบ (ปลดล็อกที่ Budget Control) · แอดมินแก้ได้เสมอ</div>` : ''}
           <div class="table-scroll"><table class="data-table small"><thead>
             <tr><th>ปริมาณ ปี ${year}</th><th class="num">ตามแผน/งบ (ตัน)</th><th class="num">เกิดจริง (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
             <tbody>${volRows}
