@@ -253,7 +253,8 @@ const PagesAcc = (() => {
 
     return pageHead(`Executive Dashboard 📊`,
         `ภาพรวมงบประมาณทั้งบริษัท ปี ${year} · ${esc(Store.db.meta.company)} · ${asOf()}`,
-        `<button class="ghost-btn" onclick="Store.exportDeptSummary(${year})">⬇ Export สรุปหน่วยงาน</button>
+        `<button class="present-btn" id="presentBtn">🎤 โหมดนำเสนอ</button>
+         <button class="ghost-btn" onclick="Store.exportDeptSummary(${year})">⬇ Export สรุปหน่วยงาน</button>
          <button class="ghost-btn" onclick="Store.exportDetail(${year})">⬇ Export รายละเอียด</button>
          <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
 
@@ -336,6 +337,7 @@ const PagesAcc = (() => {
     const year = UI.year();
     const depts = Store.activeDepartments();
     const rv = Store.revisePhase(year);
+    document.getElementById('presentBtn')?.addEventListener('click', () => openPresent(year));
 
     // ---------- เส้นรายเดือน: งบเดิม (ช่วง revise) / งบปัจจุบัน / เกิดจริง ----------
     const actuals = (Store.db.actuals || []).filter(a => a.year === year);
@@ -1515,6 +1517,119 @@ const PagesAcc = (() => {
           <tbody>${grpRows}</tbody></table></div>`, { cls: 'card-flush' });
   }
   function varianceBind() { UI.enableSort(document.getElementById('varTable')); }
+
+  /* ============ โหมดนำเสนอผู้บริหาร (full-screen) — ดึงตัวตึงจากทุกหน้าแอดมิน ============ */
+  function presentCompute(year) {
+    const depts = Store.activeDepartments(), prevYear = year - 1;
+    const cur = Store.companyTotal(year);
+    const bs = Store.db.budgets.filter(b => b.year === year);
+    const rows = bs.length;
+    const mtp1 = bs.reduce((s, b) => s + (typeof b.mtp1 === 'number' ? b.mtp1 : 0), 0);
+    const mtp2 = bs.reduce((s, b) => s + (typeof b.mtp2 === 'number' ? b.mtp2 : 0), 0);
+    const prev = depts.reduce((s, d) => s + Store.deptTotal(prevYear, d.id), 0);
+    const actuals = (Store.db.actuals || []).filter(a => a.year === year);
+    const snap = (Store.db.budgetSnapshots || []).find(s => s.year === year && s.label === 'ORIGINAL');
+    let thru = 0; actuals.forEach(a => a.months.forEach((v, i) => { if (v) thru = Math.max(thru, i + 1); }));
+    const sumM = (m, n) => (m || []).slice(0, n).reduce((s, v) => s + (v || 0), 0);
+    let origYTD = 0, origFull = 0, actYTD = 0;
+    (snap ? snap.rows : []).forEach(r => { origYTD += sumM(r.months, thru); origFull += sumM(r.months, 12); });
+    actuals.forEach(a => { actYTD += sumM(a.months, thru); });
+    const ytdVar = actYTD - origYTD, ytdPct = origYTD > 0 ? ytdVar / origYTD * 100 : 0;
+    const outlook = cur - origFull, outlookPct = origFull > 0 ? outlook / origFull * 100 : 0;
+    const runRate = thru > 0 ? actYTD / thru * 12 : 0;
+    const sides = Store.db.meta.sides || {}, sideAgg = {};
+    depts.forEach(d => { const s = d.side || (d.code || '')[0]; const a = sideAgg[s] = sideAgg[s] || { total: 0, n: 0 }; a.total += Store.deptTotal(year, d.id); a.n++; });
+    const sideList = Object.keys(sideAgg).map(s => ({ s, name: sides[s] || 'อื่นๆ', total: sideAgg[s].total, n: sideAgg[s].n, share: cur > 0 ? sideAgg[s].total / cur * 100 : 0 })).sort((a, b) => b.total - a.total);
+    const topDepts = depts.map(d => ({ name: d.name, v: Store.deptTotal(year, d.id) })).filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 8);
+    const gById = {}; Store.db.glAccounts.forEach(g => gById[g.id] = g);
+    const grp = {}; bs.forEach(b => { const g = gById[b.glId]; if (!g) return; const k = g.glGroupSap || g.glGroup || 'อื่นๆ'; grp[k] = (grp[k] || 0) + sumM(b.months, 12); });
+    const topGrp = Object.entries(grp).map(([name, v]) => ({ name, v })).filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 8);
+    const dSideOf = {}; depts.forEach(d => dSideOf[d.id] = d.side || '1');
+    const sv = {}; (snap ? snap.rows : []).forEach(r => { const s = dSideOf[r.departmentId] || '1'; (sv[s] = sv[s] || { oY: 0, aY: 0 }).oY += sumM(r.months, thru); });
+    actuals.forEach(a => { const s = dSideOf[a.departmentId] || '1'; (sv[s] = sv[s] || { oY: 0, aY: 0 }).aY += sumM(a.months, thru); });
+    const varList = Object.keys(sv).map(s => ({ name: sides[s] || s, oY: sv[s].oY, aY: sv[s].aY, dv: sv[s].aY - sv[s].oY })).sort((a, b) => b.dv - a.dv);
+    const vol = m => { const v = Store.volume(year, m); return v.actual ?? v.plan ?? 0; };
+    const caneTon = vol('caneCompany') + vol('caneCommunity'), sugarTon = vol('sugarProduce') + vol('sugarTrading');
+    const reqs = Store.changeRequests().filter(r => r.year === year);
+    const reqCnt = { pending: reqs.filter(r => ['PENDING_MGR', 'PENDING_ACC'].includes(r.status)).length, approved: reqs.filter(r => r.status === 'APPROVED').length, total: reqs.length };
+    const states = depts.map(d => Store.deptState(year, d.id).status);
+    const submitted = states.filter(s => ['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(s)).length;
+    return { year, prevYear, cur, prev, rows, deptN: depts.length, mtp1, mtp2, thru, snap: !!snap, origYTD, actYTD, ytdVar, ytdPct, origFull, outlook, outlookPct, runRate,
+      sideList, topDepts, topGrp, varList, caneTon, sugarTon, perCane: caneTon > 0 ? cur / caneTon : null, perSugar: sugarTon > 0 ? cur / sugarTon : null,
+      reqCnt, winsOpen: Store.changeWindowsOpen(year).map(w => w.label), submitted, periodClosed: Store.budgetRoundClosed(year) };
+  }
+  function presentSlides(D) {
+    const S = [], sub = t => `<div class="ps-sub">${t}</div>`;
+    const bars = (items, key) => { const mx = Math.max(1, ...items.map(x => x[key] != null ? x[key] : x.v)); return `<div class="ps-bars">` + items.map(it => { const v = it[key] != null ? it[key] : it.v; return `<div class="ps-bar-row"><span class="ps-bar-lbl">${esc((it.name || '').replace('แผนก', ''))}</span><span class="ps-bar-track"><i style="width:${Math.max(3, v / mx * 100).toFixed(1)}%"></i></span><span class="ps-bar-val">${thShort(v)}</span></div>`; }).join('') + `</div>`; };
+    // 1 title
+    S.push(`<div class="ps-center"><div class="ps-logo">📊</div><div class="ps-co">${esc(Store.db.meta.company)}</div><h1 class="ps-h1">สรุปผู้บริหาร · งบประมาณประจำปี ${D.year}</h1><div class="ps-date">${asOf()}${D.periodClosed ? ' · 🔒 ปิดรอบแล้ว' : ''}</div></div>`);
+    // 2 company total
+    S.push(`<div class="ps-kick">งบประมาณทั้งบริษัท ปี ${D.year}</div><div class="ps-big">${thShort(D.cur)} <span>กีบ</span></div>${sub(`${fmt(D.cur)} กีบ · ${D.deptN} แผนก · ${fmt(D.rows)} รายการงบ · ส่งแล้ว ${D.submitted}/${D.deptN}`)}
+      <div class="ps-mini3"><div><div class="ps-ml">เทียบปี ${D.prevYear}</div><div class="ps-mv">${D.prev > 0 ? thShort(D.prev) : '—'}</div></div><div><div class="ps-ml">MTP ปี ${D.year + 1}</div><div class="ps-mv">${D.mtp1 > 0 ? thShort(D.mtp1) : '—'}</div></div><div><div class="ps-ml">MTP ปี ${D.year + 2}</div><div class="ps-mv">${D.mtp2 > 0 ? thShort(D.mtp2) : '—'}</div></div></div>`);
+    // 3 YTD actual vs plan
+    if (D.snap && D.thru > 0) S.push(`<div class="ps-kick">เกิดจริงสะสม เทียบแผน (เดือน 1-${D.thru})</div>
+      <div class="ps-duo"><div><div class="ps-ml">แผน YTD</div><div class="ps-num">${thShort(D.origYTD)}</div></div><div class="ps-arrow">→</div><div><div class="ps-ml">เกิดจริง YTD</div><div class="ps-num">${thShort(D.actYTD)}</div></div></div>
+      <div class="ps-big ${D.ytdVar <= 0 ? 'ps-good' : 'ps-bad'}">${D.ytdVar > 0 ? '+' : ''}${thShort(D.ytdVar)} <span>กีบ (${(D.ytdPct >= 0 ? '+' : '') + D.ytdPct.toFixed(1)}%)</span></div>
+      ${sub(`${D.ytdVar <= 0 ? '✅ ต่ำกว่าแผน (ดีต่อต้นทุน)' : '🔴 เกินแผน — ควรตรวจสอบ'} · Run-rate ${thShort(D.runRate)}/ปี · Outlook เต็มปี ${D.outlook > 0 ? '+' : ''}${thShort(D.outlook)} (${(D.outlookPct >= 0 ? '+' : '') + D.outlookPct.toFixed(1)}%)`)}`);
+    // 4 by side
+    S.push(`<div class="ps-kick">งบตามสังกัด (${D.sideList.length} ด้าน)</div>${bars(D.sideList, 'total')}${sub(D.sideList.map(x => `${esc(x.name)} ${x.share.toFixed(0)}%`).join(' · '))}`);
+    // 5 top depts
+    S.push(`<div class="ps-kick">แผนกงบสูงสุด (ตัวตึง) · Top ${D.topDepts.length}</div>${bars(D.topDepts, 'v')}`);
+    // 6 GL groups (P&L)
+    S.push(`<div class="ps-kick">งบตามกลุ่มบัญชี (P&L) · Top ${D.topGrp.length}</div>${bars(D.topGrp, 'v')}`);
+    // 7 variance by side
+    if (D.snap && D.thru > 0) S.push(`<div class="ps-kick">Variance รายสังกัด — จริง เทียบแผน YTD (ด.1-${D.thru})</div>
+      <div class="ps-vtable">${D.varList.map(x => `<div class="ps-vrow"><span class="ps-bar-lbl">${esc(x.name)}</span><span class="ps-vnum">${thShort(x.aY)} <small>/ ${thShort(x.oY)}</small></span><span class="ps-vdv ${x.dv <= 0 ? 'ps-good' : 'ps-bad'}">${x.dv > 0 ? '+' : ''}${thShort(x.dv)}</span></div>`).join('')}</div>
+      ${sub('สีเขียว = ต่ำกว่าแผน (ดี) · สีแดง = เกินแผน')}`);
+    // 8 unit cost
+    S.push(`<div class="ps-kick">ต้นทุนต่อหน่วย ปี ${D.year}</div>
+      <div class="ps-duo"><div><div class="ps-ml">🌾 ต้นทุน / ตันอ้อย</div><div class="ps-num2">${D.perCane != null ? fmt(Math.round(D.perCane)) : '—'} <small>กีบ/ตัน</small></div></div><div><div class="ps-ml">🍬 ต้นทุน / ตันน้ำตาล</div><div class="ps-num2">${D.perSugar != null ? fmt(Math.round(D.perSugar)) : '—'} <small>กีบ/ตัน</small></div></div></div>
+      ${sub(D.caneTon > 0 || D.sugarTon > 0 ? `อ้อย ${fmt(Math.round(D.caneTon))} ตัน · น้ำตาล ${fmt(Math.round(D.sugarTon))} ตัน (งบรวม ÷ ปริมาณ)` : 'ยังไม่ได้กรอกปริมาณผลิต — ดูหน้า “ต้นทุนต่อหน่วย”')}`);
+    // 9 change requests
+    S.push(`<div class="ps-kick">คำร้องปรับงบกลางปี ${D.year}</div>
+      <div class="ps-mini3"><div><div class="ps-ml">รออนุมัติ</div><div class="ps-mv">${D.reqCnt.pending}</div></div><div><div class="ps-ml">อนุมัติแล้ว</div><div class="ps-mv">${D.reqCnt.approved}</div></div><div><div class="ps-ml">ทั้งหมด</div><div class="ps-mv">${D.reqCnt.total}</div></div></div>
+      ${sub(D.winsOpen.length ? '🟢 เปิดรับ: ' + D.winsOpen.map(esc).join(' · ') : (D.periodClosed ? '⚪ ปิดรับคำร้อง' : '🔒 ยังไม่ปิดรอบการตั้งงบ'))}`);
+    // 10 insights
+    const ins = [];
+    if (D.snap && D.thru > 0) {
+      ins.push(`${D.ytdVar <= 0 ? '✅' : '🔴'} <b>YTD:</b> เกิดจริง ${thShort(D.actYTD)} เทียบแผน ${thShort(D.origYTD)} → ${D.ytdVar <= 0 ? 'ต่ำกว่าแผน' : 'เกินแผน'} ${thShort(Math.abs(D.ytdVar))} (${(D.ytdPct >= 0 ? '+' : '') + D.ytdPct.toFixed(1)}%)`);
+      ins.push(`📈 <b>Run-rate:</b> ${thShort(D.runRate)}/ปี — ${D.runRate > D.origFull ? 'สูงกว่าแผนเต็มปี ถ้าคงอัตรานี้จะเกินงบ' : 'อยู่ในกรอบแผนเต็มปี'}`);
+      ins.push(`🎯 <b>Outlook เต็มปี:</b> ${thShort(D.cur)} เทียบแผน ${thShort(D.origFull)} → ${D.outlook > 0 ? 'จะเกิน' : 'ต่ำกว่า'}แผน ${thShort(Math.abs(D.outlook))} (${(D.outlookPct >= 0 ? '+' : '') + D.outlookPct.toFixed(1)}%)`);
+      if (D.varList[0] && D.varList[0].dv > 0) ins.push(`⚠️ <b>${esc(D.varList[0].name)}</b> เกินแผน YTD สูงสุด ${thShort(D.varList[0].dv)} กีบ`);
+    } else ins.push('ℹ️ ยังไม่มีตัวเลขเกิดจริง — เปิดรอบ Revise แล้วใส่เกิดจริงเพื่อดู Variance / Outlook');
+    if (D.perCane != null) ins.push(`🏭 <b>ต้นทุน/ตันอ้อย:</b> ${fmt(Math.round(D.perCane))} กีบ/ตัน`);
+    S.push(`<div class="ps-kick">🧠 Insights — วิเคราะห์อัตโนมัติ (FP&A)</div><ul class="ps-ins">${ins.map(x => `<li>${x}</li>`).join('')}</ul>`);
+    // 11 closing
+    S.push(`<div class="ps-center"><div class="ps-logo">✅</div><h1 class="ps-h1">จบการนำเสนอ</h1><div class="ps-date">${esc(Store.db.meta.company)} · ${asOf()}</div><div class="ps-sub" style="margin-top:14px">กด ESC เพื่อออกจากโหมดนำเสนอ</div></div>`);
+    return S;
+  }
+  function openPresent(year) {
+    const slides = presentSlides(presentCompute(year));
+    let i = 0;
+    const ov = document.createElement('div');
+    ov.className = 'ps-overlay';
+    ov.innerHTML = `<div class="ps-stage"></div>
+      <button class="ps-exit" title="ออก (ESC)">✕</button>
+      <div class="ps-ctrl"><button class="ps-nav" data-p="-1" title="ก่อนหน้า (←)">‹</button><span class="ps-count"></span><button class="ps-nav" data-p="1" title="ถัดไป (→)">›</button></div>
+      <div class="ps-progress"><i></i></div>`;
+    document.body.appendChild(ov);
+    const stage = ov.querySelector('.ps-stage');
+    const show = () => { stage.innerHTML = `<div class="ps-slide">${slides[i]}</div>`; ov.querySelector('.ps-count').textContent = (i + 1) + ' / ' + slides.length; ov.querySelector('.ps-progress i').style.width = ((i + 1) / slides.length * 100) + '%'; };
+    const go = d => { i = Math.max(0, Math.min(slides.length - 1, i + d)); show(); };
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
+    const onKey = e => {
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+      else if (e.key === 'Home') { i = 0; show(); } else if (e.key === 'End') { i = slides.length - 1; show(); }
+    };
+    document.addEventListener('keydown', onKey);
+    ov.querySelector('.ps-exit').addEventListener('click', close);
+    ov.querySelectorAll('.ps-nav').forEach(b => b.addEventListener('click', () => go(+b.dataset.p)));
+    stage.addEventListener('click', e => { if (e.target.closest('a')) return; go(e.clientX > window.innerWidth / 2 ? 1 : -1); });
+    show();
+    if (ov.requestFullscreen) ov.requestFullscreen().catch(() => {});
+  }
 
   return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind };
 })();
