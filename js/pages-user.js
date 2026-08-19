@@ -229,7 +229,8 @@ const PagesUser = (() => {
     })();
 
     return pageHead(`กรอกงบประมาณปี ${c.year} 👋`, `${esc(c.dept.name)} · GL เป็นแถว เดือนเป็นคอลัมน์ · หน่วย: กีบ (LAK) · บันทึกอัตโนมัติ`,
-        `<button id="ioViewBtn" class="ghost-btn">🔎 IO / CCT</button>
+        `<span id="autosaveInd" class="autosave-ind" title="กรอกแล้วบันทึกให้เองอัตโนมัติ ทุกช่อง — ออกจากเว็บแล้วกลับมากรอกต่อได้ ข้อมูลไม่หาย">💾 บันทึกอัตโนมัติ</span>
+         <button id="ioViewBtn" class="ghost-btn">🔎 IO / CCT</button>
          <button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
          <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>`)
@@ -299,11 +300,27 @@ const PagesUser = (() => {
         let changed;
         if (input.dataset.mtp) changed = Store.setMtp(user, c.year, c.deptId, key, Number(input.dataset.mtp), v);
         else changed = Store.setCell(user, c.year, c.deptId, key, Number(input.dataset.m), v);
-        if (changed) input.classList.add('cell-changed');
+        if (changed) { input.classList.add('cell-changed'); markSaved(); }
         input.value = v === null ? '' : fmt(v);
         if (v !== null && v < 0) { input.classList.add('cell-err'); toast('ไม่ควรมีตัวเลขติดลบในงบประมาณ', 'err'); }
         refreshRow(key);
       } catch (e) { toast(e.message, 'err'); input.value = ''; }
+    }
+    // ตัวบ่งชี้ "บันทึกอัตโนมัติแล้ว" (ทุกช่อง save ทันทีที่ออกจากช่อง → localStorage + Supabase)
+    let _saveTimer;
+    function markSaved() {
+      const ind = document.getElementById('autosaveInd'); if (!ind) return;
+      ind.classList.add('saved');
+      ind.textContent = '✓ บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(() => { ind.classList.remove('saved'); ind.textContent = '💾 บันทึกอัตโนมัติ'; }, 2500);
+    }
+    // safety-net: ปิดแท็บ/สลับหน้าต่างขณะยังพิมพ์ค้างในช่อง → commit ช่องนั้นก่อน (blur = save ลง localStorage ทันที)
+    if (!window.__abpAutosaveHook) {
+      window.__abpAutosaveHook = true;
+      const flush = () => { const el = document.activeElement; if (el && el.classList && el.classList.contains('cell')) el.blur(); };
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+      window.addEventListener('pagehide', flush);
     }
 
     // ตัวเลขหลักพันล้านขึ้นไปยาวเกินช่อง → ย่อฟอนต์อัตโนมัติ (คงอ่านครบทุกหลัก)

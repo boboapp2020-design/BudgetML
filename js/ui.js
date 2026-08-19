@@ -203,10 +203,12 @@ const UI = (() => {
     // buttons: [{label, cls, onClick(close)}]
     const back = document.createElement('div');
     back.className = 'modal-back';
-    back.innerHTML = `<div class="modal"><div class="modal-head"><h3>${title}</h3><button class="modal-x">✕</button></div>
+    back.innerHTML = `<div class="modal"><div class="modal-head"><h3>${title}</h3><button class="modal-x" title="ปิด (ESC)">✕</button></div>
       <div class="modal-body">${bodyHtml}</div><div class="modal-foot"></div></div>`;
     document.body.appendChild(back);
-    const close = () => back.remove();
+    const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+    document.addEventListener('keydown', onKey);   // กด ESC เพื่อปิด
     back.querySelector('.modal-x').addEventListener('click', close);
     back.addEventListener('click', e => { if (e.target === back) close(); });
     const foot = back.querySelector('.modal-foot');

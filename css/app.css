@@ -1170,6 +1170,8 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .req-plus{color:#1e7d46;font-weight:700}
 .req-minus{color:#c0322b;font-weight:700}
 .req-reason{font-size:12.5px;color:#3a4256;margin-top:4px}
+.autosave-ind{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:#6b7488;background:#f0f3fa;border:1px solid #e6e9f0;border-radius:20px;padding:6px 12px;transition:.2s}
+.autosave-ind.saved{color:#1e7d46;background:#e6f7ec;border-color:#b6e2c6}
 .adj-ic{cursor:help;font-size:11px;margin-left:4px;vertical-align:middle}
 .cell-td.cell-adj{background:#f6f1ff}
 .cell-adj-dot{position:absolute;left:2px;top:0;font-size:9px;line-height:1;cursor:help;opacity:.85}
