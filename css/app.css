@@ -1170,6 +1170,8 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .req-plus{color:#1e7d46;font-weight:700}
 .req-minus{color:#c0322b;font-weight:700}
 .req-reason{font-size:12.5px;color:#3a4256;margin-top:4px}
+.req-cross-badge{display:inline-block;background:#f0eafe;color:#6d28d9;border:1px solid #d9c9f7;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:600;margin:6px 0}
+.req-cross{color:#6d28d9;font-weight:600}
 .req-memo{margin-top:6px}
 .req-memo-link{display:inline-flex;align-items:center;gap:4px;background:#eef4fd;border:1px solid #c5d8f5;color:#1d4fd0;border-radius:8px;padding:4px 10px;font-size:12.5px;font-weight:600;text-decoration:none}
 .req-memo-link:hover{background:#dfeaff}

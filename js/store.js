@@ -1241,14 +1241,19 @@ const Store = (() => {
     const chkMonth = m => { if (!allowed.includes(Number(m))) throw new Error(`เดือน ${m} อยู่นอกช่วงที่เปิดให้ปรับ (เปิด: เดือน ${allowed.join(', ')})`); };
     const amt = v => { const n = Number(String(v).replace(/[,\s]/g, '')); if (!isFinite(n) || n <= 0) throw new Error('จำนวนเงินต้องมากกว่า 0'); return n; };
     const items = [];
+    let crossTo = null;
     if (type === 'transfer') {
       const a = amt(data.amount);
       chkMonth(data.fromMonth); chkMonth(data.toMonth);
       if (!data.fromKey || !data.toKey) throw new Error('เลือกช่องต้นทาง/ปลายทางให้ครบ');
-      if (data.fromKey === data.toKey && Number(data.fromMonth) === Number(data.toMonth)) throw new Error('ต้นทางและปลายทางต้องไม่ใช่ช่องเดียวกัน');
+      const toDeptId = data.toDeptId || actor.departmentId;
+      if (!dept(toDeptId)) throw new Error('หน่วยงานปลายทางไม่ถูกต้อง');
+      if (toDeptId === actor.departmentId && data.fromKey === data.toKey && Number(data.fromMonth) === Number(data.toMonth))
+        throw new Error('ต้นทางและปลายทางต้องไม่ใช่ช่องเดียวกัน');
       const [fg, fc] = splitKey(data.fromKey), [tg, tc] = splitKey(data.toKey);
       items.push({ deptId: actor.departmentId, glId: fg, cct: fc, month: Number(data.fromMonth), delta: -a });
-      items.push({ deptId: actor.departmentId, glId: tg, cct: tc, month: Number(data.toMonth), delta: a });
+      items.push({ deptId: toDeptId, glId: tg, cct: tc, month: Number(data.toMonth), delta: a });
+      if (toDeptId !== actor.departmentId) crossTo = toDeptId;
     } else {
       const a = amt(data.amount);
       chkMonth(data.month);
@@ -1268,7 +1273,7 @@ const Store = (() => {
       deptId: actor.departmentId, createdBy: actor.name, createdAt: new Date().toISOString(),
       reason: String(data.reason).trim(), memoNote: String(data.memoNote || '').trim(),
       memoFile: data.memoFile || null,
-      items, toDeptId: null, status: 'PENDING_MGR',
+      items, toDeptId: crossTo, status: 'PENDING_MGR',
       mgrBy: null, mgrAt: null, mgrNote: null, accBy: null, accAt: null, accNote: null, appliedAt: null,
     };
     if (!db.changeRequests) db.changeRequests = [];

@@ -27,10 +27,12 @@ const PagesReq = (() => {
     const tail = (r && r.multiCct) ? ` <small class="muted">[${esc(r.cctName)}]</small>` : '';
     return `${g ? esc(g.code + ' ' + g.name) : glId}${tail}`;
   };
-  const itemLine = it => {
+  const itemLine = (it, homeDeptId) => {
     const sign = it.delta > 0 ? '+' : '';
     const cls = it.delta > 0 ? 'req-plus' : 'req-minus';
-    return `<div class="req-item"><span>${rowLabel(it.deptId, it.glId, it.cct)} · <b>${esc(MS()[it.month - 1] || ('ด.' + it.month))}</b></span>
+    const other = homeDeptId && it.deptId !== homeDeptId;
+    const dn = other ? `<span class="req-cross">↔ ${esc((Store.dept(it.deptId) || {}).name || it.deptId)}</span> ` : '';
+    return `<div class="req-item"><span>${dn}${rowLabel(it.deptId, it.glId, it.cct)} · <b>${esc(MS()[it.month - 1] || ('ด.' + it.month))}</b></span>
       <span class="${cls}">${sign}${fmt(Math.round(it.delta))}</span></div>`;
   };
   const reqCard = (req, actionsHtml) => {
@@ -42,7 +44,8 @@ const PagesReq = (() => {
         <div><b>${esc(Store.reqTypeLabel(req.type))}</b> ${statusChip(req.status)}<br>
           <small class="muted">${esc(d ? d.name : req.deptId)} · โดย ${esc(req.createdBy || '')} · ${esc(when)}</small></div>
       </div>
-      <div class="req-items">${req.items.map(itemLine).join('')}</div>
+      ${req.toDeptId ? `<div class="req-cross-badge">🔄 โยกข้ามหน่วยงาน → ${esc((Store.dept(req.toDeptId) || {}).name || req.toDeptId)}</div>` : ''}
+      <div class="req-items">${req.items.map(it => itemLine(it, req.deptId)).join('')}</div>
       <div class="req-reason">📝 <b>เหตุผล:</b> ${esc(req.reason || '—')}${req.memoNote ? ` · <b>memo:</b> ${esc(req.memoNote)}` : ''}</div>
       ${req.memoFile && req.memoFile.url ? `<div class="req-memo"><a class="req-memo-link" href="${esc(req.memoFile.url)}" target="_blank" rel="noopener">📎 ${esc(req.memoFile.name || 'ไฟล์ memo')}</a>${req.memoFile.size ? ` <small class="muted">(${(req.memoFile.size / 1024 / 1024).toFixed(2)} MB)</small>` : ''}</div>` : ''}
       ${note ? `<div class="req-note muted">🗒️ ${esc(note)}</div>` : ''}
@@ -74,11 +77,13 @@ const PagesReq = (() => {
     const rows = user.departmentId ? Store.deptRows(user.departmentId) : [];
     const rowOpts = rows.map(r => `<option value="${esc(r.key)}">${esc(r.gl.code + ' ' + r.gl.name)}${r.multiCct ? ' [' + esc(r.cctName) + ']' : ''}</option>`).join('');
     const monthOpts = allowed.map(m => `<option value="${m}">เดือน ${m} — ${esc(MS()[m - 1])}</option>`).join('');
+    const deptOpts = Store.activeDepartments().slice().sort((a, b) => a.code.localeCompare(b.code))
+      .map(d => `<option value="${esc(d.id)}"${d.id === user.departmentId ? ' selected' : ''}>${esc(d.code + ' ' + d.name)}${d.id === user.departmentId ? ' (หน่วยงานเดียวกัน)' : ''}</option>`).join('');
 
     const form = (open.length && user.departmentId) ? card('➕ ยื่นคำร้องใหม่', `
       <div class="req-form">
         <label class="fld"><span>ประเภทคำร้อง</span>
-          <select id="reqType"><option value="increase">➕ ขอเพิ่มงบ</option><option value="decrease">➖ ขอลดงบ</option><option value="transfer">🔄 ขอโยกงบ (ภายในหน่วยงาน)</option></select></label>
+          <select id="reqType"><option value="increase">➕ ขอเพิ่มงบ</option><option value="decrease">➖ ขอลดงบ</option><option value="transfer">🔄 ขอโยกงบ (ในหรือข้ามหน่วยงาน)</option></select></label>
 
         <div id="reqSingle">
           <div class="req-grid3">
@@ -95,6 +100,7 @@ const PagesReq = (() => {
               <label class="fld"><span>เดือน</span><select id="reqFromMonth">${monthOpts}</select></label></div>
             <div class="req-tr-arrow">➜</div>
             <div class="req-tr-side"><div class="req-tr-h">ไป (+)</div>
+              <label class="fld"><span>หน่วยงานปลายทาง</span><select id="reqToDept">${deptOpts}</select></label>
               <label class="fld"><span>ช่องปลายทาง</span><select id="reqToRow">${rowOpts}</select></label>
               <label class="fld"><span>เดือน</span><select id="reqToMonth">${monthOpts}</select></label></div>
           </div>
@@ -165,6 +171,14 @@ const PagesReq = (() => {
       };
       typeSel.addEventListener('change', sync); sync();
     }
+    // เปลี่ยนหน่วยงานปลายทาง (โยกข้ามหน่วยงาน) → โหลดช่อง GL ของหน่วยงานนั้น
+    const toDeptSel = document.getElementById('reqToDept');
+    toDeptSel?.addEventListener('change', () => {
+      const rowsHtml = Store.deptRows(toDeptSel.value)
+        .map(r => `<option value="${esc(r.key)}">${esc(r.gl.code + ' ' + r.gl.name)}${r.multiCct ? ' [' + esc(r.cctName) + ']' : ''}</option>`).join('');
+      const toRow = document.getElementById('reqToRow');
+      toRow.innerHTML = rowsHtml || '<option value="">— หน่วยงานนี้ไม่มีช่องงบ —</option>';
+    });
     const MAX = 10 * 1024 * 1024;
     const fileInp = document.getElementById('reqMemoFile');
     const fileHint = document.getElementById('reqFileHint');
@@ -181,6 +195,7 @@ const PagesReq = (() => {
       if (t === 'transfer') {
         data.fromKey = document.getElementById('reqFromRow').value;
         data.fromMonth = document.getElementById('reqFromMonth').value;
+        data.toDeptId = document.getElementById('reqToDept').value;
         data.toKey = document.getElementById('reqToRow').value;
         data.toMonth = document.getElementById('reqToMonth').value;
         data.amount = document.getElementById('reqTAmount').value;
