@@ -1177,6 +1177,7 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .cell-adj-dot{position:absolute;left:2px;top:0;font-size:9px;line-height:1;cursor:help;opacity:.85}
 .req-cross-badge{display:inline-block;background:#f0eafe;color:#6d28d9;border:1px solid #d9c9f7;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:600;margin:6px 0}
 .req-cross{color:#6d28d9;font-weight:600}
+.req-cur-tag{display:inline-block;font-size:10.5px;font-weight:700;color:#1e7d46;background:#e6f7ec;border:1px solid #b6e2c6;border-radius:20px;padding:1px 8px;margin-left:4px}
 .req-memo{margin-top:6px}
 .req-memo-link{display:inline-flex;align-items:center;gap:4px;background:#eef4fd;border:1px solid #c5d8f5;color:#1d4fd0;border-radius:8px;padding:4px 10px;font-size:12.5px;font-weight:600;text-decoration:none}
 .req-memo-link:hover{background:#dfeaff}

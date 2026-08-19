@@ -136,14 +136,26 @@ const PagesReq = (() => {
   /* ---------- ACCOUNTING: คุมหน้าต่าง + ดำเนินการ ---------- */
   function accView(user, year, open) {
     const locked = Store.budgetRoundClosed(year);   // ปิดรอบการตั้งงบ (Lock) แล้วหรือยัง
+    const curM = Store.currentMonth();               // เดือนปฏิทินจริง
+    const curWin = Store.windowForMonth(curM);       // ช่วงที่ตรงกับเดือนนี้ (หรือ null = เดือน เม.ย.)
+    const anyOpen = Store.changeWindowsOpen(year);
     const lockWarn = !locked
       ? `<div class="lock-banner">🔒 ปีงบ ${year} <b>ยังไม่ได้ปิดรอบการตั้งงบ (Lock)</b> — เปิดรับคำร้องปรับงบไม่ได้ · ไปที่ <b>Budget Control</b> เพื่อ Lock รอบก่อน</div>`
-      : '';
+      : `<div class="uc-hint-calc">🗓️ เดือนนี้: <b>${esc(MS()[curM - 1])}</b> · ${curWin ? `เปิดได้เฉพาะ <b>${esc(curWin.label)}</b>` : '<b>อยู่นอกช่วงที่เปิดรับคำร้อง</b> (เดือน เม.ย.)'} · <b>เปิดได้ครั้งละ 1 ช่วงเท่านั้น</b></div>`;
     const winCtl = Store.CHANGE_WINDOWS.map(w => {
       const st = Store.changeWindowState(year, w.key);
-      const disableOpen = !st.open && !locked;
-      return `<div class="req-win"><span>${st.open ? '🟢' : '⚪'} <b>${esc(w.label)}</b>${st.openedBy ? ` <small class="muted">· ${st.open ? 'เปิดโดย' : 'ปิดโดย'} ${esc(st.openedBy)}</small>` : ''}</span>
-        <button class="${st.open ? 'ghost-btn' : 'primary-btn'} small" data-win="${w.key}" data-open="${st.open ? '0' : '1'}" ${disableOpen ? 'disabled title="ต้องปิดรอบการตั้งงบ (Lock) ก่อน"' : ''}>${st.open ? '🔒 ปิดรับ' : '🟢 เปิดรับ'}</button></div>`;
+      const isCurrent = curWin && curWin.key === w.key;
+      const otherOpen = anyOpen.some(x => x.key !== w.key);
+      const canOpen = !st.open && locked && isCurrent && !otherOpen;
+      let reason = '';
+      if (!st.open && !canOpen) {
+        if (!locked) reason = 'ต้องปิดรอบการตั้งงบ (Lock) ก่อน';
+        else if (!isCurrent) reason = `อยู่นอกช่วงเดือนปัจจุบัน (ตอนนี้เดือน ${MS()[curM - 1]})`;
+        else if (otherOpen) reason = 'เปิดได้ครั้งละ 1 ช่วง — ปิดช่วงที่เปิดอยู่ก่อน';
+      }
+      const disabled = !st.open && !canOpen;
+      return `<div class="req-win"><span>${st.open ? '🟢' : '⚪'} <b>${esc(w.label)}</b>${isCurrent && !st.open ? ' <span class="req-cur-tag">ช่วงเดือนนี้</span>' : ''}${st.openedBy ? ` <small class="muted">· ${st.open ? 'เปิดโดย' : 'ปิดโดย'} ${esc(st.openedBy)}</small>` : ''}</span>
+        <button class="${st.open ? 'ghost-btn' : 'primary-btn'} small" data-win="${w.key}" data-open="${st.open ? '0' : '1'}" ${disabled ? `disabled title="${esc(reason)}"` : ''}>${st.open ? '🔒 ปิดรับ' : '🟢 เปิดรับ'}</button></div>`;
     }).join('');
 
     const pendAcc = Store.requestsByStatus('PENDING_ACC').filter(r => r.year === year);

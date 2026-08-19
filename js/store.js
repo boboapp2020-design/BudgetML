@@ -1209,11 +1209,22 @@ const Store = (() => {
   const windowOfMonth = m => (CHANGE_WINDOWS.find(w => w.months.includes(Number(m))) || {}).key || null;
   // ปิดรอบการตั้งงบแล้วหรือยัง (Lock งบ = period.status CLOSED) — เงื่อนไขก่อนเปิดรับคำร้องปรับงบ
   function budgetRoundClosed(year) { const p = period(year); return !!p && p.status === 'CLOSED'; }
+  const currentMonth = () => new Date().getMonth() + 1;                         // เดือนปฏิทินจริง 1-12
+  const windowForMonth = m => CHANGE_WINDOWS.find(w => w.months.includes(Number(m))) || null;
   function setChangeWindow(actor, year, key, open) {
     assertAccounting(actor);
     if (!CHANGE_WINDOWS.some(w => w.key === key)) throw new Error('ช่วงเวลาไม่ถูกต้อง');
-    if (open && !budgetRoundClosed(year))
-      throw new Error('ต้องปิดรอบการตั้งงบ (Lock งบ) ก่อน จึงจะเปิดรับคำร้องปรับงบได้ — ไปที่ Budget Control เพื่อ Lock รอบปีนี้');
+    if (open) {
+      if (!budgetRoundClosed(year))
+        throw new Error('ต้องปิดรอบการตั้งงบ (Lock งบ) ก่อน จึงจะเปิดรับคำร้องปรับงบได้ — ไปที่ Budget Control เพื่อ Lock รอบปีนี้');
+      // อิงเดือนจริง: เปิดได้เฉพาะช่วงที่ครอบคลุมเดือนปัจจุบัน
+      const cw = windowForMonth(currentMonth()), mn = MONTH_S[currentMonth() - 1];
+      if (!cw || cw.key !== key)
+        throw new Error(`เปิดได้เฉพาะช่วงที่ตรงกับเดือนปัจจุบัน — ตอนนี้เดือน ${mn}${cw ? ` เปิดได้เฉพาะ "${cw.label}"` : ' อยู่นอกช่วงที่เปิดรับคำร้อง'}`);
+      // เปิดได้ครั้งละ 1 ช่วง
+      if (changeWindowsOpen(year).some(x => x.key !== key))
+        throw new Error('เปิดได้ครั้งละ 1 ช่วงเท่านั้น — ปิดช่วงที่เปิดอยู่ก่อน');
+    }
     if (!db.changeWindows) db.changeWindows = [];
     let w = db.changeWindows.find(x => x.year === Number(year) && x.window === key);
     if (!w) { w = { year: Number(year), window: key, open: false }; db.changeWindows.push(w); }
@@ -1397,7 +1408,7 @@ const Store = (() => {
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt,
     myNotifications, markNotificationsRead, notify,
-    CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow, budgetRoundClosed,
+    CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow, budgetRoundClosed, currentMonth, windowForMonth,
     changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,
     createChangeRequest, mgrApproveRequest, mgrRejectRequest, accApproveRequest, accRejectRequest, cancelChangeRequest, reqAdjustmentsFor,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
