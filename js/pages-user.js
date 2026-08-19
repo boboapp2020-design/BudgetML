@@ -233,8 +233,8 @@ const PagesUser = (() => {
          <button id="ioViewBtn" class="ghost-btn">🔎 IO / CCT</button>
          <button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
-         <button id="exportMyXlsx" class="ghost-btn btn-green" title="ดาวน์โหลด Excel (ML Form) เฉพาะหน่วยงานของคุณ">⬇ Excel ของฉัน</button>
-         <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>`)
+         <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>
+         <button id="exportMyXlsx" class="ghost-btn btn-green btn-push-right" title="ดาวน์โหลด Excel (ML Form) เฉพาะหน่วยงานของคุณ">⬇ Excel ของฉัน</button>`)
       + `<div class="kpi-grid kpi-grid-4">
           ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', (rvOn ? 'ยอด Revise ปี ' : 'ยอดรวมปี ') + c.year, `<span data-kpi-total>${fmt(cur)}</span> <small>กีบ</small>`, rvOn ? `เกิดจริง 1-${thru} + คาดการณ์ ${thru + 1}-12` : 'คำนวณอัตโนมัติ real-time')}
           ${kpiC(rvOn ? '🧊' : '📅', '#e6f7f0', 'kpi-tint-teal', baseLabel, fmt(prev) + ' <small>กีบ</small>', rvOn ? 'งบที่อนุมัติตอนต้นปี (freeze)' : 'baseline เปรียบเทียบ')}
