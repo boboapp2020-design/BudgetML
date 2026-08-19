@@ -65,7 +65,8 @@ const PagesCost = (() => {
     const glPpt = {}; Store.db.glAccounts.forEach(g => { glPpt[g.id] = g.pptCode || 0; });
     const budgetByCode = {};
     Store.db.budgets.filter(b => b.year === year).forEach(b => { const c = glPpt[b.glId]; if (c) budgetByCode[c] = (budgetByCode[c] || 0) + b.months.reduce((s, v) => s + (v || 0), 0); });
-    const amtOf = code => AUTO.has(code) ? (budgetByCode[code] || 0) : Store.pptAmount(year, code).amount;
+    //  หมวด auto (เคมี): ใช้งบถ้ามี · ไม่มีงบ (เช่นปี 2025) ใช้ค่าอ้างอิงจากไฟล์
+    const amtOf = code => AUTO.has(code) ? (budgetByCode[code] || Store.pptAmount(year, code).amount || 0) : Store.pptAmount(year, code).amount;
     const sumOf = codes => codes.reduce((s, c) => s + (amtOf(c) || 0), 0);
     const perCane = (a, div) => { const d = DIV[div]; return (a == null || d <= 0) ? null : a / d; };
     const perSugar = a => (a == null || DIV.sugar <= 0) ? null : a / DIV.sugar;
@@ -73,7 +74,18 @@ const PagesCost = (() => {
         <td class="num uc-ton">${perSugar(a) === null ? '—' : fmt(Math.round(perSugar(a)))}</td>`;
     const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม)</small>' : '';
 
-    const body = LAYOUT.map(row => {
+    // จำกัดการมองเห็น: ผู้กรอก (non-admin ที่มี section) เห็นเฉพาะหมวดของตน (รวม auto ต่อท้าย เช่น เคมี)
+    //  แอดมิน = เห็นทุกหมวด · แผนกที่ไม่ได้รับมอบหมาย = เห็นทั้งตาราง (อ่านอย่างเดียว)
+    let vmax = 33;
+    if (user.role !== 'ACCOUNTING') {
+      const dcode = (Store.dept(user.departmentId) || {}).code;
+      const editors = Store.db.meta.pptEditors || {};
+      const mine = ALL.filter(c => (editors[String(c)] || []).includes(dcode));
+      if (mine.length) { vmax = Math.max.apply(null, mine); while (AUTO.has(vmax + 1)) vmax++; }
+    }
+    const visibleLayout = LAYOUT.filter(row => (row[0] === 'cat' ? [row[1]] : row[2]).every(c => c <= vmax));
+
+    const body = visibleLayout.map(row => {
       if (row[0] === 'cat') {
         const [, code, div] = row;
         const a = amtOf(code);
@@ -110,9 +122,26 @@ const PagesCost = (() => {
         <td class="num muted">${(pv.actual ?? pv.plan) == null ? '—' : fmt(pv.actual ?? pv.plan)}</td></tr>`;
     }).join('');
 
+    // Submit / ปลดล็อก
+    const dcode = user.departmentId ? (Store.dept(user.departmentId) || {}).code : null;
+    const isFiller = Store.isPptFiller(user);
+    const mySubmitted = dcode && Store.pptSubmitted(year, dcode);
+    const submits = Store.pptSubmitsFor(year);
+    const submitBar = isFiller
+      ? (mySubmitted
+        ? `<div class="lock-banner">🔒 ส่งข้อมูลต้นทุนปี ${year} แล้ว — แก้ไขไม่ได้ · ให้แอดมินปลดล็อกก่อนจึงแก้ได้อีก</div>`
+        : (yearOpen ? `<div class="uc-submit-bar"><span>กรอกครบแล้วกดส่ง — <b>ส่งแล้วแก้ไม่ได้</b> (แอดมินปลดล็อกเท่านั้น)</span><button class="primary-btn" id="pptSubmitBtn">✅ ส่งข้อมูล (Submit)</button></div>` : ''))
+      : '';
+    const adminUnlock = (user.role === 'ACCOUNTING' && submits.length)
+      ? card(`📮 แผนกที่ส่งต้นทุนแล้ว ปี ${year} (${submits.length})`, submits.map(s => {
+          const dn = (Store.db.departments.find(d => d.code === s.deptCode) || {}).name || s.deptCode;
+          return `<div class="uc-sub-row"><span>🔒 ${esc(dn)} (${s.deptCode}) · ส่งโดย ${esc(s.submittedBy || '')}</span><button class="ghost-btn small" data-unlock-ppt="${s.deptCode}">🔓 ปลดล็อก</button></div>`;
+        }).join('')) : '';
+
     return UI.pageHead(`ต้นทุนต่อหน่วย ปี ${year} 🏭`,
         `ฟอร์มกรอกมือ ตรงชีท "สรุป PPT รายฝ่าย" · ⬜ขาว=กรอก · 🟨เหลือง=รวมหมวด · 🟥ชมพู=รวมใหญ่ · /ตัน auto · ทุก user เห็นชุดเดียวกัน`,
         roundChip)
+      + submitBar + adminUnlock
       + card(`📥 ปริมาณผลิต ปี ${year} (ตัวหาร) — อ้อย=บริการไร่ · น้ำตาล=ฝ่ายผลิต`, `
           ${!yearOpen && user.role !== 'ACCOUNTING' ? `<div class="lock-banner">🔒 ปีงบ ${year} ปิดรอบแล้ว — อ่านอย่างเดียว · ปลดล็อกที่ Budget Control ก่อน (แอดมินแก้ได้เสมอ)</div>` : ''}
           <div class="table-scroll"><table class="data-table small"><thead>
@@ -147,6 +176,14 @@ const PagesCost = (() => {
       if (raw !== '' && !isFinite(val)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
       try { Store.setPptAmount(user, year, Number(inp.dataset.code), val); UI.toast('บันทึกจำนวนเงินแล้ว — คำนวณต่อตันใหม่'); App.render(); }
       catch (e) { UI.toast(e.message, 'err'); }
+    }));
+    document.getElementById('pptSubmitBtn')?.addEventListener('click', () => {
+      UI.confirm2('ส่งข้อมูลต้นทุน', `ส่งข้อมูลต้นทุนปี ${year}?`, 'หลังส่งจะแก้ไขไม่ได้ ต้องให้แอดมินปลดล็อกก่อน', () => {
+        try { Store.submitPpt(user, year); UI.toast('ส่งข้อมูลแล้ว — ล็อกการแก้ไข'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+      });
+    });
+    document.querySelectorAll('[data-unlock-ppt]').forEach(b => b.addEventListener('click', () => {
+      try { Store.unlockPpt(user, year, b.dataset.unlockPpt); UI.toast('ปลดล็อกแล้ว — แผนกแก้ไขได้อีก'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
     }));
   }
 

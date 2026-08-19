@@ -222,6 +222,11 @@ const Supa = (() => {
       toRow: p => ({ year: p.year, code: p.code, amount: nz(p.amount), updated_at: nz(p.updatedAt), updated_by: nz(p.updatedBy) }),
       fromRow: r => ({ year: r.year, code: r.code, amount: r.amount, updatedAt: r.updated_at, updatedBy: r.updated_by }),
     },
+    { name: 'ppt_submits', pk: ['year', 'dept_code'], assign: 'pptSubmits', optional: true, // สถานะส่งต้นทุน PPT
+      list: db => db.pptSubmits || [],
+      toRow: s => ({ year: s.year, dept_code: s.deptCode, submitted_at: nz(s.submittedAt), submitted_by: nz(s.submittedBy) }),
+      fromRow: r => ({ year: r.year, deptCode: r.dept_code, submittedAt: r.submitted_at, submittedBy: r.submitted_by }),
+    },
     { name: 'prod_volumes', pk: ['year', 'metric'], assign: 'prodVolumes', optional: true, // ตารางใหม่ — ข้ามเงียบๆ ถ้ายังไม่รัน prod-volumes.sql
       list: db => db.prodVolumes || [],
       toRow: p => ({ year: p.year, metric: p.metric, plan: nz(p.plan), actual: nz(p.actual), updated_at: nz(p.updatedAt), updated_by: nz(p.updatedBy) }),

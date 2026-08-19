@@ -1145,3 +1145,6 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .uc-round-rv{background:#fff3e0;color:#a05a00;border:1px solid #f0cf94}
 .uc-auto{color:#1e7d46;font-weight:600}
 .uc-table tr.uc-auto-row td{background:#f3faf5}
+.uc-submit-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#eef4fd;border:1px solid #c5d8f5;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+.uc-sub-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #eef1f6;font-size:13px}
+.uc-sub-row:last-child{border-bottom:none}
