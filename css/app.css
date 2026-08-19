@@ -917,17 +917,17 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 
 /* ============ Landing / Login v7 (ตาม reference ใหม่) ============ */
 .login-wrap.login-v7 {
-  height: 100%; display: flex; align-items: center; justify-content: center; padding: 0;
+  height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px;
   background:
     radial-gradient(1200px 620px at 6% -4%, #17357e 0%, transparent 55%),
     radial-gradient(1000px 720px at 104% 108%, #1b4fca 0%, transparent 52%),
     linear-gradient(150deg, #071633 0%, #0b2050 55%, #0e2c6e 100%);
 }
 .login-v7 .lv-shell {
-  position: relative; z-index: 1; width: 100%; height: 100%; max-width: none;
-  display: grid; grid-template-columns: auto 1fr;
-  border-radius: 0; overflow: hidden; background: #fff;
-  box-shadow: none;
+  position: relative; z-index: 1; width: 1400px; max-width: 100%;
+  display: grid; grid-template-columns: 1.12fr .9fr;
+  border-radius: 28px; overflow: hidden; background: #fff;
+  box-shadow: 0 54px 130px rgba(3,12,40,.62), 0 2px 0 rgba(255,255,255,.4) inset;
 }
 
 /* ---- ซ้าย: hero ---- */
@@ -1000,7 +1000,7 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .login-v7 .lv-badge img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .login-v7 .lv-badge { box-shadow: 0 18px 38px rgba(21,51,150,.28); border-radius: 22px; }
 .login-v7 .lv-hero-img { padding: 0; position: relative; overflow: hidden; background: #0b2050; display: flex; }
-.login-v7 .lv-hero-img img { height: 100%; width: auto; margin: 0 auto; display: block; }   /* เต็มความสูง ไม่ครอป (คอลัมน์ auto-fit) */
+.login-v7 .lv-hero-img img { width: 100%; height: auto; margin: auto; display: block; }   /* แสดงเต็มภาพ ไม่ครอป */
 .login-v7 .lv-hero-img::before, .login-v7 .lv-hero-img::after { display: none; }
 .login-v7 .lv-login h2 { text-align: center; font-size: 26px; font-weight: 800; color: #16233a; }
 .login-v7 .lv-sub { text-align: center; font-size: 13.5px; color: #6b7a90; margin: 3px 0 22px; }
