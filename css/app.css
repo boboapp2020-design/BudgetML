@@ -924,7 +924,7 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
     linear-gradient(150deg, #071633 0%, #0b2050 55%, #0e2c6e 100%);
 }
 .login-v7 .lv-shell {
-  position: relative; z-index: 1; width: 1140px; max-width: 100%;
+  position: relative; z-index: 1; width: 1400px; max-width: 100%;
   display: grid; grid-template-columns: 1.12fr .9fr;
   border-radius: 28px; overflow: hidden; background: #fff;
   box-shadow: 0 54px 130px rgba(3,12,40,.62), 0 2px 0 rgba(255,255,255,.4) inset;
