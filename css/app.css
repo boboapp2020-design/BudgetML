@@ -915,8 +915,8 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 
 /* ============ Landing / Login v7 (ตาม reference ใหม่) ============ */
 .login-wrap.login-v7 {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
-  background: #1a49b0;   /* สีเรียบเดียวกับ body (letterbox) — ไร้รอยต่อ */
+  height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 12px;
+  background: #1a49b0;   /* สีเรียบเดียวกับ body — ล็อกความสูงพอดีจอ ไม่เลื่อนขึ้นลง */
 }
 .login-v7 .login-orbs { display: none; }   /* ปิดออร์บที่ทำให้ขอบสีเพี้ยน */
 .login-v7 .lv-shell {
