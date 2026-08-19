@@ -71,29 +71,9 @@ const App = (() => {
     <div class="login-wrap login-v7">
       <div class="login-orbs"><span></span><span></span><span></span></div>
       <div class="lv-shell">
-        <!-- ซ้าย: hero แบรนด์ (HTML — คุมได้เต็ม ไม่มี iDash) -->
-        <aside class="lv-hero">
-          <div class="lv-brand">
-            <span class="lv-brand-ic"><img src="logo-app.png?v=13.9" alt="iBud"></span>
-            <span class="lv-brand-tx"><b>iBud</b><small>Intelligent Budget System</small></span>
-          </div>
-          <div class="lv-head">
-            <h1>งบประมาณ<br>ประจำปี</h1>
-            <div class="lv-en">ANNUAL BUDGET SYSTEM</div>
-            <div class="lv-tag">ระบบวางแผนและบริหารงบประมาณ<br>อย่างชาญฉลาด ครบวงจร</div>
-          </div>
-          <ul class="lv-features">
-            <li><span class="lvf-ic i1">🎯</span><span class="lvf-tx"><b>วางแผนแม่นยำ</b><small>กำหนดเป้าหมาย และติดตามผลได้อย่างมีประสิทธิภาพ</small></span></li>
-            <li><span class="lvf-ic i2">📊</span><span class="lvf-tx"><b>ข้อมูลครบถ้วน</b><small>เชื่อมโยงทุกหน่วยงานในระบบเดียว</small></span></li>
-            <li><span class="lvf-ic i3">🛡️</span><span class="lvf-tx"><b>ปลอดภัย เชื่อถือได้</b><small>มาตรฐานความปลอดภัยระดับองค์กร</small></span></li>
-            <li><span class="lvf-ic i4">☁️</span><span class="lvf-tx"><b>เข้าถึงได้ทุกที่ ทุกเวลา</b><small>รองรับการใช้งานบนทุกอุปกรณ์</small></span></li>
-          </ul>
-          <div class="lv-stats">
-            <div><b>63+</b><span>หน่วยงาน</span></div>
-            <div><b>10K+</b><span>รายการ</span></div>
-            <div><b>1.2B+</b><span>งบประมาณ (LAK)</span></div>
-            <div><b>99.9%</b><span>ความปลอดภัย</span></div>
-          </div>
+        <!-- ซ้าย: hero แบรนด์ (ภาพ static — แสดงเต็มภาพ ไม่ครอป) -->
+        <aside class="lv-hero lv-hero-img">
+          <img src="hero.jpg?v=7.4" alt="Annual Budget System">
         </aside>
 
         <!-- ขวา: การ์ด login -->
