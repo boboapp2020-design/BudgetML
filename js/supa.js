@@ -241,12 +241,12 @@ const Supa = (() => {
       list: db => db.changeRequests || [],
       toRow: r => ({ id: r.id, year: r.year, win: nz(r.window), type: r.type, dept_id: r.deptId,
         created_by: nz(r.createdBy), created_at: nz(r.createdAt), reason: nz(r.reason), memo_note: nz(r.memoNote),
-        items: r.items || [], to_dept_id: nz(r.toDeptId), status: r.status,
+        memo_file: nz(r.memoFile), items: r.items || [], to_dept_id: nz(r.toDeptId), status: r.status,
         mgr_by: nz(r.mgrBy), mgr_at: nz(r.mgrAt), mgr_note: nz(r.mgrNote),
         acc_by: nz(r.accBy), acc_at: nz(r.accAt), acc_note: nz(r.accNote), applied_at: nz(r.appliedAt) }),
       fromRow: r => ({ id: r.id, year: r.year, window: r.win || null, type: r.type, deptId: r.dept_id,
         createdBy: r.created_by, createdAt: r.created_at, reason: r.reason || '', memoNote: r.memo_note || '',
-        items: r.items || [], toDeptId: r.to_dept_id, status: r.status,
+        memoFile: r.memo_file || null, items: r.items || [], toDeptId: r.to_dept_id, status: r.status,
         mgrBy: r.mgr_by, mgrAt: r.mgr_at, mgrNote: r.mgr_note,
         accBy: r.acc_by, accAt: r.acc_at, accNote: r.acc_note, appliedAt: r.applied_at }),
     },
@@ -349,6 +349,29 @@ const Supa = (() => {
     return { ok: true, rows: Array.isArray(r) ? r.length : 0 };
   }
 
+  /* ---------- Storage (ไฟล์แนบ memo คำร้องปรับงบ) ---------- */
+  function publicUrl(bucket, path) { return base() + '/storage/v1/object/public/' + bucket + '/' + path.split('/').map(encodeURIComponent).join('/'); }
+  async function uploadFile(bucket, path, file) {
+    const enc = path.split('/').map(encodeURIComponent).join('/');
+    const res = await fetch(base() + '/storage/v1/object/' + bucket + '/' + enc, {
+      method: 'POST',
+      headers: { apikey: key(), Authorization: 'Bearer ' + key(), 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+      body: file,
+    });
+    if (!res.ok) throw new Error('อัปโหลดไฟล์ไม่สำเร็จ (' + res.status + '): ' + (await res.text()).slice(0, 160));
+    return path;
+  }
+  // อัปโหลดไฟล์ memo → คืน metadata { path, name, type, size, url }
+  async function uploadMemo(file, prefix) {
+    const dot = file.name.lastIndexOf('.');
+    const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : '';
+    const stem = (dot >= 0 ? file.name.slice(0, dot) : file.name).replace(/[^\w.\-]+/g, '_').slice(0, 40) || 'memo';
+    const rand = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const path = (prefix ? prefix.replace(/[^\w/\-]+/g, '_') + '/' : '') + stem + '-' + rand + ext;
+    await uploadFile('memos', path, file);
+    return { path, name: file.name, type: file.type || '', size: file.size || 0, url: publicUrl('memos', path) };
+  }
+
   /* ลบทั้งปี แบบ bulk (filter year เดียว = 1 request/ตาราง แทนลบรายแถว) + ล้าง baseline ของปีนั้น
      → เร็ว/เชื่อถือได้ · ไม่มี FK year→budget_periods จึงลบลำดับใดก็ได้ */
   async function deleteYear(year) {
@@ -363,6 +386,7 @@ const Supa = (() => {
   }
 
   return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline, deleteYear,
+    uploadMemo, publicUrl,
     signIn, signOut, refresh, authed, myProfile, authRequired: () => AUTH_REQUIRED };
 })();
 

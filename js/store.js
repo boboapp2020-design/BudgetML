@@ -1267,6 +1267,7 @@ const Store = (() => {
       year, window: windowOfMonth(items[0].month), type,
       deptId: actor.departmentId, createdBy: actor.name, createdAt: new Date().toISOString(),
       reason: String(data.reason).trim(), memoNote: String(data.memoNote || '').trim(),
+      memoFile: data.memoFile || null,
       items, toDeptId: null, status: 'PENDING_MGR',
       mgrBy: null, mgrAt: null, mgrNote: null, accBy: null, accAt: null, accNote: null, appliedAt: null,
     };

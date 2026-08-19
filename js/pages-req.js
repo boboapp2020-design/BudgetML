@@ -44,6 +44,7 @@ const PagesReq = (() => {
       </div>
       <div class="req-items">${req.items.map(itemLine).join('')}</div>
       <div class="req-reason">📝 <b>เหตุผล:</b> ${esc(req.reason || '—')}${req.memoNote ? ` · <b>memo:</b> ${esc(req.memoNote)}` : ''}</div>
+      ${req.memoFile && req.memoFile.url ? `<div class="req-memo"><a class="req-memo-link" href="${esc(req.memoFile.url)}" target="_blank" rel="noopener">📎 ${esc(req.memoFile.name || 'ไฟล์ memo')}</a>${req.memoFile.size ? ` <small class="muted">(${(req.memoFile.size / 1024 / 1024).toFixed(2)} MB)</small>` : ''}</div>` : ''}
       ${note ? `<div class="req-note muted">🗒️ ${esc(note)}</div>` : ''}
       ${actionsHtml || ''}
     </div>`;
@@ -101,7 +102,9 @@ const PagesReq = (() => {
         </div>
 
         <label class="fld"><span>เหตุผล / ความจำเป็น <b class="req-req">*</b></span><textarea id="reqReason" rows="2" placeholder="อธิบายเหตุผลของการปรับงบ"></textarea></label>
-        <label class="fld"><span>เลขที่ / อ้างอิง memo <small class="muted">(เฟส 2 จะแนบไฟล์ได้)</small></span><input id="reqMemo" placeholder="เช่น memo เลขที่ ... / อ้างอิงเอกสาร"></label>
+        <label class="fld"><span>เลขที่ / อ้างอิง memo</span><input id="reqMemo" placeholder="เช่น memo เลขที่ ... / อ้างอิงเอกสาร"></label>
+        <label class="fld"><span>📎 แนบไฟล์ memo <small class="muted">(PDF หรือรูป · ไม่เกิน 10MB)</small></span>
+          <input type="file" id="reqMemoFile" accept=".pdf,image/*"><small class="muted" id="reqFileHint"></small></label>
         <button class="primary-btn" id="reqSubmit">📨 ส่งคำร้อง (ไปหัวหน้าฝ่าย)</button>
       </div>`) : card('', `<div class="lock-banner">🔒 ยังไม่เปิดหน้าต่างปรับงบปี ${year} — ยื่นคำร้องไม่ได้ (รอแผนกบัญชีเปิดช่วงเดือน 1-3 หรือ 5-12)</div>`);
 
@@ -162,7 +165,17 @@ const PagesReq = (() => {
       };
       typeSel.addEventListener('change', sync); sync();
     }
-    document.getElementById('reqSubmit')?.addEventListener('click', () => {
+    const MAX = 10 * 1024 * 1024;
+    const fileInp = document.getElementById('reqMemoFile');
+    const fileHint = document.getElementById('reqFileHint');
+    fileInp?.addEventListener('change', () => {
+      const f = fileInp.files[0];
+      if (!f) { fileHint.textContent = ''; return; }
+      if (f.size > MAX) { fileHint.textContent = '⚠️ ไฟล์ใหญ่เกิน 10MB'; fileHint.style.color = '#c0322b'; }
+      else { fileHint.textContent = `เลือกแล้ว: ${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)`; fileHint.style.color = ''; }
+    });
+    document.getElementById('reqSubmit')?.addEventListener('click', async () => {
+      const btn = document.getElementById('reqSubmit');
       const t = document.getElementById('reqType').value;
       const data = { year, type: t, reason: document.getElementById('reqReason').value, memoNote: document.getElementById('reqMemo').value };
       if (t === 'transfer') {
@@ -176,8 +189,18 @@ const PagesReq = (() => {
         data.month = document.getElementById('reqMonth').value;
         data.amount = document.getElementById('reqAmount').value;
       }
-      try { Store.createChangeRequest(user, data); UI.toast('ส่งคำร้องแล้ว — รอหัวหน้าฝ่ายอนุมัติ'); App.render(); }
-      catch (e) { UI.toast(e.message, 'err'); }
+      const f = fileInp?.files?.[0];
+      if (f && f.size > MAX) { UI.toast('ไฟล์ memo ใหญ่เกิน 10MB', 'err'); return; }
+      const old = btn.innerHTML;
+      try {
+        if (f) {
+          btn.disabled = true; btn.textContent = '⏳ กำลังอัปโหลดไฟล์…';
+          const dcode = (Store.dept(user.departmentId) || {}).code || 'x';
+          data.memoFile = await Supa.uploadMemo(f, `${year}/${dcode}`);
+        }
+        Store.createChangeRequest(user, data);
+        UI.toast('ส่งคำร้องแล้ว — รอหัวหน้าฝ่ายอนุมัติ'); App.render();
+      } catch (e) { btn.disabled = false; btn.innerHTML = old; UI.toast(e.message, 'err'); }
     });
     document.querySelectorAll('[data-req-cancel]').forEach(b => b.addEventListener('click', () => {
       UI.confirm2('ยกเลิกคำร้อง', 'ยกเลิกคำร้องนี้?', 'คำร้องจะถูกยกเลิก ไม่ส่งต่อหัวหน้าฝ่าย', () => {
