@@ -1333,6 +1333,36 @@ const Store = (() => {
     notify({ deptId: req.deptId }, `คำร้องปรับงบปี ${req.year} ถูกแผนกบัญชีปฏิเสธ${noteMsg ? ' — ' + noteMsg : ''}`);
     save();
   }
+  // สรุป "การปรับงบจากคำร้องที่อนุมัติแล้ว" ราย GL×CCT (สำหรับติดหมายเหตุในหน้ากรอก/ตรวจ)
+  //  คืน map: rowKey(glId@cct) -> { net, monthNet:{i:delta}, monthLines:{i:[txt]}, lines:[txt] }
+  function reqAdjustmentsFor(year, deptId) {
+    const map = {};
+    (db.changeRequests || []).filter(r => r.status === 'APPROVED' && r.year === Number(year)).forEach(r => {
+      r.items.forEach(it => {
+        if (it.deptId !== deptId) return;
+        const key = it.glId + '@' + it.cct;
+        const rec = map[key] || (map[key] = { net: 0, monthNet: {}, monthLines: {}, lines: [] });
+        const i = it.month - 1, mn = MONTH_S[i] || ('ด.' + it.month);
+        const amt = Math.abs(Math.round(it.delta)).toLocaleString();
+        let txt;
+        if (r.type === 'increase') txt = `+${amt} เพิ่มงบ (${mn})`;
+        else if (r.type === 'decrease') txt = `−${amt} ลดงบ (${mn})`;
+        else {
+          const other = r.items.find(x => x !== it && (x.delta > 0) !== (it.delta > 0));
+          const od = other ? dept(other.deptId) : null, og = other ? gl(other.glId) : null;
+          const oname = other ? ((od && od.id !== deptId ? od.name + ' · ' : '') + (og ? og.code + ' ' + og.name : '')) : '';
+          txt = it.delta < 0 ? `−${amt} โยกออก → ${oname} (${mn})` : `+${amt} โยกเข้า ← ${oname} (${mn})`;
+        }
+        const meta = [r.accBy && ('โดย ' + r.accBy), (r.appliedAt || r.accAt || '').slice(0, 10)].filter(Boolean).join(' · ');
+        const line = txt + (meta ? '  [' + meta + ']' : '');
+        rec.net += it.delta;
+        rec.monthNet[i] = (rec.monthNet[i] || 0) + it.delta;
+        (rec.monthLines[i] = rec.monthLines[i] || []).push(line);
+        rec.lines.push(line);
+      });
+    });
+    return map;
+  }
   function cancelChangeRequest(actor, id) {
     const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
     if (actor.role !== 'USER' || req.deptId !== actor.departmentId) throw new Error('ยกเลิกได้เฉพาะคำร้องของหน่วยงานตนเอง');
@@ -1365,7 +1395,7 @@ const Store = (() => {
     myNotifications, markNotificationsRead, notify,
     CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow,
     changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,
-    createChangeRequest, mgrApproveRequest, mgrRejectRequest, accApproveRequest, accRejectRequest, cancelChangeRequest,
+    createChangeRequest, mgrApproveRequest, mgrRejectRequest, accApproveRequest, accRejectRequest, cancelChangeRequest, reqAdjustmentsFor,
     exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
     MONTH_TH, MONTH_S,
   };

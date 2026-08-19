@@ -156,9 +156,12 @@ const PagesUser = (() => {
       <th class="num th-mtp">ปี ${c.year + 2}<div class="th-yr">MTP</div></th>
       <th class="th-note">เหตุผล/สมมติฐาน</th></tr>`;
 
+    // การปรับงบจากคำร้องที่อนุมัติแล้ว (ติดหมายเหตุ 🔄 ราย GL/ช่องเดือน)
+    const adjMap = Store.reqAdjustmentsFor(c.year, c.deptId);
     // แถว = CCT × GL ตามฟอร์มจริง (GL ที่มีหลายหน่วยงานย่อยจะแตกเป็นหลายแถว)
     const body = c.rows.map(r => {
       const g = r.gl;
+      const adj = adjMap[r.key];   // การปรับจากคำร้อง (ถ้ามี)
       const m = Store.rowMonths(c.year, c.deptId, r.key);
       const t = Store.mtp(c.year, c.deptId, r.key);
       const notUsed = Store.glNotUsed(c.year, c.deptId, r.key);
@@ -179,11 +182,14 @@ const PagesUser = (() => {
         const cellCls = isActual ? ' cell-actual' : (isFloor ? ' cell-floor' : '');
         const cellTip = isActual ? 'ตัวเลขเกิดจริง — ล็อกโดยแผนกบัญชี'
           : (isFloor ? `เกิดจริงแล้ว ${fmt(am?.[i] ?? 0)} กีบ — เพิ่มได้ ลดต่ำกว่านี้ไม่ได้` : '');
-        return `<td class="num cell-td"><div class="cell-wrap">
+        const cAdj = adj && adj.monthNet[i] != null;
+        const cAdjTip = cAdj ? esc(`ปรับจากคำร้อง (สุทธิ ${adj.monthNet[i] > 0 ? '+' : ''}${fmt(Math.round(adj.monthNet[i]))} กีบ):\n` + adj.monthLines[i].join('\n')) : '';
+        return `<td class="num cell-td${cAdj ? ' cell-adj' : ''}"><div class="cell-wrap">
           <input class="cell${cellCls}" data-row="${r.key}" data-m="${i}" inputmode="decimal"
             value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis || isActual ? 'disabled' : ''} ${cellTip ? `title="${cellTip}"` : ''}>
           <button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${r.key}|${i}" tabindex="-1"
             title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>
+          ${cAdj ? `<span class="cell-adj-dot" title="${cAdjTip}">🔄</span>` : ''}
         </div><span class="prev-ghost" title="${rvOn ? 'งบเดิม' : 'ปีก่อน'} ${Store.MONTH_S[i]}">${fmt(pm[i] ?? 0)}</span></td>`;
       }).join('');
       return `<tr data-gl-row="${r.key}" class="${notUsed ? 'tr-notused' : ''}">
@@ -191,6 +197,7 @@ const PagesUser = (() => {
             ${glIcon(g)}
             <span class="gl-code">${g.code}</span><span class="gl-nm" title="${esc(g.name)}">${esc(g.name)}</span>
             ${notUsed ? '<span class="nu-chip">ไม่ได้ใช้</span>' : ''}
+            ${adj ? `<span class="adj-ic" title="${esc(`ปรับจากคำร้อง (สุทธิ ${adj.net > 0 ? '+' : ''}${fmt(Math.round(adj.net))} กีบ):\n` + adj.lines.join('\n'))}">🔄</span>` : ''}
             ${an && !notUsed ? `<span class="anomaly-ic ${an.level}" title="${an.tag}: ${an.msg}">⚠</span>` : ''}</div>
             ${r.multiCct ? `<div class="cct-tag">↳ ${esc(r.cctName)}</div>` : ''}</td>
         ${cells}
