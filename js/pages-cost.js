@@ -61,13 +61,19 @@ const PagesCost = (() => {
       : yearOpen ? `<span class="uc-round uc-round-open">🟢 ปีงบ ${year} · เปิดกรอกปริมาณ</span>`
         : `<span class="uc-round uc-round-lock">🔒 ปีงบ ${year} · ปิดรอบแล้ว</span>`;
 
-    // ---- ตัวหาร (ปริมาณผลิต) — actual ก่อน ไม่มีใช้ plan ----
-    const t = m => { const v = Store.volume(year, m); return v.actual ?? v.plan ?? 0; };
+    // ---- ตัวหาร (ปริมาณผลิต) — "ส่งไปหาร" เมื่อแผนกที่รับผิดชอบกด Submit เท่านั้น ----
+    //  ปีเปิด: ต้องกดส่งก่อน /ตัน จึงคำนวณ · ปีปิดรอบ (ประวัติ): ถือว่าข้อมูลสุดท้ายแล้ว คำนวณได้เลย
+    const editorsCfg = (Store.db.meta && Store.db.meta.volumeEditors) || {};
+    const yearLocked = !Store.isYearEditable(year);
+    const metricSubmitted = key => { const eds = editorsCfg[key] || []; return eds.length > 0 && eds.every(c => Store.pptSubmitted(year, c)); };
+    const committed = key => yearLocked || metricSubmitted(key);
+    const tv = m => { const v = Store.volume(year, m); return v.actual ?? v.plan ?? 0; };
+    const tC = m => committed(m) ? tv(m) : null;
+    const _cc = tC('caneCompany'), _ccm = tC('caneCommunity'), _sp = tC('sugarProduce'), _st = tC('sugarTrading');
     const DIV = {
-      co: t('caneCompany'),
-      comm: t('caneCommunity'),
-      all: t('caneCompany') + t('caneCommunity'),         // แถว 55
-      sugar: t('sugarProduce') + t('sugarTrading'),        // แถว 58 = 56 + 57
+      co: _cc, comm: _ccm,
+      all: (_cc != null && _ccm != null) ? _cc + _ccm : null,   // แถว 55 = 53+54 (คำนวณเมื่อบริการไร่ส่ง)
+      sugar: (_sp != null && _st != null) ? _sp + _st : null,   // แถว 58 = 56+57 (คำนวณเมื่อหม้อปั่น+การตลาดส่งครบ)
     };
 
     // ---- จำนวนเงินรายหมวด = ดึง auto จาก GL ตามงบ · ปีก่อน (ไม่มีงบ) ใช้ค่าไฟล์ Revise ----
@@ -83,8 +89,9 @@ const PagesCost = (() => {
       ? `<small class="muted uc-auto">↩ รวม auto จากงบแต่ละหน่วยงาน (GL)</small>`
       : `<small class="muted uc-auto">↩ ค่าอ้างอิงจากไฟล์ Revise ${year} (ยังไม่มีงบในระบบ)</small>`;
 
-    const perCane = (a, div) => { const d = DIV[div]; return (a == null || d <= 0) ? null : a / d; };
-    const perSugar = a => (a == null || DIV.sugar <= 0) ? null : a / DIV.sugar;
+    const perCane = (a, div) => { const d = DIV[div]; return (a == null || d == null || d <= 0) ? null : a / d; };
+    const perSugar = a => (a == null || DIV.sugar == null || DIV.sugar <= 0) ? null : a / DIV.sugar;
+    const divCell = v => v == null ? '<span class="muted">— รอส่ง</span>' : fmt(Math.round(v));
     const tonCell = (a, div) => `<td class="num uc-ton">${perCane(a, div) === null ? '—' : fmt(Math.round(perCane(a, div)))}</td>
         <td class="num uc-ton">${perSugar(a) === null ? '—' : fmt(Math.round(perSugar(a)))}</td>`;
     const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม)</small>' : '';
@@ -108,11 +115,16 @@ const PagesCost = (() => {
     const grand = sumOf(ALL), totCane = perCane(grand, 'all'), totSugar = perSugar(grand);
 
     // ---- ฟอร์มปริมาณผลิต (กรอกมือ แยกตามแผนก) ----
-    const editorsCfg = (Store.db.meta && Store.db.meta.volumeEditors) || {};
     const deptName = code => (Store.db.departments.find(d => d.code === code) || {}).name || code;
     const fillerHint = key => {
       const arr = editorsCfg[key] || [];
       return arr.length ? ` <small class="muted">(${arr.map(deptName).join(', ')} กรอก)</small>` : ' <small class="muted">(รอมอบหมาย)</small>';
+    };
+    const statusChip = key => {
+      if (yearLocked) return '';
+      const arr = editorsCfg[key] || [];
+      if (!arr.length) return '';
+      return metricSubmitted(key) ? ' <span class="uc-st uc-st-ok">✅ ส่งแล้ว (หารแล้ว)</span>' : ' <span class="uc-st uc-st-wait">⏳ รอส่งจึงจะหาร</span>';
     };
     const volRows = Store.VOLUME_METRICS.map(m => {
       const v = Store.volume(year, m.key), pv = Store.volume(year - 1, m.key);
@@ -120,7 +132,7 @@ const PagesCost = (() => {
       const inp = f => canM
         ? `<input class="uc-vol" data-vol="${m.key}" data-field="${f}" inputmode="decimal" value="${v[f] ?? ''}" placeholder="กรอก">`
         : `<b>${v[f] == null ? '—' : fmt(v[f])}</b>`;
-      return `<tr><td>${esc(m.label)}${fillerHint(m.key)}</td>
+      return `<tr><td>${esc(m.label)}${fillerHint(m.key)}${statusChip(m.key)}</td>
         <td class="num">${inp('plan')}</td><td class="num">${inp('actual')}</td>
         <td class="num muted">${(pv.actual ?? pv.plan) == null ? '—' : fmt(pv.actual ?? pv.plan)}</td></tr>`;
     }).join('');
@@ -150,11 +162,12 @@ const PagesCost = (() => {
       + submitBar + adminUnlock
       + card(`📥 ปริมาณผลิต ปี ${year} (ตัวหาร) — บริการไร่: อ้อย · หม้อปั่น: น้ำตาลผลิต · การตลาด: Trading`, `
           ${!yearOpen && user.role !== 'ACCOUNTING' ? `<div class="lock-banner">🔒 ปีงบ ${year} ปิดรอบแล้ว — อ่านอย่างเดียว · ปลดล็อกที่ Budget Control ก่อน (แอดมินแก้ได้เสมอ)</div>` : ''}
+          ${yearOpen ? `<div class="uc-hint-calc">🧮 ค่า <b>กีบ/ตัน</b> จะเริ่มคำนวณ <b>เมื่อแผนกที่รับผิดชอบกดปุ่ม "ส่งข้อมูล (Submit)"</b> เท่านั้น · /ตันอ้อย รอ <b>บริการไร่</b> ส่ง · /ตันน้ำตาล รอ <b>หม้อปั่น + การตลาด</b> ส่งครบ</div>` : ''}
           <div class="table-scroll"><table class="data-table small"><thead>
             <tr><th>ปริมาณ ปี ${year}</th><th class="num">ตามแผน/งบ (ตัน)</th><th class="num">เกิดจริง (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
             <tbody>${volRows}
-              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${fmt(Math.round(caneAllPlan))}</td><td class="num">${fmt(Math.round(DIV.all))}</td><td class="num muted">—</td></tr>
-              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${fmt(Math.round(sugarAllPlan))}</td><td class="num">${fmt(Math.round(DIV.sugar))}</td><td class="num muted">—</td></tr>
+              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${fmt(Math.round(caneAllPlan))}</td><td class="num">${divCell(DIV.all)}</td><td class="num muted">—</td></tr>
+              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${fmt(Math.round(sugarAllPlan))}</td><td class="num">${divCell(DIV.sugar)}</td><td class="num muted">—</td></tr>
             </tbody></table></div>`)
       + `<div class="kpi-grid kpi-grid-4">
           <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท</div></div>
