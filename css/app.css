@@ -1091,7 +1091,7 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .mgr-view-sel:focus { border-color: #2b5cf0; box-shadow: 0 0 0 3px rgba(43,92,240,.15); outline: none; }
 
 /* ===== Landing v7: เต็มขอบจอ (ไม่ย่อ) ===== */
-.login-v7 .lv-shell { transform: none; }
+.login-v7 .lv-shell { transform: scale(0.8); transform-origin: center center; }   /* ลดหน้า landing 20% คงสัดส่วน */
 
 /* ===== กราฟ: toolbar ขยาย(popup)/บันทึกภาพ ===== */
 .chart-save{position:absolute;top:14px;right:16px;z-index:4;width:30px;height:30px;border:1px solid #e0e6f0;background:#fff;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;padding:0;box-shadow:0 2px 6px rgba(16,38,76,.12);color:#3560c9;opacity:.7;transition:opacity .15s,background .15s,border-color .15s}

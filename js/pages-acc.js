@@ -464,7 +464,7 @@ const PagesAcc = (() => {
    *  X-AI งบล่าสุด/Revise 12 เดือน (ตัว live) · AJ รวม · AM-AX เกิดจริง 12 เดือน · AY รวมเกิดจริง
    *  CK หน่วยงานที่รับผิดชอบ · CL Group GL PPT · CM Group Sap · CN-CO ฝ่ายย่อย · CP ฝ่าย · CQ รหัสด้าน · CR ด้าน · CS Type · CT สังกัด */
   function buildMLRows(year, allowSet) {   // allowSet = Set(departmentId) จำกัดสิทธิ์ · null/undefined = ทั้งบริษัท
-    const NCOL = 98;
+    const NCOL = 100;   // A→CU ตรงตามไฟล์ตัวอย่าง (0-99) — ครบทุกคอลัมน์ ไม่มีช่องโหว่
     const db = Store.db;
     // master maps
     const cctInfo = {}; (db.cctMaster || []).forEach(c => { cctInfo[c.code] = c; });
@@ -479,8 +479,8 @@ const PagesAcc = (() => {
     const sum = a => (a || []).reduce((s, v) => s + num(v), 0);
     const orig = k => { const s = (db.budgetSnapshots || []).find(x => x.year === year && x.label === 'ORIGINAL'); return s ? s.rows.find(r => r.departmentId === k[0] && r.glId === k[1] && r.cct === k[2]) : null; };
     // index budgets/actuals/snapshot by dept|gl|cct
-    const bIdx = {}, aIdx = {}, oIdx = {};
-    db.budgets.filter(b => b.year === year).forEach(b => { bIdx[b.departmentId + '|' + b.glId + '|' + b.cct] = b.months; });
+    const bIdx = {}, aIdx = {}, oIdx = {}, mIdx = {};
+    db.budgets.filter(b => b.year === year).forEach(b => { const k = b.departmentId + '|' + b.glId + '|' + b.cct; bIdx[k] = b.months; mIdx[k] = { mtp1: b.mtp1, mtp2: b.mtp2 }; });
     (db.actuals || []).filter(a => a.year === year).forEach(a => { aIdx[a.departmentId + '|' + a.glId + '|' + a.cct] = a.months; });
     const snap = (db.budgetSnapshots || []).find(x => x.year === year && x.label === 'ORIGINAL');
     if (snap) snap.rows.forEach(r => { oIdx[r.departmentId + '|' + r.glId + '|' + r.cct] = r.months; });
@@ -493,18 +493,31 @@ const PagesAcc = (() => {
     const r3 = blank(); r3[0] = 'งบประมาณค่าใช้จ่าย ปี' + year + ' (export จากระบบ)';
     const r4 = blank(); r4[0] = 'หน่วย : กีบ';
     const r5 = blank();
-    const r6 = blank(); r6[8] = 'งบต้นปี ' + year; r6[23] = 'งบประมาณ ' + year + ' - ล่าสุด (Revise/Live)'; r6[38] = 'เกิดจริงสะสม ปี ' + year;
+    const y1 = year + 1, y2 = year + 2, y3 = year + 3;
+    const r6 = blank();   // แถวหัวข้อกลุ่ม (section)
+    r6[8] = 'งบต้นปี ' + year; r6[23] = 'งบประมาณ ' + year + ' - ล่าสุด (Revise/Live)'; r6[38] = 'เกิดจริงสะสม ปี ' + year;
+    r6[51] = 'คาดการณ์ ปี ' + year; r6[63] = 'งบต้นปี ' + y1; r6[76] = 'ผลต่างงบต้นปี ' + y1;
+    r6[80] = 'งบประมาณ MTP ' + y2 + '-' + y3; r6[82] = 'งบประมาณ MTP ' + y1 + '-' + y3; r6[85] = 'งบประมาณ MTP ' + y1 + '-' + y3;
     const r7 = blank();
     const MTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-    const yy = String(year).slice(2);
+    const yy = String(year).slice(2), yy1 = String(y1).slice(2);
     r7[0] = 'code a'; r7[1] = 'IO / รหัสงบประมาณ'; r7[2] = 'รหัสหน่วยงาน/CCT'; r7[3] = 'ชื่อหน่วยงาน';
     r7[4] = 'รหัสแผนก'; r7[5] = 'แผนก'; r7[6] = 'รหัสบัญชี /GL'; r7[7] = 'ชื่อบัญชี';
-    MTH.forEach((m, i) => { r7[8 + i] = m + '-' + yy; r7[23 + i] = m + '-' + yy; r7[38 + i] = m + '-' + yy; });
+    MTH.forEach((m, i) => { r7[8 + i] = m + '-' + yy; r7[23 + i] = m + '-' + yy; r7[38 + i] = m + '-' + yy; r7[63 + i] = m + '-' + yy1; });
     r7[20] = 'งบประมาณ 12เดือน ' + year + ' งบต้นปี'; r7[21] = 'เพิ่ม - ลดระหว่างปี ' + year; r7[22] = 'งบประมาณ 12เดือน ' + year;
     r7[35] = 'งบประมาณ 12เดือน ' + year + ' ล่าสุด'; r7[36] = 'เพิ่ม - ลดระหว่างปี ' + year; r7[37] = 'งบประมาณ 12เดือน ' + year + ' ล่าสุด';
     r7[50] = 'รวมงบเกิดจริง 12เดือน ' + year;
+    // คาดการณ์ (เดือน 4-12) + PR+PO + รวม
+    ['เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'].forEach((m, i) => { r7[51 + i] = m + '-' + yy; });
+    r7[60] = 'PR+PO'; r7[61] = 'รวมคาดการณ์ ' + year; r7[62] = 'รวมเกิดจริง+คาดการณ์ ' + year;
+    // งบปีถัดไป + MTP
+    r7[75] = 'งบต้นปี ' + y1; r7[76] = 'งบประมาณ เพิ่ม - (ลด)'; r7[77] = '% เพิ่ม - (ลด)';
+    r7[78] = 'สมมติฐาน ' + y1; r7[79] = 'สาเหตุ เพิ่ม - (ลด) ' + y1;
+    r7[80] = 'ปี ' + y2; r7[81] = 'ปี ' + y3; r7[82] = 'ปี ' + y1; r7[83] = 'ปี ' + y2; r7[84] = 'ปี ' + y3;
+    r7[85] = 'ปี ' + y1; r7[86] = 'ปี ' + y2; r7[87] = 'ปี ' + y3;
     r7[88] = 'หน่วยงานที่รับผิดชอบ'; r7[89] = 'Group GL PPT'; r7[90] = 'Group Sap'; r7[91] = 'รหัสฝ่ายย่อย'; r7[92] = 'ฝ่ายย่อย';
     r7[93] = 'ฝ่าย'; r7[94] = 'รหัสด้าน'; r7[95] = 'ด้าน'; r7[96] = 'Type'; r7[97] = 'สังกัด';
+    r7[98] = 'PL/โสหุ้ย'; r7[99] = 'Cost structure Name';
     out.push(r1, r2, r3, r4, r5, r6, r7);
 
     // แถวข้อมูล — เรียงตาม แผนก → GL → CCT
@@ -531,6 +544,15 @@ const PagesAcc = (() => {
       row[88] = rr.resp || ''; row[89] = g.glGroup || ''; row[90] = g.glGroupSap || '';
       row[91] = u.subDivCode || ''; row[92] = u.subDiv || ''; row[93] = u.div || '';
       row[94] = u.areaCode || ''; row[95] = u.area || ''; row[96] = g.glType || ''; row[97] = u.area || '';
+      // 51-74: คาดการณ์ + งบปีถัดไปรายเดือน (ระบบไม่มีข้อมูลนี้ → 0 ตามไฟล์ · ไม่ให้เป็นช่องว่าง)
+      for (let i = 51; i <= 74; i++) row[i] = 0;
+      row[62] = sum(act);                                   // รวมเกิดจริง+คาดการณ์
+      // 75-87: งบปีถัดไป + MTP (จาก mtp1/mtp2 ที่ระบบมี)
+      const m1 = mIdx[key] ? (typeof mIdx[key].mtp1 === 'number' ? mIdx[key].mtp1 : 0) : 0;
+      const m2 = mIdx[key] ? (typeof mIdx[key].mtp2 === 'number' ? mIdx[key].mtp2 : 0) : 0;
+      row[75] = m1; row[76] = m1 - sum(live); row[77] = sum(live) ? (m1 - sum(live)) / sum(live) : 0;
+      row[80] = m2; row[81] = 0; row[82] = m1; row[83] = m2; row[84] = 0; row[85] = m1; row[86] = m2; row[87] = 0;
+      row[98] = ''; row[99] = '';                           // PL/โสหุ้ย, Cost structure (ไม่มีในระบบ)
       out.push(row);
     });
     return out;
@@ -563,7 +585,7 @@ const PagesAcc = (() => {
     } else {
       const XLSX = await loadXLSX();
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = Array(98).fill({ wch: 13 }); ws['!cols'][0] = { wch: 20 }; ws['!cols'][1] = { wch: 16 }; ws['!cols'][3] = { wch: 26 }; ws['!cols'][5] = { wch: 26 }; ws['!cols'][7] = { wch: 32 };
+      ws['!cols'] = Array(100).fill({ wch: 13 }); ws['!cols'][0] = { wch: 20 }; ws['!cols'][1] = { wch: 16 }; ws['!cols'][3] = { wch: 26 }; ws['!cols'][5] = { wch: 26 }; ws['!cols'][7] = { wch: 32 }; ws['!cols'][99] = { wch: 26 };
       // ---- จัดรูปแบบตาราง (ต้องใช้ xlsx-js-style) ----
       const canStyle = !!(XLSX.version && window.XLSX === XLSX); // xlsx-js-style เก็บ style ผ่าน cell.s
       const BD = c => ({ style: 'thin', color: { rgb: c } });
@@ -572,21 +594,24 @@ const PagesAcc = (() => {
         [8, 22, 'DDEBF7', '9DC3E6'],   // งบต้นปี — ฟ้าอ่อน
         [23, 37, 'E2EFDA', 'A9D18E'],  // งบล่าสุด/Revise — เขียวอ่อน
         [38, 50, 'BDD7EE', '8EAADB'],  // เกิดจริง — ฟ้า (ตามไฟล์)
-        [88, 97, 'FFF2CC', 'FFD966'],  // จำแนก master — เหลืองอ่อน
+        [51, 62, 'FCE4D6', 'F4B183'],  // คาดการณ์ — ส้มอ่อน
+        [63, 79, 'EDEDED', 'D0CECE'],  // งบปีถัดไป — เทาอ่อน
+        [80, 87, 'E2EFDA', 'A9D18E'],  // MTP — เขียวอ่อน
+        [88, 99, 'FFF2CC', 'FFD966'],  // จำแนก master + PL/Cost — เหลืองอ่อน
       ];
       const setS = (r, c, s) => { const a = XLSX.utils.encode_cell({ r, c }); if (ws[a]) ws[a].s = s; };
       // ชื่อรายงาน (แถว 1-4)
       for (let r = 0; r < 4; r++) setS(r, 0, { font: { bold: r === 2, sz: r === 2 ? 14 : 11, color: { rgb: '16233A' } } });
       // แถว 6: section headers (merge + สี)
-      ws['!merges'] = SEC.slice(0, 3).map(x => ({ s: { r: 5, c: x[0] }, e: { r: 5, c: x[1] } }));
+      ws['!merges'] = SEC.map(x => ({ s: { r: 5, c: x[0] }, e: { r: 5, c: x[1] } }));
       SEC.forEach(x => { for (let c = x[0]; c <= x[1]; c++) setS(5, c, { fill: { fgColor: { rgb: x[2] } }, font: { bold: true, sz: 12, color: { rgb: '1F3864' } }, alignment: { horizontal: 'center', vertical: 'center' }, border }); });
       // แถว 7: หัวคอลัมน์
       const hdrBase = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4472C4' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border };
       for (let c = 0; c <= 7; c++) setS(6, c, hdrBase);
       SEC.forEach(x => { for (let c = x[0]; c <= x[1]; c++) setS(6, c, { ...hdrBase, fill: { fgColor: { rgb: x[3] } }, font: { ...hdrBase.font, color: { rgb: '1F3864' } } }); });
       // แถวข้อมูล: เส้นขอบ + ฟอร์แมตเลข + แถบสีสลับ + คอลัมน์รวมเน้น
-      const TOTCOLS = new Set([20, 21, 22, 35, 36, 37, 50]);
-      const COLS = []; for (let c = 0; c <= 50; c++) COLS.push(c); for (let c = 88; c <= 97; c++) COLS.push(c);
+      const TOTCOLS = new Set([20, 21, 22, 35, 36, 37, 50, 61, 62, 75, 76, 80, 81, 82, 83, 84, 85, 86, 87]);
+      const COLS = []; for (let c = 0; c <= 99; c++) COLS.push(c);   // ทุกคอลัมน์ (0-99) มีเส้นขอบ/ฟอร์แมต ไม่มีช่องโหว่
       for (let r = 7; r < aoa.length; r++) {
         const zebra = (r % 2 === 1) ? 'F6F9FE' : 'FFFFFF';
         for (const c of COLS) {
@@ -595,7 +620,7 @@ const PagesAcc = (() => {
           cell.s = { border, fill: { fgColor: { rgb: TOTCOLS.has(c) ? 'EDF2FB' : zebra } },
             font: { sz: 10, bold: TOTCOLS.has(c), color: { rgb: '16233A' } },
             alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' } };
-          if (isNum) cell.z = '#,##0';
+          if (isNum) cell.z = (c === 77) ? '0%' : '#,##0';
         }
       }
       ws['!rows'] = []; ws['!rows'][5] = { hpt: 22 }; ws['!rows'][6] = { hpt: 30 };
