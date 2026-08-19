@@ -101,6 +101,8 @@
   <span class="info">เลือกไว้ <b id="selCount">0</b> คน · กรอกอีเมลแล้ว <b id="emailCount">0</b></span>
   <button class="btn primary" id="expCsv">⬇ ส่งออก CSV</button>
   <button class="btn" id="expJson">⬇ ส่งออก JSON</button>
+  <button class="btn" id="impJson">⬆ นำเข้า JSON</button>
+  <input type="file" id="impFile" accept=".json,application/json" style="display:none">
   <button class="btn ghost" id="resetBtn">↺ ล้างค่าที่บันทึก</button>
   <span class="saved" id="savedMsg"></span>
 </div>
@@ -390,6 +392,31 @@ document.getElementById('expJson').addEventListener('click', () => {
   const out = DATA.map(u => ({ id:u.id, role:u.role, code:u.code, name:u.name, sub:u.sub||null,
     selected:state[u.id].on, emails:state[u.id].emails.filter(e=>e), costRole:u.cost||null }));
   download('users-mitrlao.json', JSON.stringify(out, null, 2), 'application/json');
+});
+
+// ===== import (นำเข้า JSON ที่ส่งออกไว้ → คืนค่าติ๊ก + อีเมล) =====
+document.getElementById('impJson').addEventListener('click', () => document.getElementById('impFile').click());
+document.getElementById('impFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const arr = JSON.parse(rd.result);
+      if (!Array.isArray(arr)) throw new Error('ไฟล์ต้องเป็นรายการ (array) ที่ส่งออกจากหน้านี้');
+      let applied = 0, unknown = 0;
+      arr.forEach(o => {
+        if (!o || !o.id) return;
+        if (!state[o.id]) { unknown++; return; }
+        state[o.id].on = o.selected !== false;
+        state[o.id].emails = Array.isArray(o.emails) ? o.emails.filter(x => x) : (o.email ? [o.email] : []);
+        applied++;
+      });
+      save(); render();
+      alert(`นำเข้าสำเร็จ ${applied} รายการ` + (unknown ? ` · ข้าม ${unknown} รายการ (ไม่พบ id ในระบบ)` : ''));
+    } catch (err) { alert('นำเข้าไม่สำเร็จ: ' + err.message); }
+    e.target.value = '';
+  };
+  rd.readAsText(f);
 });
 
 setupDelegation();
