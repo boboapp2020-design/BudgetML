@@ -1020,6 +1020,7 @@ const Store = (() => {
     if (actor.role === 'ACCOUNTING') return true;   // แอดมินข้าม lock (เหมือน Unlock งบ)
     if (actor.role !== 'USER' || !actor.departmentId || !yearOk) return false;
     const d = dept(actor.departmentId); if (!d) return false;
+    if (year != null && pptSubmitted(year, d.code)) return false;   // ส่งแล้ว = ล็อก (แอดมินปลดล็อก)
     if (metric) return volumeEditorsFor(metric).includes(d.code);
     return VOLUME_METRICS.some(m => volumeEditorsFor(m.key).includes(d.code));
   }
@@ -1050,12 +1051,11 @@ const Store = (() => {
     const cfg = (db.meta && db.meta.pptEditors) || {};
     return Object.keys(cfg).some(c => (cfg[c] || []).includes(d.code));
   }
-  // แผนกนี้ได้รับมอบหมายหน้า PPT ไหม (ไม่สนใจ lock/submit)
+  // แผนกนี้เป็นผู้กรอกหน้าต้นทุน (ปริมาณผลิต) ไหม — ใช้ volumeEditors (จำนวนเงินเป็น auto จาก GL แล้ว)
   function isPptFiller(actor) {
     if (!actor || actor.role !== 'USER' || !actor.departmentId) return false;
     const d = dept(actor.departmentId); if (!d) return false;
-    const cfg = (db.meta && db.meta.pptEditors) || {};
-    return Object.keys(cfg).some(c => (cfg[c] || []).includes(d.code));
+    return VOLUME_METRICS.some(m => volumeEditorsFor(m.key).includes(d.code));
   }
   function submitPpt(actor, year) {
     if (!isPptFiller(actor)) throw new Error('เฉพาะแผนกที่ได้รับมอบหมายหน้านี้เท่านั้นที่ส่งได้');
