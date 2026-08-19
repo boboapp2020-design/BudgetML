@@ -55,9 +55,16 @@
   .b-view{background:var(--purple-soft);color:var(--purple)}
   .b-fill{background:var(--green-soft);color:var(--green)}
   .b-cost{background:var(--amber-soft);color:var(--amber);margin-left:6px}
-  td.email input{width:100%;min-width:190px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
+  td.email{min-width:240px}
+  .em-list{display:flex;flex-direction:column;gap:5px}
+  .em-row{display:flex;gap:6px;align-items:center}
+  td.email input{flex:1;min-width:170px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
   td.email input:focus{outline:2px solid var(--blue-soft);border-color:var(--blue)}
   td.email input.bad{border-color:var(--red);background:var(--red-soft)}
+  .em-del{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:7px;width:28px;height:30px;cursor:pointer;flex:none;font-size:12px;line-height:1}
+  .em-del:hover{background:var(--red-soft);color:var(--red);border-color:var(--red)}
+  .em-add{margin-top:6px;border:1px dashed var(--blue);background:var(--blue-soft);color:var(--blue);border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit;font-size:12.5px;font-weight:600}
+  .em-add:hover{background:#dfeaff}
   .role-col{width:150px}
   .hint{font-size:12.5px;color:var(--muted);margin:2px 4px 14px}
   .footbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(20,30,60,.06);z-index:20}
@@ -70,7 +77,7 @@
 <div class="wrap">
   <header class="top">
     <h1>👥 รายชื่อผู้ใช้ระบบงบประมาณประจำปี</h1>
-    <p>บริษัท น้ำตาลมิตรลาว จำกัด · ติ๊กเลือกคนที่จะใช้งาน (เอาติ๊กออก = จะลบ) · ใส่อีเมลไว้สำหรับล็อกอินผ่านอีเมลในอนาคต</p>
+    <p>บริษัท น้ำตาลมิตรลาว จำกัด · ติ๊กเลือกคนที่จะใช้งาน (เอาติ๊กออก = จะลบ) · ใส่อีเมลได้หลายคนต่อ 1 ผู้ใช้ (กด ＋ เพิ่มอีเมล) สำหรับล็อกอินผ่านอีเมลในอนาคต</p>
     <div class="stat-row" id="stats"></div>
   </header>
 
@@ -214,10 +221,17 @@ const ROLE_META = {
 const SUB_ORDER = ['สังกัด กจก.','บริหารสำนักงาน','ด้านอ้อย','ด้านโรงงาน'];
 const LS_KEY = 'ml_userlist_v1';
 
-// ===== state (persisted) =====
-let state = {};   // id -> { on:bool, email:string }
+// ===== state (persisted) =====  id -> { on:bool, emails:[string] }
+let state = {};
 try { state = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ state = {}; }
-DATA.forEach(u => { if (!state[u.id]) state[u.id] = { on:true, email:'' }; });
+DATA.forEach(u => {
+  const s = state[u.id] || {};
+  if (s.on === undefined) s.on = true;
+  if (!Array.isArray(s.emails)) s.emails = s.email ? [s.email] : [];  // migrate อีเมลเดี่ยวเดิม
+  delete s.email;
+  state[u.id] = s;
+});
+localStorage.setItem(LS_KEY, JSON.stringify(state));  // normalize รูปแบบให้เป็น emails[] ทันที
 
 function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
@@ -258,7 +272,6 @@ function render(){
     html += `</div></section>`;
   });
   list.innerHTML = html || `<div class="hint" style="text-align:center;padding:30px">ไม่พบผู้ใช้ที่ตรงกับการค้นหา</div>`;
-  bindRows();
   updateStats();
 }
 
@@ -272,34 +285,65 @@ function tableFor(rows){
       <td><span class="nm">${esc(u.name)}</span>${u.code&&u.code!=='—'&&!/^[ก-๙]/.test(u.code)?`<span class="code">${esc(u.code)}</span>`:''}
         ${u.cost?`<span class="badge b-cost" title="${esc(u.cost)}">🏭 ${esc(u.cost)}</span>`:''}</td>
       <td class="role-col"><span class="badge ${rm.badge}">${rm.icon} ${rm.label}</span></td>
-      <td class="email"><input type="email" placeholder="อีเมลผู้ใช้ (เช่น name@mitrlao.com)" value="${esc(st.email||'')}" ${emailOk(st.email)?'':'class="bad"'}></td>
+      <td class="email">${emailCell(u)}</td>
     </tr>`;
   });
   return h + `</tbody></table>`;
 }
 
-function bindRows(){
-  document.querySelectorAll('tr[data-id]').forEach(tr => {
-    const id = tr.dataset.id;
-    tr.querySelector('.chk input').addEventListener('change', e => {
-      state[id].on = e.target.checked; tr.classList.toggle('off', !e.target.checked); save(); updateStats();
-    });
-    const em = tr.querySelector('.email input');
-    em.addEventListener('input', e => {
-      state[id].email = e.target.value.trim();
-      em.classList.toggle('bad', !emailOk(state[id].email));
-      save(); updateStats();
-    });
+function emailCell(u){
+  const s = state[u.id];
+  const rows = (s.emails.length ? s.emails : ['']).map((e,i) =>
+    `<div class="em-row">
+       <input type="email" data-idx="${i}" placeholder="อีเมลผู้ใช้ (เช่น name@mitrlao.com)" value="${esc(e)}" class="${emailOk(e)?'':'bad'}">
+       <button class="em-del" data-idx="${i}" title="ลบอีเมลนี้"${s.emails.length<=1?' style="visibility:hidden"':''}>✕</button>
+     </div>`).join('');
+  return `<div class="em-list">${rows}</div><button type="button" class="em-add">＋ เพิ่มอีเมล</button>`;
+}
+function renderCell(id){
+  const tr = document.querySelector('tr[data-id="'+CSS.escape(id)+'"]');
+  if (tr) tr.querySelector('td.email').innerHTML = emailCell(DATA.find(u=>u.id===id));
+}
+
+// event delegation (ผูกครั้งเดียว — #list คงอยู่แม้ innerHTML เปลี่ยน)
+function setupDelegation(){
+  const list = document.getElementById('list');
+  list.addEventListener('change', e => {
+    const cb = e.target.closest('td.chk input'); if (!cb) return;
+    const tr = cb.closest('tr[data-id]'); const id = tr.dataset.id;
+    state[id].on = cb.checked; tr.classList.toggle('off', !cb.checked); save(); updateStats();
   });
-  document.querySelectorAll('.grp-head').forEach(h =>
-    h.addEventListener('click', () => h.closest('.grp').classList.toggle('collapsed')));
+  list.addEventListener('input', e => {
+    const inp = e.target.closest('td.email input[type=email]'); if (!inp) return;
+    const id = inp.closest('tr[data-id]').dataset.id, idx = +inp.dataset.idx;
+    const s = state[id]; if (!s.emails.length) s.emails = [''];
+    s.emails[idx] = inp.value.trim();
+    inp.classList.toggle('bad', !emailOk(s.emails[idx]));
+    save(); updateStats();
+  });
+  list.addEventListener('click', e => {
+    const head = e.target.closest('.grp-head');
+    if (head) { head.closest('.grp').classList.toggle('collapsed'); return; }
+    const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    const id = tr.dataset.id, s = state[id];
+    if (e.target.closest('.em-add')) {
+      if (!s.emails.length) s.emails = [''];
+      s.emails.push(''); save(); renderCell(id);
+      const ins = tr.querySelectorAll('td.email input'); ins[ins.length-1]?.focus(); updateStats();
+    } else if (e.target.closest('.em-del')) {
+      const idx = +e.target.closest('.em-del').dataset.idx;
+      s.emails.splice(idx,1); if (!s.emails.length) s.emails=[''];
+      save(); renderCell(id); updateStats();
+    }
+  });
 }
 
 function updateStats(){
   const on = DATA.filter(u=>state[u.id].on);
-  const withEmail = DATA.filter(u=>state[u.id].email && emailOk(state[u.id].email));
+  const withEmail = DATA.filter(u=>state[u.id].emails.some(e=>e&&emailOk(e)));
+  const totalEmails = DATA.reduce((n,u)=>n+state[u.id].emails.filter(e=>e&&emailOk(e)).length,0);
   document.getElementById('selCount').textContent = on.length;
-  document.getElementById('emailCount').textContent = withEmail.length;
+  document.getElementById('emailCount').textContent = withEmail.length + (totalEmails>withEmail.length?` (${totalEmails} อีเมล)`:'');
   const by = r => ({ tot:DATA.filter(u=>u.role===r).length, on:on.filter(u=>u.role===r).length });
   const a=by('admin'), v=by('viewer'), f=by('filler');
   document.getElementById('stats').innerHTML =
@@ -326,7 +370,7 @@ function visibleIds(){
 }
 document.getElementById('resetBtn').addEventListener('click', () => {
   if(!confirm('ล้างการติ๊กและอีเมลทั้งหมดที่บันทึกไว้ กลับเป็นค่าเริ่มต้น (เลือกทุกคน อีเมลว่าง)?')) return;
-  state = {}; DATA.forEach(u=>state[u.id]={on:true,email:''}); save(); render();
+  state = {}; DATA.forEach(u=>state[u.id]={on:true,emails:[]}); save(); render();
 });
 
 // ===== export =====
@@ -336,18 +380,19 @@ function download(name, text, type){
   a.download = name; document.body.appendChild(a); a.click(); a.remove();
 }
 document.getElementById('expCsv').addEventListener('click', () => {
-  const rows = [['role','code','name','sub','selected','email','cost_role']];
+  const rows = [['role','code','name','sub','selected','emails','cost_role']];
   DATA.forEach(u => { const s=state[u.id];
-    rows.push([ROLE_META[u.role].label, u.code, u.name, u.sub||'', s.on?'YES':'NO', s.email||'', u.cost||'']); });
+    rows.push([ROLE_META[u.role].label, u.code, u.name, u.sub||'', s.on?'YES':'NO', s.emails.filter(e=>e).join('; '), u.cost||'']); });
   const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   download('users-mitrlao.csv', csv, 'text/csv;charset=utf-8');
 });
 document.getElementById('expJson').addEventListener('click', () => {
   const out = DATA.map(u => ({ id:u.id, role:u.role, code:u.code, name:u.name, sub:u.sub||null,
-    selected:state[u.id].on, email:state[u.id].email||null, costRole:u.cost||null }));
+    selected:state[u.id].on, emails:state[u.id].emails.filter(e=>e), costRole:u.cost||null }));
   download('users-mitrlao.json', JSON.stringify(out, null, 2), 'application/json');
 });
 
+setupDelegation();
 render();
 </script>
 </body>
