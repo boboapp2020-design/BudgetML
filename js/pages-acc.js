@@ -443,11 +443,11 @@ const PagesAcc = (() => {
         <td>${deltaBadge(cmp.diff, cmp.pct)}</td>
         <td><div class="comp-bar"><div class="comp-fill ${comp.pct === 100 ? 'full' : ''}" style="width:${comp.pct}%"></div></div>${comp.pct}%</td>
         <td>${UI.statusBadge(st.status)}</td>
-        <td class="td-actions">
-          <a class="link" href="#/acc/departments?d=${d.id}" title="Drill-down">ดู →</a>
-          ${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="ghost-btn small" data-revise="${d.id}" title="ตีกลับให้แก้ไข — ปลดล็อกเฉพาะแผนกนี้ (แผนกอื่นยังล็อกตามเดิม)">↩ ตีกลับ</button>` : ''}
-          ${yearClosed && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="ghost-btn small btn-lockback" data-lockdept="${d.id}" title="ตรวจงบที่แก้ไขแล้ว — ล็อกแผนกนี้คืน">🔒 ล็อกคืน</button>` : ''}
-        </td></tr>`;
+        <td class="td-actions"><div class="act-btns">
+          <a class="act-ic" href="#/acc/departments?d=${d.id}" title="ดูรายละเอียด (Drill-down)">🔍</a>
+          ${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="act-ic act-rev" data-revise="${d.id}" title="ตีกลับให้แก้ไข — ปลดล็อกเฉพาะแผนกนี้ (แผนกอื่นยังล็อกตามเดิม)">↩</button>` : ''}
+          ${yearClosed && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="act-ic act-lock" data-lockdept="${d.id}" title="ตรวจงบที่แก้ไขแล้ว — ล็อกแผนกนี้คืน">🔒</button>` : ''}
+        </div></td></tr>`;
     }).join('');
     // ตัวเลือกฝ่าย (ชั้นผู้อนุมัติ) สำหรับตีกลับยกฝ่าย — แสดงเฉพาะฝ่ายที่มีแผนกใต้สังกัด
     const divOpts = (Store.db.oversight || []).filter(n => n.approver)

@@ -1381,6 +1381,14 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:#fbfcfe;font-size:13px}
 .bulk-bar select{font:inherit;font-size:12.5px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:8px;max-width:280px}
 .bulk-bar .danger-btn:disabled{opacity:.45;cursor:not-allowed}
+/* ปุ่มจัดการรายแผนก — ไอคอนกะทัดรัด กันล้นเพจ */
+.td-actions{white-space:nowrap;width:1%}
+.act-btns{display:inline-flex;gap:5px;align-items:center}
+.act-ic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;
+  border:1px solid var(--border-strong);background:#fff;color:var(--ink-2);font-size:14px;text-decoration:none;cursor:pointer;transition:all .12s}
+.act-ic:hover{border-color:var(--blue);color:var(--blue);background:#eff5ff}
+.act-rev:hover{border-color:var(--up);color:var(--up);background:#fdeeea}
+.act-lock{color:#2e7a44} .act-lock:hover{border-color:#2e7a44;color:#2e7a44;background:#f2faf3}
 .chk-col{width:34px;text-align:center !important}
 .chk-col input{width:15px;height:15px;cursor:pointer;accent-color:#2563eb}
 .btn-lockback{border-color:#b7d3a8 !important;color:#2e7a44 !important}
