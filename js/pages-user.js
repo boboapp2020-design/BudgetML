@@ -60,7 +60,6 @@ const PagesUser = (() => {
       ${kpi('เพิ่ม / ลด เทียบปีก่อน', deltaBadge(cmp.diff, cmp.pct), (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
       ${gaugeKpi('ความครบถ้วน', c.comp.pct, `${c.comp.filled}/${c.comp.total} ช่อง · เป้าหมาย 100%`)}
       ${kpi('จำนวน GL', c.gls.length, 'ที่ได้รับมอบหมาย')}
-      ${kpi('สถานะ', UI.statusBadge(c.state.status), c.state.submittedAt ? 'ส่งเมื่อ ' + UI.fmtDT(c.state.submittedAt) : '')}
     </div>`;
 
     const todo = [];
