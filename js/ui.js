@@ -36,6 +36,17 @@ const UI = (() => {
     const s = STATUS_TH[st] || STATUS_TH.DRAFT;
     return `<span class="status-badge ${s.cls}">${s.label} · ${s.th}</span>`;
   };
+  // ไอคอนบทบาท (SVG badge สีพื้น) — แยก "กรอก" (ดินสอ) กับ "อนุมัติ/ดู" (เครื่องหมายถูก) ให้ชัด
+  //  type: 'fill' ผู้กรอก · 'div' ผู้อนุมัติ(ฝ่าย) · 'area' ผู้ดู(สังกัด) · 'co' ผู้ดูภาพรวมบริษัท
+  const ROLE_SVG = {
+    fill: '<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
+    check: '<path fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7"/>',
+    co: '<path d="M12 3l9 4.5v1.5H3V7.5L12 3zM5 11h2v7H5zm4 0h2v7H9zm4 0h2v7h-2zm4 0h2v7h-2zM3 19.5h18V21H3z"/>',
+  };
+  function roleBadge(type) {
+    const glyph = type === 'fill' ? ROLE_SVG.fill : type === 'co' ? ROLE_SVG.co : ROLE_SVG.check;
+    return `<span class="ricon ri-${type}"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true">${glyph}</svg></span>`;
+  }
   // ธงชาติประจำสกุลเงิน (ไฟล์ในโฟลเดอร์ Flags)
   const FLAG_IMG = { THB: 'Thai.png', USD: 'USA.png', CNY: 'China.png', EUR: 'EROU.png' };
   const currencyFlag = cur => FLAG_IMG[cur]
@@ -167,9 +178,9 @@ const UI = (() => {
               let switcher = '';
               if (asg.length > 1) {
                 const item = a => { const isCur = String(a.id) === curId;
-                  const ic = a.role === 'filler' ? '📝' : (a.id === 'MGR:co' ? '🏢' : /area/.test(a.id) ? '🏭' : '✅');
+                  const t = a.role === 'filler' ? 'fill' : (a.id === 'MGR:co' ? 'co' : /area/.test(a.id) ? 'area' : 'div');
                   return `<button class="um-swrole ${isCur ? 'cur' : ''}" data-switch="${esc(String(a.id))}" ${isCur ? 'disabled' : ''}>
-                    <span class="umr-ic">${ic}</span><span class="umr-nm">${esc(a.name)}${a.role === 'filler' ? ` <em>${a.id}</em>` : ''}</span>${isCur ? '<span class="umr-cur">● อยู่นี่</span>' : ''}</button>`; };
+                    ${roleBadge(t)}<span class="umr-nm">${esc(a.name)}${a.role === 'filler' ? ` <em>${a.id}</em>` : ''}</span>${isCur ? '<span class="umr-cur">● อยู่นี่</span>' : ''}</button>`; };
                 switcher = `<div class="um-switch"><div class="um-switch-h">🔄 สลับบทบาท (${asg.length})</div><div class="um-switch-list">${asg.map(item).join('')}</div></div>`;
               }
               return `
@@ -318,6 +329,6 @@ const UI = (() => {
     ths.forEach((th, idx) => { if (th.classList.contains('sortable')) th.addEventListener('click', () => doSort(idx)); });
   }
 
-  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, fuelLabel, currencyFlag, STATUS_TH, deptIcon, enableSort,
+  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, fuelLabel, currencyFlag, roleBadge, STATUS_TH, deptIcon, enableSort,
            shell, bindShell, year, setYear, kpi, card, pageHead, asOf, toast, modal, confirm2 };
 })();

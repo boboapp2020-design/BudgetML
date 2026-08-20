@@ -1748,7 +1748,7 @@ const PagesAcc = (() => {
     return { cls: 'div', ic: '✅', tag: 'ผู้อนุมัติ (ฝ่าย)', pg: esc(r.name), sub: 'ทวนสอบ/อนุมัติงบของแผนกใต้ฝ่าย' };
   }
   const roleTypeOf = r => r.kind === 'filler' ? 'fill' : (r.id === 'MGR:co' ? 'co' : /^MGR:area_/.test(r.id) ? 'area' : 'div');
-  const RT_IC = { fill: '📝', div: '✅', area: '🏭', co: '🏢' };
+  const RT_LB = { fill: 'กรอก', div: 'อนุมัติ', area: 'สังกัด', co: 'บริษัท' };
   function users(user) {
     const dir = Store.directory().slice().sort((a, b) => (b.roles.length - a.roles.length) || a.email.localeCompare(b.email));
     const nFill = dir.filter(a => a.roles.some(r => r.kind === 'filler')).length;
@@ -1766,10 +1766,10 @@ const PagesAcc = (() => {
       const c = { fill: 0, div: 0, area: 0, co: 0 };
       a.roles.forEach(r => c[roleTypeOf(r)]++);
       const sum = ['fill', 'div', 'area', 'co'].filter(t => c[t]).map(t =>
-        `<span class="rt ${t}">${RT_IC[t]} ${t === 'co' ? '' : c[t]}</span>`).join('') || '<span class="rt none">— ยังไม่มีบทบาท</span>';
+        `<span class="rt ${t}">${UI.roleBadge(t)} ${RT_LB[t]}${t === 'co' ? '' : ' ' + c[t]}</span>`).join('') || '<span class="rt none">— ยังไม่มีบทบาท</span>';
       // pill รายบทบาท (แสดงตอนกาง)
       const pills = a.roles.map(r => { const t = roleTypeOf(r);
-        return `<span class="rp ${t}"><span class="rp-ic">${RT_IC[t]}</span><span class="rp-nm">${esc(r.name)}${r.kind === 'filler' ? ` <em>${r.id}</em>` : ''}</span>
+        return `<span class="rp ${t}">${UI.roleBadge(t)}<span class="rp-nm">${esc(r.name)}${r.kind === 'filler' ? ` <em>${r.id}</em>` : ''}</span>
           <button class="rp-x" title="ลบบทบาท" data-delrole="${esc(a.email)}|${r.kind}|${esc(String(r.id))}">✕</button></span>`; }).join('')
         || '<span class="muted small">ยังไม่มีบทบาท — เพิ่มด้านล่าง</span>';
       return `<div class="ur" data-email="${esc(a.email)}">
