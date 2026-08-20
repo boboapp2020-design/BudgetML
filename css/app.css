@@ -1543,8 +1543,8 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
   --bg:#f5f7fb; --surface:#ffffff; --border:#e8edf5; --border-strong:#d4dcea;
   --ink:#1f2b43; --ink-2:#5b6b84; --muted:#8b98ad;
   --radius:12px;
-  --shadow:0 1px 2px rgba(31,43,67,.04),0 2px 8px rgba(31,43,67,.05);
-  --shadow-lg:0 4px 12px rgba(31,43,67,.07),0 10px 28px rgba(31,43,67,.09);
+  --shadow:0 1px 2px rgba(31,43,67,.06),0 4px 12px rgba(31,43,67,.09),0 12px 24px rgba(31,43,67,.06);
+  --shadow-lg:0 2px 4px rgba(31,43,67,.08),0 10px 24px rgba(31,43,67,.13),0 24px 48px rgba(31,43,67,.10);
 }
 body{background:var(--bg)}
 
@@ -1580,17 +1580,28 @@ body{background:var(--bg)}
 .uc-avatar{background:var(--blue);box-shadow:none}
 .year-select{box-shadow:none;border-radius:10px}
 
-/* ---------- การ์ด/KPI: ขาวแบน ขอบบาง ---------- */
-.card{background:#fff !important;border:1px solid var(--border) !important;border-radius:14px !important;box-shadow:var(--shadow) !important}
-.card:hover{box-shadow:var(--shadow) !important}
-.card svg{filter:none}
-.kpi,.kpi-c{background:#fff !important;border:1px solid var(--border) !important;border-radius:14px;box-shadow:var(--shadow) !important}
-.kpi:hover,.kpi-c:hover{transform:none;box-shadow:var(--shadow-lg) !important}
-.kpi-tint-blue,.kpi-tint-teal,.kpi-tint-green,.kpi-tint-amber{box-shadow:var(--shadow) !important}
-.side-card{background:#fff !important;border:1px solid var(--border);border-left:4px solid var(--sc);box-shadow:var(--shadow) !important}
-.side-card:hover{transform:translateY(-2px) !important;box-shadow:var(--shadow-lg) !important}
+/* ---------- การ์ด/KPI: ขาว มีมิติ (แสง-เงา) ---------- */
+.card{background:#fff !important;border:1px solid var(--border) !important;border-radius:14px !important;box-shadow:var(--shadow) !important;transition:transform .16s ease,box-shadow .2s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg) !important}
+.card svg{filter:drop-shadow(0 4px 8px rgba(31,43,67,.12))}
+.kpi,.kpi-c{background:linear-gradient(180deg,#ffffff,#fbfcff) !important;border:1px solid var(--border) !important;border-radius:14px;box-shadow:var(--shadow) !important;transition:transform .16s ease,box-shadow .2s ease}
+.kpi:hover,.kpi-c:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg) !important}
+.kpi-tint-blue{box-shadow:0 2px 4px rgba(46,124,246,.10),0 10px 22px rgba(46,124,246,.16),0 20px 40px rgba(31,43,67,.06) !important}
+.kpi-tint-teal{box-shadow:0 2px 4px rgba(13,148,136,.10),0 10px 22px rgba(13,148,136,.16),0 20px 40px rgba(31,43,67,.06) !important}
+.kpi-tint-green{box-shadow:0 2px 4px rgba(22,163,74,.10),0 10px 22px rgba(22,163,74,.15),0 20px 40px rgba(31,43,67,.06) !important}
+.kpi-tint-amber{box-shadow:0 2px 4px rgba(217,119,6,.10),0 10px 22px rgba(217,119,6,.16),0 20px 40px rgba(31,43,67,.06) !important}
+.side-card{background:linear-gradient(180deg,#ffffff,#fbfcff) !important;border:1px solid var(--border);border-left:4px solid var(--sc);box-shadow:var(--shadow) !important;transition:transform .16s ease,box-shadow .2s ease}
+.side-card:hover{transform:translateY(-3px) !important;box-shadow:var(--shadow-lg) !important}
 .ctrl-page .card{border:1px solid var(--border-strong) !important;box-shadow:var(--shadow) !important}
 .ctrl-page .card-head{background:#f5f8fd;border-bottom:1px solid var(--border)}
+/* กราฟ/แผนภูมิ — เพิ่มเงาให้ดูลอย */
+.exec-hero{box-shadow:0 4px 12px rgba(11,31,77,.28),0 20px 44px rgba(11,31,77,.30),0 40px 80px rgba(11,31,77,.16) !important}
+.mtp-bar,.mtp-bar-cur{box-shadow:0 4px 10px rgba(31,43,67,.18)}
+canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
+/* แถบปุ่ม Submit/Edit ต้นทุนการผลิต */
+.uc-fill-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 4px 4px;margin-top:8px;border-top:1px dashed var(--border-strong)}
+.uc-fill-foot .primary-btn,.uc-fill-foot .ghost-btn{margin-left:auto}
+.uc-fill-foot.done .uc-st-ok{font-size:13.5px}
 
 /* ---------- ปุ่ม: ทึบสีเดียว มน ไม่มี gradient ---------- */
 .primary-btn{background:var(--blue) !important;background-image:none !important;border:none;border-radius:11px;font-weight:700;box-shadow:0 1px 2px rgba(46,124,246,.25)}

@@ -145,10 +145,14 @@ const PagesCost = (() => {
     const isFiller = Store.isPptFiller(user);
     const mySubmitted = dcode && Store.pptSubmitted(year, dcode);
     const submits = Store.pptSubmitsFor(year);
-    const submitBar = isFiller
+    // สถานะล็อกแบบแข็ง (เฉพาะกรณีรอบปิดแล้วยังส่งค้าง) — ปุ่ม Submit/Edit จริงอยู่ในการ์ดกรอก
+    const submitBar = (isFiller && mySubmitted && !yearOpen)
+      ? `<div class="lock-banner">🔒 ส่งปริมาณปี ${year} แล้ว · รอบปีปิด — ให้แอดมินปลดล็อกก่อนจึงแก้ได้อีก</div>` : '';
+    // แถบปุ่ม Submit / Edit ในส่วนกรอก (ผู้กรอกปริมาณ)
+    const fillFoot = (isFiller && yearOpen)
       ? (mySubmitted
-        ? `<div class="lock-banner">🔒 ส่งปริมาณปี ${year} แล้ว — แก้ไขไม่ได้ · ให้แอดมินปลดล็อกก่อนจึงแก้ได้อีก</div>`
-        : (yearOpen ? `<div class="uc-submit-bar"><span>กรอกปริมาณครบแล้วกดส่ง — <b>ส่งแล้วแก้ไม่ได้</b> (แอดมินปลดล็อกเท่านั้น)</span><button class="primary-btn" id="pptSubmitBtn">✅ ส่งปริมาณ (Submit)</button></div>` : ''))
+        ? `<div class="uc-fill-foot done"><span class="uc-st uc-st-ok">✅ ส่งข้อมูลแล้ว — ค่าถูกส่งไปคำนวณ/ตันเรียบร้อย</span><button class="ghost-btn" id="pptEditBtn">✏️ แก้ไข (Edit)</button></div>`
+        : `<div class="uc-fill-foot"><span class="muted">กรอกปริมาณครบแล้วกดส่งเพื่อคำนวณ/ตัน · ส่งแล้วยังกด "แก้ไข" เองได้ (ถ้ารอบยังเปิด)</span><button class="primary-btn" id="pptSubmitBtn">✅ Submit — ส่งข้อมูล</button></div>`)
       : '';
     const adminUnlock = (user.role === 'ACCOUNTING' && submits.length)
       ? card(`📮 แผนกที่ส่งปริมาณแล้ว ปี ${year} (${submits.length})`, submits.map(s => {
@@ -167,7 +171,7 @@ const PagesCost = (() => {
             <tbody>${volRows}
               <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${fmt(Math.round(caneAllPlan))}</td><td class="num">${divCell(DIV.all)}</td><td class="num muted">—</td></tr>
               <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${fmt(Math.round(sugarAllPlan))}</td><td class="num">${divCell(DIV.sugar)}</td><td class="num muted">—</td></tr>
-            </tbody></table></div>`)
+            </tbody></table></div>${fillFoot}`)
       + `<div class="kpi-grid kpi-grid-4">
           <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท</div></div>
           <div class="kpi kpi-tint-teal"><div class="kpi-label">🌱 ต้นทุนอ้อย ไร่ส่งเสริม / ตัน</div><div class="kpi-value">${caneComm == null ? '—' : fmt(Math.round(caneComm))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (4-6) ÷ ตันไร่ส่งเสริม</div></div>
@@ -190,9 +194,12 @@ const PagesCost = (() => {
       catch (e) { UI.toast(e.message, 'err'); }
     }));
     document.getElementById('pptSubmitBtn')?.addEventListener('click', () => {
-      UI.confirm2('ส่งปริมาณผลิต', `ส่งปริมาณผลิตปี ${year}?`, 'หลังส่งจะแก้ไขไม่ได้ ต้องให้แอดมินปลดล็อกก่อน', () => {
-        try { Store.submitPpt(user, year); UI.toast('ส่งปริมาณแล้ว — ล็อกการแก้ไข'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+      UI.confirm2('ส่งปริมาณผลิต', `ส่งปริมาณผลิตปี ${year}?`, 'ค่าจะถูกส่งไปคำนวณต่อตัน · ยังกด "แก้ไข (Edit)" เองได้ถ้ารอบยังเปิด', () => {
+        try { Store.submitPpt(user, year); UI.toast('ส่งปริมาณแล้ว — คำนวณต่อตันเรียบร้อย'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
       });
+    });
+    document.getElementById('pptEditBtn')?.addEventListener('click', () => {
+      try { Store.reopenOwnPpt(user, year); UI.toast('เปิดให้แก้ไขปริมาณแล้ว'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
     });
     document.querySelectorAll('[data-unlock-ppt]').forEach(b => b.addEventListener('click', () => {
       try { Store.unlockPpt(user, year, b.dataset.unlockPpt); UI.toast('ปลดล็อกแล้ว — แผนกแก้ไขได้อีก'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }

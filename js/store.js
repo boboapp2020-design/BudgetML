@@ -1253,6 +1253,15 @@ const Store = (() => {
     audit(actor, 'ปลดล็อกต้นทุน PPT', { newValue: `${year} · แผนก ${deptCode}` });
     save();
   }
+  // ผู้กรอกกดแก้ไขปริมาณของตนเอง (Edit) — ได้เมื่อรอบปียังเปิด (ไม่ต้องรอแอดมิน)
+  function reopenOwnPpt(actor, year) {
+    if (!isPptFiller(actor)) throw new Error('เฉพาะแผนกที่ได้รับมอบหมายเท่านั้น');
+    if (!isYearEditable(year)) throw new Error('รอบปีนี้ปิดแล้ว — ให้แอดมินปลดล็อก');
+    const d = dept(actor.departmentId);
+    db.pptSubmits = (db.pptSubmits || []).filter(x => !(x.year === Number(year) && x.deptCode === d.code));
+    audit(actor, 'ขอแก้ไขต้นทุน PPT (Edit)', { newValue: `${year} · ${d.name}` });
+    save();
+  }
   function setPptAmount(actor, year, code, amount) {
     if (!canEditPpt(actor, code, year)) throw new Error('กรอกจำนวนเงินนี้ไม่ได้ — ต้องเป็นแผนกที่ได้รับมอบหมายหมวดนี้ และรอบปีต้องเปิดอยู่ (แอดมินแก้ได้เสมอ)');
     if (amount !== null && (typeof amount !== 'number' || !isFinite(amount))) throw new Error('ค่าไม่ถูกต้อง');
@@ -1588,7 +1597,7 @@ const Store = (() => {
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
-    pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt,
+    pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt,
     myNotifications, markNotificationsRead, notify,
     CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow, budgetRoundClosed, currentMonth, windowForMonth,
     changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,
