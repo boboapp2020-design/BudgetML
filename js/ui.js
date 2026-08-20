@@ -36,6 +36,16 @@ const UI = (() => {
     const s = STATUS_TH[st] || STATUS_TH.DRAFT;
     return `<span class="status-badge ${s.cls}">${s.label} · ${s.th}</span>`;
   };
+  // สถานะแบบไอคอนแม่กุญแจล้วน (ประหยัดพื้นที่คอลัมน์) — LOCKED = กุญแจปิด · อื่นๆ = กุญแจคลายล็อก · hover เห็นข้อความเต็ม
+  const LOCK_CLOSED = '<path d="M12 15.5a1.6 1.6 0 0 0 1.6-1.6 1.6 1.6 0 0 0-3.2 0 1.6 1.6 0 0 0 1.6 1.6zM17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm-7 0V7a2 2 0 0 1 4 0v2h-4z"/>';
+  const LOCK_OPEN   = '<path d="M12 15.5a1.6 1.6 0 0 0 1.6-1.6 1.6 1.6 0 0 0-3.2 0 1.6 1.6 0 0 0 1.6 1.6zM17 9H10V7a2 2 0 0 1 3.9-.5l1.9-.5A4 4 0 0 0 8 7v2H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z"/>';
+  const STATUS_COLOR = { DRAFT:'#94a3b8', IN_PROGRESS:'#2563eb', COMPLETED:'#0d9488', SUBMITTED:'#2563eb', ENDORSED:'#7c3aed', NEED_REVISION:'#d97706', LOCKED:'#64748b' };
+  const statusLock = st => {
+    const s = STATUS_TH[st] || STATUS_TH.DRAFT;
+    const closed = st === 'LOCKED';
+    const color = STATUS_COLOR[st] || '#64748b';
+    return `<span class="lock-ic ${closed ? 'is-locked' : 'is-open'}" title="${s.label} · ${s.th}"><svg viewBox="0 0 24 24" width="20" height="20" fill="${color}" aria-hidden="true">${closed ? LOCK_CLOSED : LOCK_OPEN}</svg></span>`;
+  };
   // ไอคอนบทบาท (SVG badge สีพื้น) — แยก "กรอก" (ดินสอ) กับ "อนุมัติ/ดู" (เครื่องหมายถูก) ให้ชัด
   //  type: 'fill' ผู้กรอก · 'div' ผู้อนุมัติ(ฝ่าย) · 'area' ผู้ดู(สังกัด) · 'co' ผู้ดูภาพรวมบริษัท
   const ROLE_SVG = {
@@ -352,6 +362,6 @@ const UI = (() => {
     ths.forEach((th, idx) => { if (th.classList.contains('sortable')) th.addEventListener('click', () => doSort(idx)); });
   }
 
-  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, fuelLabel, currencyFlag, roleBadge, STATUS_TH, deptIcon, enableSort,
+  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, statusLock, fuelLabel, currencyFlag, roleBadge, STATUS_TH, deptIcon, enableSort,
            shell, bindShell, year, setYear, kpi, card, pageHead, asOf, toast, modal, confirm2 };
 })();

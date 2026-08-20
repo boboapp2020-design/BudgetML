@@ -434,7 +434,6 @@ const PagesAcc = (() => {
         const n = depts.filter(x => (x.side || (x.code || '')[0]) === side).length;
         head = `<tr class="side-row"><td colspan="9">${esc(sides[side] || 'อื่นๆ')} · ${n} หน่วยงาน</td></tr>`;
       }
-      const yearClosed = Store.period(year)?.status !== 'OPEN';
       return `${head}<tr>
         <td class="chk-col"><input type="checkbox" class="dsel" value="${d.id}"></td>
         <td><a class="link" href="#/acc/departments?d=${d.id}"><b>${esc(d.name)}</b></a><div class="muted small">${d.code}</div></td>
@@ -442,11 +441,11 @@ const PagesAcc = (() => {
         <td class="num ${cmp.diff > 0 ? 'txt-up' : cmp.diff < 0 ? 'txt-down' : ''}">${(cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff)}</td>
         <td>${deltaBadge(cmp.diff, cmp.pct)}</td>
         <td><div class="comp-bar"><div class="comp-fill ${comp.pct === 100 ? 'full' : ''}" style="width:${comp.pct}%"></div></div>${comp.pct}%</td>
-        <td>${UI.statusBadge(st.status)}</td>
+        <td class="st-lock-col"><button class="lock-ic-btn" data-tlock="${d.id}" data-locked="${st.status === 'LOCKED' ? 1 : 0}"
+          title="${st.status === 'LOCKED' ? 'แผนกนี้ถูกล็อก — คลิกเพื่อปลดล็อกให้แก้ไข' : 'แผนกนี้เปิดให้แก้ไข — คลิกเพื่อล็อกแผนกนี้'}">${UI.statusLock(st.status)}</button></td>
         <td class="td-actions"><div class="act-btns">
           <a class="act-ic" href="#/acc/departments?d=${d.id}" title="ดูรายละเอียด (Drill-down)">🔍</a>
-          ${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="act-ic act-rev" data-revise="${d.id}" title="ตีกลับให้แก้ไข — ปลดล็อกเฉพาะแผนกนี้ (แผนกอื่นยังล็อกตามเดิม)">↩</button>` : ''}
-          ${yearClosed && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="act-ic act-lock" data-lockdept="${d.id}" title="ตรวจงบที่แก้ไขแล้ว — ล็อกแผนกนี้คืน">🔒</button>` : ''}
+          ${['SUBMITTED', 'ENDORSED'].includes(st.status) ? `<button class="act-ic act-rev" data-revise="${d.id}" title="ตีกลับให้แก้ไข (พร้อมเหตุผล) — ปลดล็อกเฉพาะแผนกนี้">↩</button>` : ''}
         </div></td></tr>`;
     }).join('');
     // ตัวเลือกฝ่าย (ชั้นผู้อนุมัติ) สำหรับตีกลับยกฝ่าย — แสดงเฉพาะฝ่ายที่มีแผนกใต้สังกัด
@@ -784,6 +783,25 @@ const PagesAcc = (() => {
     document.getElementById('exportMLXlsx')?.addEventListener('click', () => exportML('xlsx').catch(e => toast(e.message, 'err')));
     document.getElementById('exportMLCsv')?.addEventListener('click', () => exportML('csv').catch(e => toast(e.message, 'err')));
     document.querySelector('[data-drill-back]')?.addEventListener('click', () => { location.hash = '#/acc/departments'; });
+    // แม่กุญแจ = ล็อก/ปลดล็อก "รายแผนก" (Budget Control = ทั้งระบบ)
+    document.querySelectorAll('[data-tlock]').forEach(btn => btn.addEventListener('click', () => {
+      const deptId = btn.dataset.tlock, name = esc(Store.dept(deptId).name);
+      if (btn.dataset.locked === '1') {
+        UI.modal(`🔓 ปลดล็อกให้แก้ไข — ${name}`, `
+          <p>ปลดล็อก<b>เฉพาะแผนกนี้</b>ให้กลับมาแก้ไขได้ (แผนกอื่นยังล็อกตามเดิม) · ระบุเหตุผล (ถ้ามี — จะแจ้งไปยังหน่วยงาน):</p>
+          <textarea id="tlockNote" rows="3" placeholder="เช่น เปิดให้ปรับตัวเลขตามที่ตกลง"></textarea>`, [
+          { label: 'ยกเลิก', cls: 'ghost-btn' },
+          { label: '🔓 ปลดล็อกแผนกนี้', cls: 'primary-btn', onClick: close => {
+              try { Store.needRevision(user, UI.year(), deptId, document.getElementById('tlockNote').value.trim()); toast('ปลดล็อกแผนกนี้แล้ว — แก้ไขได้'); close(); App.render(); }
+              catch (e) { toast(e.message, 'err'); }
+            } },
+        ]);
+      } else {
+        UI.confirm2(`🔒 ล็อกแผนกนี้ — ${name}`, 'ล็อกงบของแผนกนี้ให้แก้ไขไม่ได้ (เฉพาะแผนกนี้)',
+          'การเปิด/ปิดทั้งระบบทำที่ Budget Control · ปลดล็อกภายหลังได้ที่ไอคอนแม่กุญแจนี้',
+          () => { try { Store.lockDept(user, UI.year(), deptId); toast('ล็อกแผนกนี้แล้ว'); App.render(); } catch (e) { toast(e.message, 'err'); } });
+      }
+    }));
     document.querySelectorAll('[data-revise]').forEach(btn => btn.addEventListener('click', () => {
       const deptId = btn.dataset.revise;
       UI.modal(`ตีกลับให้แก้ไข — ${esc(Store.dept(deptId).name)}`, `

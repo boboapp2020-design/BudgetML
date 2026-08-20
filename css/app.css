@@ -1403,6 +1403,14 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .bulk-bar select{font:inherit;font-size:12.5px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:8px;flex:1 1 180px;min-width:130px;max-width:260px}
 /* หัวเพจ: ปุ่มกลับชิดซ้าย · ปุ่ม action ดันไปชิดขวา */
 .page-actions .pa-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+/* สถานะแบบไอคอนแม่กุญแจ (คอลัมน์แคบ กันตารางล้น) */
+.lock-ic{display:inline-flex;align-items:center;justify-content:center;line-height:0}
+.lock-ic svg{display:block}
+.lock-ic.is-locked{opacity:.85}
+.st-lock-col{text-align:center;width:48px}
+.lock-ic-btn{background:none;border:0;cursor:pointer;padding:5px;border-radius:8px;line-height:0;transition:background .12s}
+.lock-ic-btn:hover{background:rgba(15,30,60,.08)}
+.lock-ic-btn:active{transform:scale(.92)}
 .bulk-bar .danger-btn:disabled{opacity:.45;cursor:not-allowed}
 /* ปุ่มจัดการรายแผนก — ไอคอนกะทัดรัด กันล้นเพจ */
 .td-actions{white-space:nowrap;width:1%}
