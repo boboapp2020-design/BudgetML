@@ -132,15 +132,15 @@ const PagesUser = (() => {
   function budget(user) {
     const c = ctx(user);
     const rvOn = c.revise.on, thru = c.revise.thru;
-    // ดูงบต้นปี (ORIGINAL) ใต้ช่อง — เปิด/ปิดผ่าน dropdown เดียว · มีเฉพาะเมื่อถูก Lock งบต้นปีไว้แล้ว
+    // โหมด "ดูงบต้นปี" — สลับข้อมูลทั้งตารางเป็นงบต้นปี (ORIGINAL, อ่านอย่างเดียว) + เปลี่ยนธีมสี
     const hasOrig = !!Store.snapByLabel(c.year, 'ORIGINAL');
     const viewOrig = hasOrig && localStorage.getItem('abp_view_orig') === '1';
-    const cmpVer = viewOrig ? 'ORIGINAL' : '';
-    // baseline คอลัมน์เทียบ: ดูงบต้นปี · หรือ รอบ Revise = งบเดิม · หรือ ปีก่อน
-    const baseLabel = viewOrig ? 'งบต้นปี' : (rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`);
-    const basePrev = viewOrig ? Store.snapDeptTotal(c.year, 'ORIGINAL', c.deptId)
-      : (rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId));
-    const cur = Store.deptTotal(c.year, c.deptId), prev = basePrev;
+    const monthsOf = key => viewOrig ? Store.snapRowMonths(c.year, 'ORIGINAL', c.deptId, key) : Store.rowMonths(c.year, c.deptId, key);
+    // คอลัมน์เทียบ (ghost) = ปีก่อน (หรืองบเดิมตอน Revise) — คงไว้ตามเดิม
+    const baseLabel = rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`;
+    const basePrev = rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId);
+    const cur = viewOrig ? Store.snapDeptTotal(c.year, 'ORIGINAL', c.deptId) : Store.deptTotal(c.year, c.deptId);
+    const prev = basePrev;
     const cmp = Store.compare(cur, prev);
     const rvKind = c.revise.kind;
     const rvTitle = rvKind === 'LANDING' ? 'รอบปิดยอด (Landing) ปลายปี' : 'รอบ Revise กลางปี';
@@ -169,7 +169,7 @@ const PagesUser = (() => {
     const body = c.rows.map(r => {
       const g = r.gl;
       const adj = adjMap[r.key];   // การปรับจากคำร้อง (ถ้ามี)
-      const m = Store.rowMonths(c.year, c.deptId, r.key);
+      const m = monthsOf(r.key);
       const t = Store.mtp(c.year, c.deptId, r.key);
       const notUsed = Store.glNotUsed(c.year, c.deptId, r.key);
       const prevT = rvOn ? Store.originalRowTotal(c.year, c.deptId, r.key) : Store.rowTotal(c.prevYear, c.deptId, r.key);
@@ -178,9 +178,8 @@ const PagesUser = (() => {
       const an = Store.glAnomaly(gcmp);
       const n = Store.note(c.year, c.deptId, r.key);
       const hasNote = n.reason.trim() || n.assumption.trim();
-      const dis = (!c.editable || notUsed) ? 'disabled' : '';
-      const pm = cmpVer ? Store.snapRowMonths(c.year, cmpVer, c.deptId, r.key)
-        : (rvOn ? Store.originalMonths(c.year, c.deptId, r.key) : Store.rowMonths(c.prevYear, c.deptId, r.key));
+      const dis = (viewOrig || !c.editable || notUsed) ? 'disabled' : '';
+      const pm = rvOn ? Store.originalMonths(c.year, c.deptId, r.key) : Store.rowMonths(c.prevYear, c.deptId, r.key);
       const am = rvOn ? Store.actualMonths(c.year, c.deptId, r.key) : null;
       const rowTip = `CCT ${r.cct} ${esc(r.cctName)} · IO ${r.io || '—'}`;
       const cells = m.map((v, i) => {
@@ -226,9 +225,8 @@ const PagesUser = (() => {
     }).join('');
 
     const foot = (() => {
-      const mm = Store.deptMonthly(c.year, c.deptId);
-      const pm = cmpVer ? Store.snapDeptMonthly(c.year, cmpVer, c.deptId)
-        : (rvOn ? Store.originalDeptMonthly(c.year, c.deptId) : Store.deptMonthly(c.prevYear, c.deptId));
+      const mm = viewOrig ? Store.snapDeptMonthly(c.year, 'ORIGINAL', c.deptId) : Store.deptMonthly(c.year, c.deptId);
+      const pm = rvOn ? Store.originalDeptMonthly(c.year, c.deptId) : Store.deptMonthly(c.prevYear, c.deptId);
       return `<tr class="tr-sum"><td class="sticky-col td-gl"><b>รวมทั้งหน่วยงาน</b></td>
         ${mm.map(v => `<td class="num" data-msum>${fmt(v)}</td>`).join('')}
         <td class="num td-total" data-gsum><b>${fmt(cur)}</b></td>
@@ -257,11 +255,13 @@ const PagesUser = (() => {
       + card('', `<div class="grid-toolbar">
           ${lockChip}
           <span class="grid-tools">
-            ${hasOrig ? `<button id="viewOrigBtn" class="ghost-btn small ${viewOrig ? 'vo-on' : ''}" title="แสดงตัวเลขงบที่ตั้งไว้ต้นปี (อนุมัติ) ใต้ทุกช่อง — ดูอย่างเดียว แก้ไม่ได้">${viewOrig ? '✓ กำลังดูงบต้นปี' : '👁 ดูงบต้นปี'}</button>` : ''}
+            ${hasOrig ? `<button id="viewOrigBtn" class="ghost-btn small ${viewOrig ? 'vo-on' : ''}" title="สลับตารางทั้งหมดเป็นงบที่ตั้งไว้ต้นปี (อนุมัติ) — ดูอย่างเดียว · กดอีกครั้งกลับงบปัจจุบัน">${viewOrig ? '🔙 กลับงบปัจจุบัน' : '📌 ดูงบต้นปี'}</button>` : ''}
+            <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขปีก่อนใต้ทุกช่อง (เทียบเดือนต่อเดือน)">🔀 ปีก่อน</button>
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
             <a class="ghost-btn small btn-review" href="#/review">✓ ตรวจสอบงบ</a>
           </span></div>
-        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' show-prev cmp-orig' : '') });
+        ${viewOrig ? '<div class="vo-banner">📌 กำลังดูงบต้นปี (อนุมัติ) — อ่านอย่างเดียว · กด "🔙 กลับงบปัจจุบัน" เพื่อแก้ไข</div>' : ''}
+        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') });
   }
 
   function budgetBind(user) {
@@ -384,13 +384,28 @@ const PagesUser = (() => {
       next?.focus();
     }
 
-    /* --- ปุ่ม "ดูงบต้นปี" (toggle) — แสดงตัวเลขงบต้นปีใต้ช่อง (ดูอย่างเดียว) --- */
+    /* --- ปุ่ม "ดูงบต้นปี" (toggle) — สลับตารางทั้งหมดเป็นงบต้นปี (อ่านอย่างเดียว) --- */
     document.getElementById('viewOrigBtn')?.addEventListener('click', () => {
       const on = localStorage.getItem('abp_view_orig') !== '1';
       localStorage.setItem('abp_view_orig', on ? '1' : '0');
       App.render();
     });
     const bCard = document.querySelector('.budget-card');
+
+    /* --- เทียบปีก่อนเดือนต่อเดือน: ghost ทุกช่อง (toggle) --- */
+    const SHOW_PREV_KEY = 'abp_show_prev';
+    const pBtn = document.getElementById('prevToggleBtn');
+    const applyPrevMode = on => {
+      bCard.classList.toggle('show-prev', on);
+      pBtn?.classList.toggle('btn-purple', on);
+      if (pBtn) pBtn.textContent = on ? '🔀 ปีก่อน: เปิด' : '🔀 ปีก่อน';
+    };
+    applyPrevMode(localStorage.getItem(SHOW_PREV_KEY) === '1');
+    pBtn?.addEventListener('click', () => {
+      const on = !(localStorage.getItem(SHOW_PREV_KEY) === '1');
+      localStorage.setItem(SHOW_PREV_KEY, on ? '1' : '0');
+      applyPrevMode(on);
+    });
 
     // ป้ายลอยเหนือช่องที่กำลังกรอก (เฉพาะตอนโหมด ghost ปิด)
     let chip = document.getElementById('prevChip');

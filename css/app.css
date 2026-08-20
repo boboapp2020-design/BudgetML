@@ -252,10 +252,16 @@ a { color: var(--blue); }
 .budget-card.show-prev .prev-ghost { display: block; }
 .budget-card.show-prev .prev-ghost::before { content: 'ปีก่อน '; color: #b3bfd4; font-size: 9px; }
 .budget-card.revise-mode.show-prev .prev-ghost::before { content: 'งบเดิม '; }
-/* ดูงบต้นปี — สีส้มชัด แยกจากงบล่าสุด (สีดำในช่อง) */
-.budget-card.cmp-orig .prev-ghost { color: #b3760a; font-weight: 700; background: #fdf6e9; border-top: 1px solid #f2dcae; }
-.budget-card.cmp-orig .prev-ghost::before { content: '📌 ต้นปี '; color: #c07d0a; font-weight: 700; }
-.budget-card.cmp-orig .cell { background: #fff; }
+/* โหมด "ดูงบต้นปี" — ธีมสีส้ม/อำพันทั้งตาราง แยกจากงบปัจจุบัน (สีน้ำเงิน) */
+.vo-banner { background: #fdf3e2; border: 1px solid #e6b667; color: #8a5a06; font-weight: 700; font-size: 13px; padding: 9px 14px; border-radius: 10px; margin: 0 0 10px; }
+.budget-card.view-orig .budget-table th { background: linear-gradient(180deg, #d98c1f 0%, #a8630c 100%) !important; border-bottom-color: #e6a94b !important; }
+.budget-card.view-orig .budget-table th.sticky-col { background: linear-gradient(180deg, #d98c1f 0%, #a8630c 100%) !important; }
+.budget-card.view-orig .th-yr { color: #fbe6c2 !important; }
+.budget-card.view-orig .cell { background: #fdf8ef !important; border-color: #ecd9b6 !important; color: #7a5405; font-weight: 600; cursor: default; }
+.budget-card.view-orig .budget-scroll { background: #fffdf8; }
+.budget-card.view-orig .td-total { color: #8a5a06; }
+.budget-card.view-orig .tr-sum td { background: #fbf1dd !important; }
+.budget-card.view-orig .td-gl { background: #fffdf8; }
 #viewOrigBtn.vo-on { background: #fdf3e2 !important; border-color: #e0a94b !important; color: #a9640a !important; font-weight: 700; }
 
 /* ---------- รอบ Revise ---------- */
