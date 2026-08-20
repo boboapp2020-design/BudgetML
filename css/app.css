@@ -1482,3 +1482,79 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .req-st.st-no{background:#fde8e6;color:#c0322b;border:1px solid #f3b8b2}
 .req-st.st-cancel{background:#eef1f6;color:#6b7488;border:1px solid #dfe3ec}
 @media(max-width:640px){ .req-grid3{grid-template-columns:1fr} .req-tr{grid-template-columns:1fr} .req-tr-arrow{transform:rotate(90deg)} }
+
+/* =============================================================
+ * v18.2 — Clean Professional Theme (แนว PEAK: ขาวสะอาด · ฟ้าสดจุดเดียว · เงาบางเบา)
+ *  บล็อกนี้อยู่ท้ายไฟล์ = ชนะทุก rule ก่อนหน้า (รวม glossy !important)
+ * ============================================================= */
+:root{
+  --navy:#1f2b43; --navy-2:#27364f; --blue:#2e7cf6; --blue-soft:#8ab5f9;
+  --bg:#f5f7fb; --surface:#ffffff; --border:#e8edf5; --border-strong:#d4dcea;
+  --ink:#1f2b43; --ink-2:#5b6b84; --muted:#8b98ad;
+  --radius:12px;
+  --shadow:0 1px 2px rgba(31,43,67,.04),0 2px 8px rgba(31,43,67,.05);
+  --shadow-lg:0 4px 12px rgba(31,43,67,.07),0 10px 28px rgba(31,43,67,.09);
+}
+body{background:var(--bg)}
+
+/* ---------- Sidebar: ขาวสะอาด ---------- */
+.sidebar{background:#fff !important;color:var(--ink);border-right:1px solid var(--border);box-shadow:0 0 0 rgba(0,0,0,0) !important}
+.brand{border-bottom:1px solid var(--border)}
+.brand-name{color:var(--ink)}
+.brand-sub{color:var(--muted)}
+.brand-link:hover{background:#f2f6fd}
+.nav-item{color:#5b6b84}
+.nav-item:hover{background:#f2f6fd;color:var(--blue)}
+.nav-item.active{background:#e9f1fe;color:var(--blue);font-weight:700;box-shadow:none !important}
+.nav-tx small{color:#9aa7bb}
+.nav-item.active .nav-tx small{color:#6b96d8}
+.sidebar-foot{border-top:1px solid var(--border);color:#8b98ad}
+.sf-company{color:#5b6b84}
+.period-card{background:#f5f8fd;border:1px solid var(--border)}
+.pc-title{color:#8b98ad}
+.pc-year{color:var(--ink)}
+.pc-badge.closed{background:#e2e8f2;color:#5b6b84}
+.pc-range{color:#8b98ad}
+.pc-bar{background:#e4eaf4}
+.pc-fill{background:var(--blue)}
+
+/* ---------- Topbar: ขาวแบน เงาจาง ---------- */
+.topbar{background:#fff !important;border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(31,43,67,.03) !important;backdrop-filter:none}
+.icon-btn{background:#fff;border:1px solid var(--border-strong);border-radius:11px;box-shadow:none}
+.icon-btn:hover{transform:none;background:#f2f6fd;box-shadow:none}
+.user-chip{box-shadow:none}
+.user-chip.uc-clickable{border:1px solid var(--border-strong)}
+.uc-avatar{background:var(--blue);box-shadow:none}
+.year-select{box-shadow:none;border-radius:10px}
+
+/* ---------- การ์ด/KPI: ขาวแบน ขอบบาง ---------- */
+.card{background:#fff !important;border:1px solid var(--border) !important;border-radius:14px !important;box-shadow:var(--shadow) !important}
+.card:hover{box-shadow:var(--shadow) !important}
+.card svg{filter:none}
+.kpi,.kpi-c{background:#fff !important;border:1px solid var(--border) !important;border-radius:14px;box-shadow:var(--shadow) !important}
+.kpi:hover,.kpi-c:hover{transform:none;box-shadow:var(--shadow-lg) !important}
+.kpi-tint-blue,.kpi-tint-teal,.kpi-tint-green,.kpi-tint-amber{box-shadow:var(--shadow) !important}
+.side-card{background:#fff !important;border:1px solid var(--border);border-left:4px solid var(--sc);box-shadow:var(--shadow) !important}
+.side-card:hover{transform:translateY(-2px) !important;box-shadow:var(--shadow-lg) !important}
+.ctrl-page .card{border:1px solid var(--border-strong) !important;box-shadow:var(--shadow) !important}
+.ctrl-page .card-head{background:#f5f8fd;border-bottom:1px solid var(--border)}
+
+/* ---------- ปุ่ม: ทึบสีเดียว มน ไม่มี gradient ---------- */
+.primary-btn{background:var(--blue) !important;background-image:none !important;border:none;border-radius:11px;font-weight:700;box-shadow:0 1px 2px rgba(46,124,246,.25)}
+.primary-btn:hover{transform:none;background:#2470e8 !important;box-shadow:0 4px 12px rgba(46,124,246,.3)}
+.ghost-btn{border-radius:11px;border-color:var(--border-strong);box-shadow:none}
+.ghost-btn:hover{transform:none;border-color:var(--blue);color:var(--blue);box-shadow:none}
+.danger-btn{border-radius:11px}
+.btn-grad{background:var(--blue) !important;background-image:none !important}
+
+/* ---------- อื่นๆ ให้เข้าชุด ---------- */
+.noti-panel,.user-menu{border-radius:14px;box-shadow:0 12px 32px rgba(31,43,67,.14)}
+.um-head{background:#f5f8fd}
+.bulk-bar,.ud-foot,.ur-head:hover{background:#f8fafd}
+.grid-toolbar{background:#fff}
+.data-table thead th{background:#f5f8fd;color:#44526b}
+.tr-sum td{background:#f5f8fd}
+.io-search,.ud-bar input,.req-form select,.req-form input,.req-form textarea{box-shadow:none}
+.req-section{background:#fafbfe;border-color:var(--border)}
+.boot-sync{background:#f5f7fb}
+.bs-card{box-shadow:0 10px 40px rgba(31,43,67,.12)}
