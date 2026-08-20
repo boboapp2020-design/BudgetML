@@ -367,6 +367,52 @@ const Store = (() => {
     });
     return true;
   }
+  /* ---------- เวอร์ชันงบ (snapshot) หลายรอบ — งบต้นปี / Revise / กดเอง ---------- */
+  const SNAP_TITLE = lb => lb === 'ORIGINAL' ? 'งบต้นปี (อนุมัติ)' : lb;
+  function snapshotsFor(year) {
+    return (db.budgetSnapshots || []).filter(s => s.year === Number(year)).slice()
+      .sort((a, b) => ((a.takenAt || a.createdAt || '') + '').localeCompare((b.takenAt || b.createdAt || '')));
+  }
+  function snapByLabel(year, label) {
+    return (db.budgetSnapshots || []).find(s => s.year === Number(year) && s.label === label) || null;
+  }
+  // ถ่าย snapshot งบปัจจุบันของทั้งปี (label ไม่ซ้ำต่อปี — ต่อท้ายเลขถ้าซ้ำ) · actor=null = ระบบถ่ายอัตโนมัติ
+  function takeSnapshot(actor, year, label) {
+    if (actor) assertAccounting(actor);
+    year = Number(year);
+    let lb = String(label || '').trim() || ('เวอร์ชัน ' + new Date().toISOString().slice(0, 10));
+    const exist = new Set((db.budgetSnapshots || []).filter(s => s.year === year).map(s => s.label));
+    if (exist.has(lb)) { let i = 2; while (exist.has(lb + ' (' + i + ')')) i++; lb = lb + ' (' + i + ')'; }
+    if (!db.budgetSnapshots) db.budgetSnapshots = [];
+    db.budgetSnapshots.push({
+      year, label: lb, takenAt: new Date().toISOString(), createdAt: new Date().toISOString(), takenBy: actor ? actor.name : 'ระบบ (อัตโนมัติ)',
+      rows: db.budgets.filter(b => b.year === year).map(b => ({ departmentId: b.departmentId, glId: b.glId, cct: b.cct, months: b.months.slice(), mtp1: b.mtp1, mtp2: b.mtp2 })),
+    });
+    if (actor) audit(actor, 'บันทึกเวอร์ชันงบ', { newValue: `${year} · ${lb}` });
+    save();
+    return lb;
+  }
+  function deleteSnapshot(actor, year, label) {
+    assertAccounting(actor);
+    if (label === 'ORIGINAL') throw new Error('ลบงบต้นปี (ORIGINAL) ไม่ได้ — ใช้เทียบรอบ Revise');
+    db.budgetSnapshots = (db.budgetSnapshots || []).filter(s => !(s.year === Number(year) && s.label === label));
+    audit(actor, 'ลบเวอร์ชันงบ', { newValue: `${year} · ${label}` });
+    save();
+  }
+  const snapRowMonths = (year, label, deptId, rowKey) => {
+    const s = snapByLabel(year, label); if (!s) return Array(12).fill(null);
+    const [glId, cct] = splitKey(rowKey);
+    const r = s.rows.find(x => x.departmentId === deptId && x.glId === glId && x.cct === cct);
+    return r ? r.months : Array(12).fill(null);
+  };
+  function snapDeptMonthly(year, label, deptId) {
+    const s = snapByLabel(year, label); const out = Array(12).fill(0);
+    if (s) s.rows.filter(r => r.departmentId === deptId).forEach(r => r.months.forEach((v, i) => { out[i] += v ?? 0; }));
+    return out;
+  }
+  const snapDeptTotal = (year, label, deptId) => sum(snapDeptMonthly(year, label, deptId));
+  const snapCompanyTotal = (year, label) => { const s = snapByLabel(year, label); return s ? s.rows.reduce((t, r) => t + sum(r.months), 0) : 0; };
+
   function originalMonths(year, deptId, rowKey) {
     const s = snapshotFor(year);
     if (!s) return Array(12).fill(null);
@@ -979,7 +1025,10 @@ const Store = (() => {
     assertAccounting(actor);
     const p = period(year);
     if (!p) throw new Error('ไม่พบรอบงบประมาณ');
+    const wasPhase = p.phase; // REVISE / LANDING (ถ้ากำลังปิดหลังรอบแก้)
     const froze = ensureOriginal(year, actor); // freeze แผน ORIGINAL ณ อนุมัติ (ครั้งแรกเท่านั้น)
+    // auto-snapshot: ปิดหลัง Revise/Landing → เก็บเวอร์ชันผลลัพธ์ของรอบนั้นไว้เทียบ
+    if (wasPhase) takeSnapshot(null, year, (wasPhase === 'LANDING' ? 'ปิดยอด (Landing) ' : 'Revise ') + new Date().toISOString().slice(0, 10));
     p.status = 'CLOSED'; p.lockedAt = new Date().toISOString(); p.lockedBy = actor.name;
     delete p.phase; delete p.actualThru; // ปิดโหมด Revise/Landing — ตัวเลขถูกอนุมัติแล้ว (ORIGINAL คงไว้)
     activeDepartments().forEach(d => {
@@ -1589,7 +1638,9 @@ const Store = (() => {
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,
     months, glTotal, deptTotal, companyTotal, deptMonthly, companyMonthly,
     note, deptState, completion, compare, glAnomaly, deptAnomalies, validate,
-    revisePhase, snapshotFor, originalMonths, originalRowTotal, originalGlTotal,
+    revisePhase, snapshotFor, snapshotsFor, snapByLabel, takeSnapshot, deleteSnapshot, SNAP_TITLE,
+    snapRowMonths, snapDeptMonthly, snapDeptTotal, snapCompanyTotal,
+    originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
     canEdit, setCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,

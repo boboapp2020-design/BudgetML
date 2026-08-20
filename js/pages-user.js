@@ -132,9 +132,14 @@ const PagesUser = (() => {
   function budget(user) {
     const c = ctx(user);
     const rvOn = c.revise.on, thru = c.revise.thru;
-    // baseline: ปกติเทียบปีก่อน · รอบ Revise เทียบ "งบเดิม" ที่ถูก snapshot ไว้
-    const baseLabel = rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`;
-    const basePrev = rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId);
+    // เลือกงบที่จะเทียบใต้ช่อง (เวอร์ชัน snapshot) — ค่าว่าง = ปีก่อน/งบเดิมตามปกติ
+    const snaps = Store.snapshotsFor(c.year);
+    let cmpVer = localStorage.getItem('abp_cmp_ver') || '';
+    if (cmpVer && !Store.snapByLabel(c.year, cmpVer)) cmpVer = '';
+    // baseline: เวอร์ชันที่เลือก · หรือ รอบ Revise เทียบ "งบเดิม" · หรือ ปีก่อน
+    const baseLabel = cmpVer ? Store.SNAP_TITLE(cmpVer) : (rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`);
+    const basePrev = cmpVer ? Store.snapDeptTotal(c.year, cmpVer, c.deptId)
+      : (rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId));
     const cur = Store.deptTotal(c.year, c.deptId), prev = basePrev;
     const cmp = Store.compare(cur, prev);
     const rvKind = c.revise.kind;
@@ -174,7 +179,8 @@ const PagesUser = (() => {
       const n = Store.note(c.year, c.deptId, r.key);
       const hasNote = n.reason.trim() || n.assumption.trim();
       const dis = (!c.editable || notUsed) ? 'disabled' : '';
-      const pm = rvOn ? Store.originalMonths(c.year, c.deptId, r.key) : Store.rowMonths(c.prevYear, c.deptId, r.key);
+      const pm = cmpVer ? Store.snapRowMonths(c.year, cmpVer, c.deptId, r.key)
+        : (rvOn ? Store.originalMonths(c.year, c.deptId, r.key) : Store.rowMonths(c.prevYear, c.deptId, r.key));
       const am = rvOn ? Store.actualMonths(c.year, c.deptId, r.key) : null;
       const rowTip = `CCT ${r.cct} ${esc(r.cctName)} · IO ${r.io || '—'}`;
       const cells = m.map((v, i) => {
@@ -221,7 +227,8 @@ const PagesUser = (() => {
 
     const foot = (() => {
       const mm = Store.deptMonthly(c.year, c.deptId);
-      const pm = rvOn ? Store.originalDeptMonthly(c.year, c.deptId) : Store.deptMonthly(c.prevYear, c.deptId);
+      const pm = cmpVer ? Store.snapDeptMonthly(c.year, cmpVer, c.deptId)
+        : (rvOn ? Store.originalDeptMonthly(c.year, c.deptId) : Store.deptMonthly(c.prevYear, c.deptId));
       return `<tr class="tr-sum"><td class="sticky-col td-gl"><b>รวมทั้งหน่วยงาน</b></td>
         ${mm.map(v => `<td class="num" data-msum>${fmt(v)}</td>`).join('')}
         <td class="num td-total" data-gsum><b>${fmt(cur)}</b></td>
@@ -250,7 +257,11 @@ const PagesUser = (() => {
       + card('', `<div class="grid-toolbar">
           ${lockChip}
           <span class="grid-tools">
-            <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขปีก่อนใต้ทุกช่อง (เทียบเดือนต่อเดือน)">🔀 ปีก่อน</button>
+            ${snaps.length ? `<select id="cmpVerSel" class="ghost-btn small cmp-ver-sel" title="เลือกเวอร์ชันงบที่จะแสดงเทียบใต้ช่อง">
+              <option value="">เทียบ: ${rvOn ? 'งบเดิม' : 'ปีก่อน'}</option>
+              ${snaps.map(s => `<option value="${esc(s.label)}" ${cmpVer === s.label ? 'selected' : ''}>เทียบ: ${esc(Store.SNAP_TITLE(s.label))}</option>`).join('')}
+            </select>` : ''}
+            <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขที่เทียบใต้ทุกช่อง (เดือนต่อเดือน)">🔀 ${cmpVer ? esc(Store.SNAP_TITLE(cmpVer)).slice(0, 12) : 'ปีก่อน'}</button>
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
             <a class="ghost-btn small btn-review" href="#/review">✓ ตรวจสอบงบ</a>
           </span></div>
@@ -376,6 +387,13 @@ const PagesUser = (() => {
       const next = document.querySelector(`.cell[data-row="${rowOrder[gi]}"][data-m="${mi}"]`);
       next?.focus();
     }
+
+    /* --- เลือกเวอร์ชันงบที่จะเทียบใต้ช่อง --- */
+    document.getElementById('cmpVerSel')?.addEventListener('change', e => {
+      localStorage.setItem('abp_cmp_ver', e.target.value);
+      localStorage.setItem('abp_show_prev', '1');   // เปิดโหมดเทียบให้อัตโนมัติ
+      App.render();
+    });
 
     /* --- เทียบปีก่อนเดือนต่อเดือน: โหมด ghost ทุกช่อง + ป้ายลอยตอน focus --- */
     const SHOW_PREV_KEY = 'abp_show_prev';

@@ -934,8 +934,29 @@ const PagesAcc = (() => {
 
     const rates = Store.db.exchangeRates.filter(r => r.year === year);
 
+    // เวอร์ชันงบ (snapshot ประวัติแต่ละรอบ)
+    const snaps = Store.snapshotsFor(year);
+    const curTot = Store.companyTotal(year);
+    const snapRows = snaps.length ? snaps.map(s => {
+      const tot = s.rows.reduce((t, r) => t + r.months.reduce((x, v) => x + (v || 0), 0), 0);
+      const dv = curTot - tot;
+      return `<tr><td><b>${esc(Store.SNAP_TITLE(s.label))}</b></td>
+        <td class="small muted">${s.createdAt || s.takenAt ? UI.fmtDT(s.createdAt || s.takenAt) : '—'}${s.takenBy ? ' · ' + esc(s.takenBy) : ''}</td>
+        <td class="num">${fmt(tot)}</td>
+        <td class="num ${dv > 0 ? 'txt-up' : dv < 0 ? 'txt-down' : 'muted'}">${dv === 0 ? '—' : (dv >= 0 ? '+' : '') + fmt(dv)}</td>
+        <td class="td-actions"><button class="ghost-btn small" data-snap-cmp="${esc(s.label)}">🔍 เทียบ</button>
+          ${s.label !== 'ORIGINAL' ? `<button class="ghost-btn small btn-clear" data-snap-del="${esc(s.label)}" title="ลบเวอร์ชันนี้">🗑</button>` : ''}</td></tr>`;
+    }).join('') : `<tr><td colspan="5" class="muted" style="padding:12px">ยังไม่มีเวอร์ชันที่บันทึกไว้ — กด "บันทึกเวอร์ชันปัจจุบัน" หรือระบบจะบันทึกอัตโนมัติเมื่อ Lock รอบ</td></tr>`;
+    const snapCard = card(`📸 เวอร์ชันงบ ปี ${year} — บันทึกทุกรอบ · เทียบย้อนได้`, `
+        <p class="muted small" style="margin:0 0 10px">📌 <b>ตัวเลขล่าสุด (ปัจจุบัน) = ${fmt(curTot)} กีบ</b> · ระบบบันทึกอัตโนมัติเมื่อ Lock รอบ (งบต้นปี / Revise) · หรือกดบันทึกเองได้ทุกเมื่อ</p>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>เวอร์ชัน</th><th>บันทึกเมื่อ</th><th class="num">ยอดรวม (กีบ)</th><th class="num">ต่างจากปัจจุบัน</th><th></th></tr></thead>
+          <tbody><tr class="tr-sum"><td><b>🟢 ปัจจุบัน (ล่าสุด)</b></td><td class="small muted">real-time</td><td class="num"><b>${fmt(curTot)}</b></td><td class="num muted">—</td><td></td></tr>${snapRows}</tbody></table></div>
+        <div class="inline-form" style="margin-top:10px;border-top:1px dashed var(--border);padding-top:12px">
+          <input id="snapLabel" placeholder="ชื่อเวอร์ชัน เช่น งบต้นปี ${year} / Revise เม.ย." style="min-width:300px">
+          <button class="primary-btn" id="snapSaveBtn">📸 บันทึกเวอร์ชันปัจจุบัน</button></div>`);
     const syncOn = Sync.enabled();
     return '<div class="ctrl-page">' + pageHead('Budget Control', `จัดการรอบงบประมาณ หน่วยงาน GL และ Budget Rate · Admin เท่านั้น <a href="#/acc/system" style="opacity:.35;font-size:12px;text-decoration:none" title="ตั้งค่าระบบ (IT)">⚙</a>`)
+      + snapCard
       + card('รอบงบประมาณ (Budget Periods)', `
           <div class="table-scroll"><table class="data-table"><thead><tr><th>ปีงบ</th><th>สถานะ</th><th>ประวัติ</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
           <div class="inline-form" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:6px">
@@ -990,7 +1011,41 @@ const PagesAcc = (() => {
           <p class="muted small" style="margin-top:8px">สำรองทุกอย่าง (งบทุกปี · master · เกิดจริง · สถานะ · audit) เป็นไฟล์เดียว เก็บไว้กู้คืนได้ · แนะนำดาวน์โหลดก่อนทำงานสำคัญทุกครั้ง · กู้คืนจะเขียนทับข้อมูลปัจจุบัน + ซิงค์ขึ้นฐานข้อมูล</p>`)
       + '</div>';
   }
+  // popup เทียบเวอร์ชันงบ (แอดมิน + ใช้ซ้ำได้) — ราย แผนก: เวอร์ชัน vs ปัจจุบัน + ผลต่าง
+  function openSnapCompare(year, label) {
+    const title = Store.SNAP_TITLE(label);
+    const depts = Store.activeDepartments().map(d => {
+      const snapT = Store.snapDeptTotal(year, label, d.id), curT = Store.deptTotal(year, d.id);
+      return { d, snapT, curT, dv: curT - snapT };
+    }).filter(x => x.snapT || x.curT).sort((a, b) => Math.abs(b.dv) - Math.abs(a.dv));
+    const snapTot = Store.snapCompanyTotal(year, label), curTot = Store.companyTotal(year), grandDv = curTot - snapTot;
+    const rows = depts.map(x => `<tr><td>${esc(x.d.name)}<div class="muted small">${x.d.code}</div></td>
+      <td class="num">${UI.fmt(x.snapT)}</td><td class="num">${UI.fmt(x.curT)}</td>
+      <td class="num ${x.dv > 0 ? 'txt-up' : x.dv < 0 ? 'txt-down' : 'muted'}">${x.dv === 0 ? '—' : (x.dv >= 0 ? '+' : '') + UI.fmt(x.dv)}</td>
+      <td>${x.snapT ? UI.deltaBadge(x.dv, x.dv / x.snapT * 100) : '<span class="muted">ใหม่</span>'}</td></tr>`).join('');
+    UI.modal(`เทียบงบ: ${esc(title)} ↔ ปัจจุบัน (ปี ${year})`, `
+      <div class="cmp-sum"><div><span>${esc(title)}</span><b>${UI.fmt(snapTot)}</b></div>
+        <div class="cmp-arrow">→</div>
+        <div><span>ปัจจุบัน (ล่าสุด)</span><b>${UI.fmt(curTot)}</b></div>
+        <div class="cmp-dv ${grandDv > 0 ? 'up' : grandDv < 0 ? 'down' : ''}"><span>ผลต่างรวม</span><b>${(grandDv >= 0 ? '+' : '') + UI.fmt(grandDv)}</b></div></div>
+      <div class="table-scroll" style="max-height:52vh"><table class="data-table small"><thead>
+        <tr><th>หน่วยงาน</th><th class="num">${esc(title)}</th><th class="num">ปัจจุบัน</th><th class="num">ผลต่าง (กีบ)</th><th>%</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" class="muted">ไม่มีข้อมูล</td></tr>'}</tbody></table></div>`,
+      [{ label: 'ปิด', cls: 'ghost-btn' }]);
+  }
+  window.__openSnapCompare = openSnapCompare;   // ให้หน้าอื่นเรียกได้
   function controlBind(user) {
+    document.getElementById('snapSaveBtn')?.addEventListener('click', () => {
+      const lb = document.getElementById('snapLabel').value.trim();
+      try { const saved = Store.takeSnapshot(user, UI.year(), lb); UI.toast(`บันทึกเวอร์ชัน "${saved}" แล้ว`); App.render(); }
+      catch (e) { UI.toast(e.message, 'err'); }
+    });
+    document.querySelectorAll('[data-snap-cmp]').forEach(b => b.addEventListener('click', () => openSnapCompare(UI.year(), b.dataset.snapCmp)));
+    document.querySelectorAll('[data-snap-del]').forEach(b => b.addEventListener('click', () => {
+      const lb = b.dataset.snapDel;
+      UI.confirm2(`ลบเวอร์ชัน "${lb}"?`, 'ลบแล้วเทียบย้อนเวอร์ชันนี้ไม่ได้อีก', 'งบปัจจุบันไม่ถูกแตะ',
+        () => { try { Store.deleteSnapshot(user, UI.year(), lb); UI.toast('ลบเวอร์ชันแล้ว'); App.render(); } catch (e) { UI.toast(e.message, 'err'); } });
+    }));
 
     document.querySelectorAll('[data-lock]').forEach(b => b.addEventListener('click', () => {
       const y = b.dataset.lock;
