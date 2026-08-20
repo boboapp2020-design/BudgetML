@@ -82,13 +82,13 @@ const App = (() => {
           <h2>เข้าสู่ระบบ</h2>
           <div class="lv-sub">ระบบงบประมาณประจำปี</div>
 
-          <label class="fld"><span>อีเมลบริษัท <small class="muted">(ผู้ดูแลระบบพิมพ์ admin)</small></span>
-            <input id="loginEmail" type="text" placeholder="เช่น yourname@mitrphol.com" autocomplete="username"></label>
+          <label class="fld"><span>อีเมลบริษัท</span>
+            <input id="loginEmail" type="text" placeholder="เช่น yourname@mitrphol.com" autocomplete="off" name="ibud-em-${Date.now() % 1e6}"></label>
 
           <label class="fld"><span>รหัสผ่าน</span>
             <div class="lv-pass">
               <span class="lv-lock">🔒</span>
-              <input id="deptPin" type="password" placeholder="กรอกรหัสผ่านของคุณ" autocomplete="current-password">
+              <input id="deptPin" type="password" placeholder="กรอกรหัสผ่านของคุณ" autocomplete="new-password" name="ibud-pw-${Date.now() % 1e6}">
               <button type="button" class="lv-eye" id="pwEye" aria-label="แสดง/ซ่อนรหัสผ่าน">👁</button>
             </div></label>
 
@@ -198,6 +198,13 @@ const App = (() => {
     document.getElementById('deptLoginBtn').addEventListener('click', doLogin);
     document.getElementById('deptPin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
     document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    // กัน browser autofill เติมค่าเก่า (เช่น URL/รหัสที่เคยจำไว้) — บังคับให้ช่องว่างเสมอตอนเปิดหน้า
+    setTimeout(() => {
+      const e1 = document.getElementById('loginEmail'), e2 = document.getElementById('deptPin');
+      if (e1 && !e1.dataset.touched) e1.value = '';
+      if (e2 && !e2.dataset.touched) e2.value = '';
+    }, 120);
+    ['loginEmail', 'deptPin'].forEach(id => document.getElementById(id)?.addEventListener('input', e => { e.target.dataset.touched = '1'; }));
 
     // ทางสำรอง: เข้าแบบเลือกหน่วยงาน (dropdown เดิม)
     document.getElementById('unitLoginLink').addEventListener('click', () => {
