@@ -250,19 +250,41 @@ const Store = (() => {
   const oversight = () => (SEED.oversight || []);
   const oversightUnit = id => oversight().find(u => u.id === id) || null;
   const childUnits = unitId => oversight().filter(c => c.parent === unitId);
+  // ---------- ข้อยกเว้นการมองเห็น "รายอีเมล" (บาง user ห้ามเห็นงบของบางฝ่าย/แผนก) ----------
+  // key = อีเมล (ตัวพิมพ์เล็ก) · divs = ชื่อฝ่าย/ฝ่ายย่อยที่ห้ามเห็น · codes = รหัสแผนก · areas = ชื่อสังกัด
+  const VIEW_EXCLUSIONS = {
+    'chanchalermk@mitrphol.com': { divs: ['ศูนย์ประกันคุณภาพ'] },
+  };
+  const exclusionRule = () => { let e = ''; try { e = (sessionStorage.getItem('abp_email') || '').toLowerCase(); } catch (x) {} return VIEW_EXCLUSIONS[e] || null; };
+  function hiddenDeptCodes() {
+    const rule = exclusionRule(); if (!rule) return null;
+    const set = new Set((rule.codes || []).map(String));
+    const divs = new Set(rule.divs || []), areas = new Set(rule.areas || []);
+    if (divs.size || areas.size) db.departments.forEach(d => {
+      if ((d.div && divs.has(d.div)) || (d.subDiv && divs.has(d.subDiv)) || (d.area && areas.has(d.area))) set.add(d.code);
+    });
+    return set.size ? set : null;
+  }
+  const hiddenUnitNames = () => { const rule = exclusionRule(); return rule ? new Set(rule.divs || []) : null; };
+
   function subtreeDeptCodes(unitId) {                    // แผนกที่มีงบทั้งหมดใต้หน่วยนี้ (รวม subtree)
     const u = oversightUnit(unitId); if (!u) return [];
     const codes = [...(u.deptCodes || [])];
     childUnits(unitId).forEach(c => codes.push(...subtreeDeptCodes(c.id)));
-    return [...new Set(codes)];
+    let list = [...new Set(codes)];
+    const hidden = hiddenDeptCodes();               // กรองแผนกที่ผู้ใช้คนนี้ห้ามเห็น
+    if (hidden) list = list.filter(c => !hidden.has(c));
+    return list;
   }
   const subtreeDepartments = unitId => subtreeDeptCodes(unitId)
     .map(code => db.departments.find(d => d.code === code)).filter(d => d && d.active);
   // หน่วยทั้งหมดใน subtree (รวมตัวเอง) เรียงแบบต้นไม้ + depth — ใช้ทำตัวเลือก "ดูแยกฝ่ายย่อย"
   function subtreeUnits(unitId) {
     const out = [];
+    const hiddenU = hiddenUnitNames();              // ซ่อนหน่วย (ฝ่าย) ที่ผู้ใช้คนนี้ห้ามเห็นทั้งกิ่ง
     const walk = (id, depth) => {
       const u = oversightUnit(id); if (!u) return;
+      if (hiddenU && hiddenU.has(u.name)) return;
       out.push({ unit: u, depth });
       childUnits(id).forEach(c => walk(c.id, depth + 1));
     };
