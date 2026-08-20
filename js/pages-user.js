@@ -136,6 +136,9 @@ const PagesUser = (() => {
     const hasOrig = !!Store.snapByLabel(c.year, 'ORIGINAL');
     const viewOrig = hasOrig && localStorage.getItem('abp_view_orig') === '1';
     const monthsOf = key => viewOrig ? Store.snapRowMonths(c.year, 'ORIGINAL', c.deptId, key) : Store.rowMonths(c.year, c.deptId, key);
+    // ซ่อน GL ที่ไม่ได้ใช้ (แถวรวม = 0) เพื่อดูง่าย
+    const hideEmpty = localStorage.getItem('abp_hide_empty') === '1';
+    const emptyCount = c.rows.filter(r => monthsOf(r.key).reduce((s, v) => s + (v ?? 0), 0) === 0).length;
     // คอลัมน์เทียบ (ghost) = ปีก่อน (หรืองบเดิมตอน Revise) — คงไว้ตามเดิม
     const baseLabel = rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`;
     const basePrev = rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId);
@@ -148,8 +151,7 @@ const PagesUser = (() => {
     const reviseMsg = rvOn
       ? `<div class="lock-banner revise-banner">${rvIcon} <b>${rvTitle}</b> — เดือน 1–${thru - 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) · เดือน ${thru} เพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือน ${thru + 1}–12 ปรับคาดการณ์ได้ · แถวที่ยอดต่างจากแผน ORIGINAL ต้องระบุเหตุผลก่อนส่ง</div>` : '';
     // เกิดจริงที่บัญชีอัปโหลด (นอกรอบ Revise) — ช่องไฮไลต์ = ล็อก
-    const postedMsg = (!rvOn && Store.hasPostedActuals(c.year, c.deptId))
-      ? `<div class="lock-banner revise-banner">📥 <b>ตัวเลขเกิดจริงจากแผนกบัญชี</b> — ช่องที่ไฮไลต์คือยอดเกิดจริงที่บัญชีอัปโหลด (ล็อก แก้ไขไม่ได้) · ช่องอื่นยังกรอก/แก้ได้ตามปกติ</div>` : '';
+    const postedMsg = '';
     // ป้ายล็อกแบบกะทัดรัด — ย้ายไปอยู่ในแถบเครื่องมือข้างปุ่ม (แทน banner เต็มความกว้าง)
     const lockChip = !c.editable
       ? `<span class="lock-chip">🔒 ${['SUBMITTED'].includes(c.state.status) ? 'ส่งแล้ว — แก้ได้เมื่อถูกตีกลับ' : 'รอบงบถูก Lock — อ่านอย่างเดียว'}</span>` : '';
@@ -196,15 +198,16 @@ const PagesUser = (() => {
           : (isFloor ? `เกิดจริงแล้ว ${fmt(am?.[i] ?? 0)} กีบ — เพิ่มได้ ลดต่ำกว่านี้ไม่ได้` : '');
         const cAdj = adj && adj.monthNet[i] != null;
         const cAdjTip = cAdj ? esc(`ปรับจากคำร้อง (สุทธิ ${adj.monthNet[i] > 0 ? '+' : ''}${fmt(Math.round(adj.monthNet[i]))} กีบ):\n` + adj.monthLines[i].join('\n')) : '';
+        const hasVal = v !== null && v !== undefined && v !== 0;   // ช่องที่มีตัวเลข → ไฮไลต์ (พื้นที่เหลือขาว)
         return `<td class="num cell-td${cAdj ? ' cell-adj' : ''}"><div class="cell-wrap">
-          <input class="cell${cellCls}" data-row="${r.key}" data-m="${i}" inputmode="decimal"
+          <input class="cell${cellCls}${hasVal ? ' has-val' : ''}" data-row="${r.key}" data-m="${i}" inputmode="decimal"
             value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis || isActual || lockPosted ? 'disabled' : ''} ${cellTip ? `title="${cellTip}"` : ''}>
           ${viewOrig ? '' : `<button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${r.key}|${i}" tabindex="-1"
             title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>`}
           ${cAdj ? `<span class="cell-adj-dot" title="${cAdjTip}">🔄</span>` : ''}
         </div><span class="prev-ghost" title="${rvOn ? 'งบเดิม' : 'ปีก่อน'} ${Store.MONTH_S[i]}">${fmt(pm[i] ?? 0)}</span></td>`;
       }).join('');
-      return `<tr data-gl-row="${r.key}" class="${notUsed ? 'tr-notused' : ''}">
+      return `<tr data-gl-row="${r.key}" class="${notUsed ? 'tr-notused' : ''}${curT === 0 ? ' row-empty' : ''}">
         <td class="sticky-col td-gl" title="${rowTip}"><div class="gl-name-wrap">
             ${glIcon(g)}
             <span class="gl-code">${g.code}</span><span class="gl-nm" title="${esc(g.name)}">${esc(g.name)}</span>
@@ -262,10 +265,11 @@ const PagesUser = (() => {
           <span class="grid-tools">
             ${hasOrig ? `<button id="viewOrigBtn" class="ghost-btn small ${viewOrig ? 'vo-on' : ''}" title="สลับตารางทั้งหมดเป็นงบที่ตั้งไว้ต้นปี (อนุมัติ) — ดูอย่างเดียว · กดอีกครั้งกลับงบปัจจุบัน">${viewOrig ? '🔙 กลับงบปัจจุบัน' : '📌 ดูงบต้นปี'}</button>` : ''}
             <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขปีก่อนใต้ทุกช่อง (เทียบเดือนต่อเดือน)">🔀 ปีก่อน</button>
+            ${emptyCount ? `<button id="hideEmptyBtn" class="ghost-btn small ${hideEmpty ? 'he-on' : ''}" title="ซ่อน/แสดง GL ที่ยอดรวมทั้งปี = 0 (ยังไม่ได้ใช้) เพื่อดูเฉพาะที่มีตัวเลข">${hideEmpty ? `👁 แสดง GL ที่ไม่ได้ใช้ (${emptyCount})` : `🙈 ซ่อน GL ที่ไม่ได้ใช้ (${emptyCount})`}</button>` : ''}
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
             <a class="ghost-btn small btn-review" href="#/review">✓ ตรวจสอบงบ</a>
           </span></div>
-        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') });
+        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') + (hideEmpty ? ' hide-empty' : '') });
   }
 
   function budgetBind(user) {
@@ -389,6 +393,16 @@ const PagesUser = (() => {
     }
 
     /* --- ปุ่ม "ดูงบต้นปี" (toggle) — สลับตารางทั้งหมดเป็นงบต้นปี (อ่านอย่างเดียว) --- */
+    // ซ่อน/แสดง GL ที่ไม่ได้ใช้ (ยอดรวม=0) — สลับทันทีไม่ต้อง re-render
+    document.getElementById('hideEmptyBtn')?.addEventListener('click', e => {
+      const on = localStorage.getItem('abp_hide_empty') !== '1';
+      localStorage.setItem('abp_hide_empty', on ? '1' : '0');
+      const card = document.querySelector('.budget-card');
+      card?.classList.toggle('hide-empty', on);
+      const btn = e.currentTarget; const n = btn.textContent.match(/\((\d+)\)/)?.[1] || '';
+      btn.classList.toggle('he-on', on);
+      btn.textContent = on ? `👁 แสดง GL ที่ไม่ได้ใช้ (${n})` : `🙈 ซ่อน GL ที่ไม่ได้ใช้ (${n})`;
+    });
     document.getElementById('viewOrigBtn')?.addEventListener('click', () => {
       const on = localStorage.getItem('abp_view_orig') !== '1';
       localStorage.setItem('abp_view_orig', on ? '1' : '0');

@@ -365,8 +365,13 @@ body.no-scroll { overflow: hidden; }
 .cell::placeholder { color: #b9b7ae; font-style: italic; font-size: 11px; }
 .cell:hover:not(:disabled) { border-color: var(--blue); }
 .cell:focus { background: #eef4fc; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(37,106,191,.25); }
-.cell:disabled { color: var(--ink-2); background: #f0efec; border-color: var(--border); cursor: not-allowed; }
-.cell-changed { background: #fff9e8; border-color: var(--warn-bd); }
+.cell:disabled { color: var(--ink-2); background: #fff; border-color: var(--border); cursor: not-allowed; }
+/* พื้นหลังงบเป็นขาว · ช่องที่มีตัวเลข = ไฮไลต์เขียวอ่อนให้เด่น */
+.cell.has-val, .cell.has-val:disabled { background: #edf7f0; border-color: #cfe6d7; }
+.cell-changed, .cell.has-val.cell-changed { background: #fff9e8; border-color: var(--warn-bd); }
+/* ซ่อน GL ที่ไม่ได้ใช้ (แถวรวม=0) */
+.budget-card.hide-empty tr.row-empty { display: none; }
+#hideEmptyBtn.he-on { background: #eef4fc !important; border-color: var(--blue) !important; color: var(--blue) !important; font-weight: 700; }
 .cell-err { background: var(--crit-bg) !important; border-color: var(--up) !important; box-shadow: 0 0 0 2px rgba(208,59,59,.25); }
 .cell-mtp { background: #f2f6fc; }
 /* คอลัมน์งบสมมติฐาน 3 เคส (Base=ฟ้า · Best=เขียว · Worst=ส้ม) ตามฟอร์ม Excel */
