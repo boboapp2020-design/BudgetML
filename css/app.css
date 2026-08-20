@@ -112,6 +112,26 @@ a { color: var(--blue); }
   position: absolute; right: 22px; top: 52px; width: 360px; max-height: 60vh; overflow: auto;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(11,11,11,.14);
 }
+/* เมนูโปรไฟล์ (คลิกที่ user chip) */
+.user-chip.uc-clickable { font: inherit; background: #fff; border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 12px 4px 5px; cursor: pointer; transition: all .15s ease; }
+.user-chip.uc-clickable:hover { border-color: var(--blue); box-shadow: 0 3px 10px rgba(37,106,191,.16); }
+.uc-caret { font-size: 10px; color: #8a97ab; margin-left: 2px; }
+.user-menu {
+  position: absolute; right: 22px; top: 52px; width: 320px; z-index: 60;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px;
+  box-shadow: 0 12px 34px rgba(11,31,77,.18); overflow: hidden;
+}
+.um-head { display: flex; gap: 12px; align-items: center; padding: 14px 16px; background: linear-gradient(180deg, #eef4fd 0%, #e5eefb 100%); border-bottom: 1px solid var(--border); }
+.um-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #2f7fd6, #0c2c61); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.um-info { min-width: 0; }
+.um-info b { font-size: 14.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.um-email { font-size: 12px; color: #5a6b85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.um-role { font-size: 11.5px; color: #256abf; font-weight: 600; margin-top: 3px; }
+.um-item { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; text-align: left; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: none; border: none; border-bottom: 1px solid var(--border); padding: 11px 16px; cursor: pointer; }
+.um-item small { font-size: 11.5px; color: #8a97ab; font-weight: 400; }
+.um-item:hover { background: #eef4fc; }
+.um-item.um-danger { color: #c0392b; border-bottom: none; }
+.um-item.um-danger:hover { background: #fdeeea; }
 .noti-head { padding: 10px 14px; font-weight: 700; border-bottom: 1px solid var(--border); }
 .noti-item { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .noti-item.unread { background: #eef4fc; }

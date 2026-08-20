@@ -155,20 +155,28 @@ const UI = (() => {
           </div>
           <div class="topbar-right">
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
-            <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : user.role === 'MANAGER' ? esc(user.name || '') : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId))}</span>
-              <span class="uc-name">${esc(user.name)}</span></div>
-            ${(() => { // ปุ่มของคน login ด้วยอีเมล: เปลี่ยนรหัสผ่าน + สลับบทบาท (ถ้ามีหลายสิทธิ์)
-              try {
-                const pe = sessionStorage.getItem('abp_email');
-                if (!pe || typeof EmailAuth === 'undefined') return '';
-                let h = '<button id="changePwBtn" class="icon-btn" title="เปลี่ยนรหัสผ่าน">🔑</button>';
-                if (EmailAuth.assignmentsFor(pe).length > 1)
-                  h += '<button id="switchRoleBtn" class="ghost-btn" title="เปลี่ยนบทบาท/แผนก โดยไม่ต้องออกจากระบบ">🔄 สลับบทบาท</button>';
-                return h;
-              } catch (e) {}
-              return '';
+            ${(() => { // เมนูโปรไฟล์ — คลิกที่ user chip: ข้อมูลผู้ใช้ + เปลี่ยนรหัสผ่าน + สลับบทบาท + ออกจากระบบ
+              const email = sessionStorage.getItem('abp_email') || '';
+              const multiRole = !!email && typeof EmailAuth !== 'undefined' && EmailAuth.assignmentsFor(email).length > 1;
+              const roleLabel = user.role === 'ACCOUNTING' ? '👑 ผู้ดูแลระบบ (Admin)'
+                : user.role === 'MANAGER' ? '✅ ผู้อนุมัติ / ผู้ดู — ' + esc(user.name || '')
+                : '📝 ผู้กรอกงบ — ' + esc(Store.dept(user.departmentId)?.name || '');
+              const avatar = user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId));
+              return `
+            <button class="user-chip uc-clickable" id="userMenuBtn" title="ตั้งค่าบัญชีของฉัน"><span class="uc-avatar">${avatar}</span>
+              <span class="uc-name">${esc(user.name)}</span><span class="uc-caret">▾</span></button>
+            <div id="userMenu" class="user-menu" hidden>
+              <div class="um-head">
+                <div class="um-avatar">${avatar}</div>
+                <div class="um-info"><b>${esc(user.name)}</b>
+                  ${email ? `<div class="um-email">${esc(email)}</div>` : ''}
+                  <div class="um-role">${roleLabel}</div></div>
+              </div>
+              ${multiRole ? '<button class="um-item" id="switchRoleBtn">🔄 สลับบทบาท / แผนก <small>เปลี่ยนหมวกโดยไม่ต้องออกจากระบบ</small></button>' : ''}
+              ${email ? '<button class="um-item" id="changePwBtn">🔑 เปลี่ยนรหัสผ่าน <small>รหัสเดียวใช้ทุกบทบาทของคุณ</small></button>' : ''}
+              <button class="um-item um-danger" id="logoutBtn">🚪 ออกจากระบบ</button>
+            </div>`;
             })()}
-            <button id="logoutBtn" class="ghost-btn">ออกจากระบบ</button>
           </div>
           <div id="notiPanel" class="noti-panel" hidden>
             <div class="noti-head">การแจ้งเตือน</div>
@@ -185,6 +193,12 @@ const UI = (() => {
   function bindShell(user) {
     document.getElementById('yearSel')?.addEventListener('change', e => { setYear(e.target.value); App.render(); });
     document.getElementById('logoutBtn')?.addEventListener('click', () => { sessionStorage.removeItem('abp_email'); Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
+    // เมนูโปรไฟล์ (คลิกที่ user chip)
+    const umBtn = document.getElementById('userMenuBtn'), umenu = document.getElementById('userMenu');
+    umBtn?.addEventListener('click', () => { umenu.hidden = !umenu.hidden; });
+    document.addEventListener('click', e => {
+      if (umenu && !umenu.hidden && !umenu.contains(e.target) && !umBtn.contains(e.target)) umenu.hidden = true;
+    });
     // สลับบทบาท: ออกจาก session ปัจจุบันแต่คงอีเมลไว้ → หน้า login เปิดตัวเลือกบทบาทให้ทันที
     document.getElementById('switchRoleBtn')?.addEventListener('click', () => { Store.logout(); location.hash = '#/login'; App.render(); });
     // เปลี่ยนรหัสผ่าน (ผูกกับอีเมลของผู้ใช้ — ค่าเริ่มต้น 'a')
