@@ -393,6 +393,8 @@ const PagesUser = (() => {
     document.getElementById('viewOrigBtn')?.addEventListener('click', () => {
       const on = localStorage.getItem('abp_view_orig') !== '1';
       localStorage.setItem('abp_view_orig', on ? '1' : '0');
+      // ถ้ากำลังขยายเต็มจออยู่ ให้คงโหมดขยายไว้หลัง re-render (สลับงบต้นปี/ปัจจุบันได้ทันทีในจอขยาย)
+      if (document.querySelector('.budget-card.fullscreen')) sessionStorage.setItem('abp_fs_once', '1');
       App.render();
     });
     const bCard = document.querySelector('.budget-card');
@@ -445,6 +447,8 @@ const PagesUser = (() => {
     };
     const fsToggle = () => setFs(!fsCard.classList.contains('fullscreen'));
     fsBtn?.addEventListener('click', fsToggle);
+    // คงโหมดขยายไว้เฉพาะรอบ re-render ถัดไป (กดสลับ "ดูงบต้นปี") → สลับข้อมูลทันทีโดยไม่หลุดจอขยาย · ไม่ค้างข้ามการเปลี่ยนหน้า
+    if (fsCard && fsBtn && sessionStorage.getItem('abp_fs_once') === '1') { sessionStorage.removeItem('abp_fs_once'); setFs(true); }
     // ESC = ย่อกลับ + ล้าง no-scroll (กันสถานะค้างเมื่อออกจากหน้า)
     const fsEsc = e => {
       if (e.key === 'Escape' && fsCard.classList.contains('fullscreen')) setFs(false);
