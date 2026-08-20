@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variance Analysis 2025 — Actual vs Revise</title>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#ffffff; --ink:#12203a; --ink2:#5a6b85; --line:#dde4ee;
+  --fav:#0f8a63; --favbg:#e6f6f0; --unfav:#c0392b; --unfavbg:#fdecea;
+  --accent:#1e4f8f; --warn:#b7791f; --warnbg:#fdf6e3;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0e1420;--card:#161e2e;--ink:#e8edf5;--ink2:#93a3ba;--line:#26314a;
+        --fav:#3ddba0;--favbg:#0f2e25;--unfav:#ff7a6b;--unfavbg:#33191a;
+        --accent:#6ea8ff;--warn:#e8b84b;--warnbg:#332a12;}
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--ink);
+     font-family:"Segoe UI","Leelawadee UI",Tahoma,sans-serif;font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:17px;margin:32px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:14px;margin:20px 0 8px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.sub{color:var(--ink2);margin:0 0 20px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:8px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi .lab{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+.kpi .val{font-size:21px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .note{font-size:11px;color:var(--ink2);margin-top:2px}
+.fav{color:var(--fav)} .unfav{color:var(--unfav)}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:920px;font-size:13px}
+th{background:var(--bg);text-align:right;padding:10px 12px;font-weight:600;
+   border-bottom:2px solid var(--line);white-space:nowrap;font-size:12px;color:var(--ink2)}
+th.l,td.l{text-align:left}
+td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);
+   font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.grp{cursor:pointer} tr.grp:hover td{background:var(--bg)}
+tr.det td{background:var(--bg);font-size:12px;color:var(--ink2);padding:6px 12px 6px 34px}
+tr.det.hide{display:none}
+.rank{display:inline-flex;width:22px;height:22px;align-items:center;justify-content:center;
+      border-radius:6px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;margin-left:8px}
+.gl{font-family:Consolas,monospace;font-weight:600}
+.bar{position:relative;height:14px;background:var(--line);border-radius:3px;min-width:120px}
+.bar i{position:absolute;top:0;height:14px;border-radius:3px}
+.bar .mid{position:absolute;top:-2px;bottom:-2px;left:50%;width:1px;background:var(--ink2);opacity:.5}
+.tag{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600}
+.t-fav{background:var(--favbg);color:var(--fav)}
+.t-unfav{background:var(--unfavbg);color:var(--unfav)}
+ul{margin:8px 0 0;padding-left:20px} li{margin-bottom:8px}
+.flag{border-left:4px solid var(--warn);background:var(--warnbg);padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:12px}
+.flag.red{border-left-color:var(--unfav);background:var(--unfavbg)}
+.flag b{display:block;margin-bottom:2px}
+.foot{color:var(--ink2);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+.lbl{font-size:11px;color:var(--ink2);font-weight:600;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>วิเคราะห์ผลต่างงบประมาณ ปี 2025 — เกิดจริง เทียบ งบ Revise</h1>
+<p class="sub">บริษัท น้ำตาลมิตรลาว จำกัด · หน่วย: กีบ (LAK) · ข้อมูลจาก <b>ML_งบค่าใช้จ่าย Revise ปี_2025 - เดือน12.2025.xlsx</b>
+ → sheet <b>ML_งบค่าใช้จ่าย_Revise 2025</b> (คอลัมน์ AM = งบ Revise 12 เดือน, คอลัมน์ BA = เกิดจริงสะสม 12 เดือน) ·
+ 2,343 บรรทัด / 172 รหัสบัญชี · กระทบยอดกับผลรวมในชีทได้ 100% (ผลต่าง 0)</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="lab">งบประมาณ Revise 2025</div><div class="val">1,073,662</div><div class="note">ล้านกีบ</div></div>
+  <div class="kpi"><div class="lab">เกิดจริง 2025</div><div class="val">913,894</div><div class="note">ล้านกีบ</div></div>
+  <div class="kpi"><div class="lab">ผลต่างสุทธิ</div><div class="val fav">−159,767</div><div class="note">ล้านกีบ · ต่ำกว่างบ 14.9% (Favorable)</div></div>
+  <div class="kpi"><div class="lab">Top 10 อธิบายผลต่างได้</div><div class="val">82.6%</div><div class="note">รวมผลต่าง Top 10 = −131,954 ล้านกีบ จากผลต่างสุทธิ −159,767 ล้านกีบ</div></div>
+</div>
+
+<h2>Executive Summary</h2>
+<div class="card">
+<ul>
+<li><b>ภาพรวม:</b> ค่าใช้จ่ายเกิดจริงทั้งบริษัทต่ำกว่างบ Revise 2025 จำนวน <b class="fav">159,767 ล้านกีบ (−14.9%)</b> — แต่ <u>ไม่ควรตีความว่าเป็นการประหยัดทั้งจำนวน</u> เพราะผลต่างที่ใหญ่ที่สุดมาจากรายการที่ผันแปรตามปริมาณ (ค่าอ้อย) และรายการที่ไม่ใช่การดำเนินงาน (อัตราแลกเปลี่ยน / ภาษี)</li>
+<li><b>รายการเดียวที่ใหญ่ที่สุด:</b> GL 510110 ค่าอ้อยสด ต่ำกว่างบ <b>85,361 ล้านกีบ (−22.6%)</b> คิดเป็น 53% ของผลต่างสุทธิทั้งบริษัท → เป็น <i>Volume/Price variance</i> ต้องแยกด้วยปริมาณอ้อยเข้าหีบจริง เทียบแผน ก่อนสรุปว่าเป็นการควบคุมต้นทุนได้</li>
+<li><b>กลุ่มอัตราแลกเปลี่ยน (4 GL) หักกลบแล้ว:</b> งบตั้งไว้ขาดทุนสุทธิ 805 ล้านกีบ แต่เกิดจริงเป็น <b class="fav">กำไรสุทธิ 37,905 ล้านกีบ</b> → ผลต่าง Favorable 38,710 ล้านกีบ ซึ่งเป็นผลจากการเคลื่อนไหวของค่าเงิน ไม่ใช่ผลงานการบริหารต้นทุน</li>
+<li><b>Red flag ที่ต้องตรวจก่อนปิดงบ:</b> GL 880110 ภาษีเงินได้นิติบุคคล ตั้งงบ 16,092 ล้านกีบ แต่ <b class="unfav">เกิดจริง = 0</b> และ GL 640400 ปป.คส.สิทธิใช้ที่ดิน เกินงบ <b class="unfav">+13,151 ล้านกีบ (+224%)</b> — ทั้งสองรายการมีลักษณะเป็นความคลาดเคลื่อนของการตั้งงบ/การบันทึกบัญชี มากกว่าผลการดำเนินงาน</li>
+</ul>
+</div>
+
+<h2>Top 10 GL ที่มีผลต่างสูงสุด (เรียงตามมูลค่าสัมบูรณ์)</h2>
+<p class="sub" style="margin-bottom:10px">คลิกที่แถวเพื่อดูรายละเอียดหน่วยงานที่ผลักดันผลต่าง (แสดง 5 หน่วยงานแรก) ·
+<span class="tag t-unfav">เกินงบ</span> = เกิดจริง &gt; งบ &nbsp; <span class="tag t-fav">ต่ำกว่างบ</span> = เกิดจริง &lt; งบ</p>
+
+<div class="tblwrap">
+<table id="t">
+<thead><tr>
+  <th class="l">#&nbsp;&nbsp;รหัส GL / ชื่อบัญชี</th>
+  <th>งบ Revise 2025</th><th>เกิดจริง 2025</th><th>ผลต่าง</th><th>%</th>
+  <th class="l" style="width:150px">ทิศทาง</th><th>สถานะ</th>
+</tr></thead>
+<tbody></tbody>
+</table>
+</div>
+
+<h2>ข้อสังเกตเชิงตรวจสอบ (Audit &amp; Control Observations)</h2>
+
+<div class="flag red">
+<b>1. GL 880110 ภาษีเงินได้นิติบุคคล — เกิดจริง 0 เทียบงบ 16,092 ล้านกีบ (Critical)</b>
+งบตั้งภาษีไว้เต็มปีแต่ไม่มีการบันทึกเลยตลอด 12 เดือน มีความเป็นไปได้ 3 ทาง: (ก) กิจการมีผลขาดทุนทางภาษีจริง (ข) ยังไม่ได้ตั้งค้างจ่ายภาษี ณ สิ้นงวด (accrual ไม่ครบ) (ค) บันทึกไว้ที่ GL อื่น/นิติบุคคลอื่น
+<b style="margin-top:6px">ต้องขอ:</b> การคำนวณภาษีปี 2025, กระดาษทำการ Deferred tax (IAS 12), หนังสือรับรองการหักภาษี ณ ที่จ่าย — ถ้าเป็นกรณี (ข) ถือเป็น <i>misstatement</i> ที่กระทบกำไรสุทธิโดยตรงและต้องปรับปรุงก่อนปิดงบ
+</div>
+
+<div class="flag red">
+<b>2. GL 640400 ปป.คส.สิทธิใช้ที่ดิน เกินงบ +13,151 ล้านกีบ (+224%) กระจาย 21 หน่วยงาน (High)</b>
+รายการตัดจำหน่าย/ปรับปรุงสิทธิการใช้ที่ดิน เกินงบกว่า 3 เท่า โดยกระจุกที่ฝ่ายส่งเสริมอ้อย (+9,484 ล้านกีบ) และผู้อำนวยการด้านอ้อย (+2,445 ล้านกีบ)
+รูปแบบนี้มักเกิดจากการรับรู้สินทรัพย์สิทธิการใช้ (Right-of-use / IFRS 16) เพิ่มระหว่างปี โดยงบประมาณตั้งบนฐานสัญญาเดิม
+<b style="margin-top:6px">ต้องขอ:</b> ทะเบียนสัญญาเช่าที่ดินที่เพิ่มระหว่างปี, ตารางตัดจำหน่าย, การอนุมัติสัญญาใหม่ — ตรวจ assertion <i>Accuracy &amp; Cut-off</i> และ Control การอนุมัติสัญญาเช่าก่อนรับรู้
+</div>
+
+<div class="flag">
+<b>3. กลุ่มอัตราแลกเปลี่ยน 4 GL — ผลต่าง Favorable สุทธิ 38,710 ล้านกีบ (Medium — เป็น Presentation issue)</b>
+GL 823100 / 823130 / 466100 / 466110 ต่างเข้า Top 10 แยกกัน แต่ทั้งหมดคือรายการเดียวกันทางเศรษฐกิจ หากดูรายตัวจะตีความผิดทิศ
+ข้อสังเกตเพิ่ม: GL 823130 (ขาดทุนที่ยังไม่เกิดขึ้นจริง) มียอดเกิดจริงเป็น <b>ติดลบ 26,350 ล้านกีบ</b> คือบันทึกกำไรไว้ในบัญชีขาดทุน — เป็นการ <i>จัดประเภทผิดบัญชี (misclassification)</i> ถึงแม้ไม่กระทบกำไรสุทธิ แต่กระทบการนำเสนอและการวิเคราะห์งบ
+<b style="margin-top:6px">แนะนำ:</b> นำเสนอ FX แบบสุทธิรายการเดียวในรายงานผู้บริหาร และปรับ mapping ให้กำไรอยู่ในกลุ่ม 466xxx เท่านั้น
+</div>
+
+<div class="flag">
+<b>4. GL 510110 ค่าอ้อยสด ต่ำกว่างบ 85,361 ล้านกีบ — ยังสรุปไม่ได้ว่าดีหรือไม่ดี (High — ข้อมูลไม่พอ)</b>
+ค่าอ้อยเป็นต้นทุนผันแปรตรงกับปริมาณอ้อยเข้าหีบ การใช้ต่ำกว่างบ 22.6% มักหมายถึง <u>อ้อยเข้าหีบต่ำกว่าแผน</u> ซึ่งกระทบรายได้และการดูดซับค่าใช้จ่ายคงที่ (fixed cost absorption) มากกว่าจะเป็นการประหยัด
+<b style="margin-top:6px">ต้องแยกผลต่างเป็น:</b> Volume variance (ตันอ้อยจริง − แผน) × ราคางบ &nbsp;+&nbsp; Price variance (ราคาจริง − ราคางบ) × ตันจริง
+โดยใช้ข้อมูลจากชีท <i>แผนผลิตRevise ปี2025</i> และ <i>น้ำหนักอ้อยรับซื้อ</i> ในไฟล์เดียวกัน — <b>ยังไม่ได้ทำในรายงานฉบับนี้เพราะยังไม่ได้ตกลงฐานปริมาณที่จะใช้</b>
+</div>
+
+<div class="flag">
+<b>5. GL 812910 ค่าใช้จ่ายบริหารทางอ้อม Share Service เกินงบ +4,437 ล้านกีบ (+7.5%) (Medium)</b>
+เป็นรายการปันส่วนจากบริษัทในกลุ่ม (related party) หน่วยงานผู้รับไม่ได้ควบคุมยอดเอง
+<b style="margin-top:6px">ต้องขอ:</b> เอกสารฐานการปันส่วน (allocation basis) และสัญญาบริการระหว่างกัน — ประเด็น Transfer Pricing และการเปิดเผยรายการกับบุคคลที่เกี่ยวข้องกัน (IAS 24)
+</div>
+
+<h2>สิ่งที่ต้องระวังในการอ่านรายงานนี้</h2>
+<div class="card">
+<h3>Fact — ยืนยันจากไฟล์แล้ว</h3>
+<ul>
+<li>ตัวเลขทุกช่องดึงตรงจากชีท ML_งบค่าใช้จ่าย_Revise 2025 ไม่มีการปรับแต่ง และผลรวมทั้ง 2 คอลัมน์กระทบกับยอดรวมในชีทได้พอดี (ผลต่าง 0.00)</li>
+<li>งบ Revise ใช้อัตราแลกเปลี่ยน @ 640 กีบ ขณะที่งบต้นปี 2025 ใช้ @ 590 (ระบุไว้ในหัวชีท) — รายงานนี้เทียบกับ <b>Revise @ 640</b> ตามที่ร้องขอ</li>
+</ul>
+<h3>Assumption — ผมตั้งสมมติฐานไว้</h3>
+<ul>
+<li>"เกิดจริง 2025" ใช้คอลัมน์ <i>รวมงบเกิดจริง 12เดือน 2025</i> (ผลรวมเดือน 1–12) ซึ่งเป็นปีปฏิทิน ไม่ใช่ปีฤดูการผลิต (Season พ.ย.–ต.ค.) หากต้องการวิเคราะห์ฐาน Season ต้องเปลี่ยนคอลัมน์</li>
+<li>จัดอันดับด้วย <b>มูลค่าสัมบูรณ์</b> ของผลต่าง (ตามที่ขอ "แตกต่างกันสูงสุด") จึงมีทั้งรายการเกินงบและต่ำกว่างบปนกัน และมีรายการที่ไม่ใช่ค่าใช้จ่ายดำเนินงาน (FX, ภาษี) ติดอันดับด้วย</li>
+</ul>
+<h3>ยังไม่มีข้อมูล — ต้องขอเพิ่มจึงจะสรุปได้</h3>
+<ul>
+<li>ปริมาณอ้อยเข้าหีบจริงเทียบแผน (เพื่อแยก Volume/Price variance ของ GL 510110, 510120, 5102701)</li>
+<li>คำอธิบายผลต่างจากหน่วยงานเจ้าของงบ (variance explanation) สำหรับรายการเกิน 1,000 ล้านกีบ</li>
+<li>การคำนวณภาษีเงินได้ปี 2025 และเอกสารสัญญาสิทธิใช้ที่ดินที่เพิ่มระหว่างปี</li>
+</ul>
+</div>
+
+<p class="foot">
+<b>ขอบเขตและข้อจำกัด:</b> รายงานนี้เป็นการวิเคราะห์ผลต่างเชิงวิเคราะห์ (analytical review) จากข้อมูลในไฟล์งบประมาณเท่านั้น
+<u>ยังไม่ได้ตรวจสอบเอกสารประกอบรายการใด ๆ</u> ข้อสังเกตที่ระบุเป็น "Red flag / ต้องตรวจสอบเพิ่มเติม" ไม่ใช่ข้อสรุปว่ามีการทุจริตหรือมีข้อผิดพลาดทางบัญชี
+การสรุปผลขั้นสุดท้ายต้องผ่านการขอเอกสารหลักฐานและสอบถามผู้รับผิดชอบ และเรื่องที่มีผลทางภาษี/การรายงานตามกฎหมาย ควรยืนยันกับผู้สอบบัญชีและที่ปรึกษาภาษีที่ได้รับใบอนุญาต
+</p>
+
+</div>
+
+<script>
+const DATA = [
+{gl:"510110",name:"ค่าอ้อยสด",rev:377703432450,act:292342791300,depts:[["ผู้จัดการฝ่ายส่งเสริมอ้อย",377703432450,292342791300]]},
+{gl:"823100",name:"ขาดทุนจากอัตราแลกเปลี่ยน-เกิดจริง",rev:13149484409,act:46502937552,depts:[["ผจ.บัญชีและการเงิน",13149484409,46502937552]]},
+{gl:"823130",name:"Unrealize Loss on Exchange Rate (Non Trade)",rev:6386874597,act:-26350120000,depts:[["ผจ.บัญชีและการเงิน",6386874597,-26350120000]]},
+{gl:"466110",name:"กำไรจากอัตราแลกเปลี่ยน-ที่ยังไม่เกิดจริง",rev:-6088226418,act:-30299065770,depts:[["ผจ.บัญชีและการเงิน",-6088226418,-30299065770]]},
+{gl:"880110",name:"ภาษีเงินได้นิติบุคคล",rev:16091638300,act:0,depts:[["ผจ.บัญชีและการเงิน",16091638300,0]]},
+{gl:"466100",name:"กำไรจากอัตราแลกเปลี่ยน-เกิดจริง",rev:-12642981980,act:-27758407881,depts:[["ผจ.บัญชีและการเงิน",-12642981980,-27758407881]]},
+{gl:"640400",name:"ปป.คส.สิทธิใช้ที่ดิน",rev:5875293802,act:19026684429,depts:[
+  ["ผู้จัดการฝ่ายส่งเสริมอ้อย",3772312818,13256400452],["ผู้อำนวยการด้านอ้อย",1454712242,3899668020],
+  ["ไร่ 2",195408936,586226808],["ไร่ 6",210155344,483811986],["ไร่ 1",108497688,325493064]]},
+{gl:"630102",name:"ค่าซ่อมแซมฯ - เครื่องจักรและอุปกรณ์",rev:42111589696,act:36980720684,depts:[
+  ["แผนกหม้อไอน้ำ",4205852412,2604765144],["ไร่ 2",2403545529,1718492546],
+  ["แผนกหม้อเคี่ยว",1714585174,1077611672],["แผนกเก็บเกี่ยวอ้อย",5631739702,5108520115],
+  ["แผนกซ่อมบำรุงเครื่องกล",2218328072,1722503555]]},
+{gl:"812910",name:"ค่าใช้จ่ายบริหารทางอ้อม Share Service",rev:59046449630,act:63483461020,depts:[["กจ. บจ.น้ำตาลมิตรลาว",59046449630,63483461020]]},
+{gl:"633100",name:"ค่าภาชนะบรรจุและอุปกรณ์",rev:14999684327,act:10750609245,depts:[
+  ["บรรจุ",14569642245,10449613398],["แผนก LOGISTIC",430042082,300995847]]}
+];
+
+const fmt = n => (n<0?"(":"") + Math.abs(Math.round(n)).toLocaleString("en-US") + (n<0?")":"");
+const maxAbs = Math.max(...DATA.map(d=>Math.abs(d.act-d.rev)));
+const tb = document.querySelector("#t tbody");
+
+DATA.forEach((d,i)=>{
+  const diff = d.act - d.rev;
+  const pct = d.rev !== 0 ? (diff / Math.abs(d.rev) * 100) : null;
+  const over = diff > 0;
+  const w = Math.abs(diff)/maxAbs*50;
+  const bar = `<div class="bar"><span class="mid"></span><i style="background:${over?'var(--unfav)':'var(--fav)'};${over?'left:50%':'right:50%'};width:${w}%"></i></div>`;
+  const tr = document.createElement("tr");
+  tr.className = "grp";
+  tr.innerHTML = `<td class="l"><span class="rank">${i+1}</span> <span class="gl">${d.gl}</span> &nbsp;${d.name}</td>
+    <td>${fmt(d.rev)}</td><td>${fmt(d.act)}</td>
+    <td class="${over?'unfav':'fav'}"><b>${diff>0?'+':'−'}${Math.abs(Math.round(diff)).toLocaleString("en-US")}</b></td>
+    <td class="${over?'unfav':'fav'}">${pct===null?'n/a':(pct>0?'+':'')+pct.toFixed(1)+'%'}</td>
+    <td class="l">${bar}</td>
+    <td><span class="tag ${over?'t-unfav':'t-fav'}">${over?'เกินงบ':'ต่ำกว่างบ'}</span></td>`;
+  tb.appendChild(tr);
+
+  const dets = [];
+  if (d.depts.length > 1 || d.depts[0][0]) {
+    d.depts.forEach(([nm,r,a])=>{
+      const dd = a - r;
+      const el = document.createElement("tr");
+      el.className = "det hide";
+      el.innerHTML = `<td class="l">↳ ${nm}</td><td>${fmt(r)}</td><td>${fmt(a)}</td>
+        <td class="${dd>0?'unfav':'fav'}">${dd>0?'+':'−'}${Math.abs(Math.round(dd)).toLocaleString("en-US")}</td>
+        <td colspan="3"></td>`;
+      tb.appendChild(el); dets.push(el);
+    });
+  }
+  tr.onclick = () => dets.forEach(e => e.classList.toggle("hide"));
+});
+</script>
+</body>
+</html>

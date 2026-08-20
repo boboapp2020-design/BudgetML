@@ -11,9 +11,9 @@ const PagesUser = (() => {
       <div class="gauge-wrap" ${dataAttr}>${Charts.gauge(pct)}</div>
       <div class="kpi-sub">${sub}</div></div>`;
   }
-  // การ์ด KPI แบบมีไอคอนสี
+  // การ์ด KPI — ไม่มีไอคอน เน้นตัวเลขใหญ่ (icon/iconBg คงพารามิเตอร์ไว้เพื่อความเข้ากันได้)
   function kpiC(icon, iconBg, tint, label, valueHtml, sub) {
-    return `<div class="kpi kpi-c ${tint}"><div class="kpi-ic" style="background:${iconBg}">${icon}</div>
+    return `<div class="kpi kpi-noic ${tint}">
       <div class="kpi-body"><div class="kpi-label">${label}</div>
       <div class="kpi-value">${valueHtml}</div><div class="kpi-sub">${sub}</div></div></div>`;
   }

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>รายงานวิเคราะห์งบประมาณ 2025</title>
+<style>
+  :root{ --ink:#16233a; --sub:#5a6b85; --line:#e2e8f2; --bg:#f5f7fb; --card:#fff;
+    --blue:#2b5cf0; --teal:#0d9488; --amber:#c2820a; --red:#c0392b; --green:#1e7d46; --violet:#6b3fd4; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Sarabun",system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5;font-size:14px}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 22px 60px}
+  header.top{background:linear-gradient(135deg,#0b2050,#1a3a8a);color:#fff;border-radius:16px;padding:26px 30px;margin-bottom:22px}
+  header.top .co{font-size:13px;opacity:.85;letter-spacing:.5px}
+  header.top h1{margin:6px 0 4px;font-size:25px}
+  header.top .meta{font-size:12.5px;opacity:.9}
+  .disc{background:#fff7e6;border:1px solid #f0d488;color:#7a4d09;border-radius:10px;padding:9px 14px;font-size:12px;margin:14px 0 22px}
+  h2{font-size:18px;margin:30px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--line);display:flex;align-items:center;gap:8px}
+  h2 .n{background:var(--blue);color:#fff;width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 2px 6px rgba(20,40,80,.05)}
+  .kpi .l{font-size:11.5px;color:var(--sub)}
+  .kpi .v{font-size:21px;font-weight:700;margin-top:3px}
+  .kpi .s{font-size:11.5px;margin-top:2px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 2px;box-shadow:0 2px 6px rgba(20,40,80,.05);overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+  th,td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:#eef2fb;color:var(--sub);font-weight:600;font-size:12px}
+  tbody tr:hover{background:#fafcff}
+  tr.sum td{font-weight:700;background:#f0f4fc;border-top:2px solid var(--line)}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--sub)}
+  .bar{height:8px;border-radius:5px;background:#eef2fb;overflow:hidden;min-width:70px;display:inline-block;vertical-align:middle;width:90px}
+  .bar>i{display:block;height:100%;border-radius:5px}
+  .find{border-left:4px solid;border-radius:10px;background:var(--card);border:1px solid var(--line);padding:14px 16px;margin:12px 0;box-shadow:0 2px 6px rgba(20,40,80,.05)}
+  .find.hi{border-left-color:var(--red)} .find.med{border-left-color:var(--amber)} .find.info{border-left-color:var(--blue)}
+  .find .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;color:#fff;margin-right:6px}
+  .tag.hi{background:var(--red)} .tag.med{background:var(--amber)} .tag.info{background:var(--blue)}
+  .find h3{margin:8px 0 8px;font-size:15px}
+  .find .row{font-size:12.8px;margin:5px 0;display:flex;gap:8px}
+  .find .row b{min-width:88px;color:var(--sub);font-weight:600;flex-shrink:0}
+  .wf{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+  .wf .item{display:grid;grid-template-columns:180px 1fr 92px;gap:10px;align-items:center;font-size:12.5px}
+  .wf .track{height:18px;background:#f0f4fc;border-radius:4px;position:relative}
+  .wf .fill{position:absolute;top:0;height:100%;border-radius:4px}
+  .foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--sub)}
+  .lbl{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;background:#eef2fb;color:var(--sub);margin-right:4px}
+  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}.wf .item{grid-template-columns:120px 1fr 78px}}
+  @media print{body{background:#fff}.card,.kpi,.find{box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="co">บริษัท น้ำตาลมิตรลาว จำกัด · Mitr Lao Sugar</div>
+  <h1>รายงานวิเคราะห์งบประมาณค่าใช้จ่าย ปี 2025</h1>
+  <div class="meta">งบ Revise เทียบเกิดจริง (ม.ค.–ธ.ค. 2025) · เทียบงบต้นปี 2026 · หน่วย: กีบ (LAK) · อัตราแลกเปลี่ยน @640 · จัดทำ 18 ส.ค. 2025</div>
+</header>
+
+<div class="disc">⚠️ <b>ข้อจำกัด:</b> รายงานนี้เป็นการวิเคราะห์เบื้องต้นเชิงบริหาร (FP&amp;A) จากข้อมูลในไฟล์ ML_งบค่าใช้จ่าย_Revise 2025 — <b>ยังไม่ใช่งบการเงินที่ผ่านการตรวจสอบ</b> ตัวเลข "ผลต่าง/สมมติฐาน/ข้อสังเกต" ต้องให้ผู้มีวิชาชีพบัญชี/ผู้สอบบัญชียืนยันก่อนใช้รายงานจริง · ภาษาข้อสังเกตใช้ "Red Flag / ต้องตรวจเพิ่ม" ไม่ใช่ข้อกล่าวหา</div>
+
+<!-- ===== KPI ===== -->
+<div class="kpis">
+  <div class="kpi"><div class="l">งบ Revise 2025</div><div class="v">1,073.7B</div><div class="s mut">1,073,661,624,807 กีบ</div></div>
+  <div class="kpi"><div class="l">เกิดจริง 2025</div><div class="v">913.9B</div><div class="s mut">913,894,354,172 กีบ</div></div>
+  <div class="kpi"><div class="l">ผลต่าง (เกิดจริง − งบ)</div><div class="v pos">−159.8B</div><div class="s pos">−14.9% · ต่ำกว่างบ (favorable)</div></div>
+  <div class="kpi"><div class="l">งบต้นปี 2026 (อ้างอิง)</div><div class="v">1,444.8B</div><div class="s mut">+58% จากเกิดจริง 2025</div></div>
+</div>
+
+<!-- ===== Executive Summary ===== -->
+<h2><span class="n">E</span>สรุปผู้บริหาร (Executive Summary)</h2>
+<div class="card" style="padding:16px 18px;font-size:13.5px;line-height:1.65">
+  <p style="margin:2px 0 10px"><b>ภาพรวม:</b> ค่าใช้จ่ายเกิดจริงปี 2025 รวม <b>913.9 พันล้านกีบ</b> <span class="pos">ต่ำกว่างบ Revise 159.8 พันล้านกีบ (−14.9%)</span> ซึ่งด้านต้นทุนถือว่า favorable — แต่ผลต่างส่วนใหญ่มาจาก <b>ค่าอ้อยสด</b> (ต้นทุนหลัก) ที่ต่ำกว่างบ 85.4B จึง<b>ต้องตรวจสอบว่าเกิดจากปริมาณอ้อยเข้าหีบต่ำกว่าแผน หรือเป็นการตัดงวด (cut-off) ค่าอ้อยค้างจ่ายที่ยังไม่บันทึก</b> ก่อนสรุปว่าเป็นการประหยัดจริง</p>
+  <p style="margin:2px 0"><b>ประเด็นที่ต้องระวัง (Red Flags):</b> ① <b>ภาษีเงินได้นิติบุคคล = 0</b> ทั้งที่ตั้งงบ 16.1B (ความครบถ้วนของ provision) · ② <b>ขาดทุนอัตราแลกเปลี่ยนเกิดจริงเกินงบ +253%</b> (823100) พร้อมความผันผวน FX ที่ยังไม่เกิดจริงสูงมากทั้งสองทาง · ③ <b>ค่าเสื่อมสิทธิใช้ที่ดินเกินงบ +224%</b> · ④ ต้นทุน 5 GL แรกกระจุกตัว <b>74.3%</b> ของทั้งหมด</p>
+</div>
+
+<!-- ===== 1. Variance by area ===== -->
+<h2><span class="n">1</span>ผลต่างตามด้าน (Variance by Segment)</h2>
+<div class="card">
+<table>
+  <thead><tr><th>ด้าน</th><th>งบ Revise</th><th>เกิดจริง</th><th>ผลต่าง</th><th>%</th><th style="text-align:center">ทิศทาง</th><th>งบ 2026</th></tr></thead>
+  <tbody>
+    <tr><td>ด้านอ้อย</td><td>663.7B</td><td>569.8B</td><td class="pos">−93.9B</td><td class="pos">−14.1%</td><td style="text-align:center"><span class="bar"><i style="width:86%;background:var(--green)"></i></span></td><td class="mut">846.6B</td></tr>
+    <tr><td>ฝ่ายสนับสนุน</td><td>314.5B</td><td>251.8B</td><td class="pos">−62.7B</td><td class="pos">−19.9%</td><td style="text-align:center"><span class="bar"><i style="width:80%;background:var(--green)"></i></span></td><td class="mut">451.9B</td></tr>
+    <tr><td>ด้านโรงงาน</td><td>95.4B</td><td>92.3B</td><td class="pos">−3.1B</td><td class="pos">−3.3%</td><td style="text-align:center"><span class="bar"><i style="width:97%;background:var(--teal)"></i></span></td><td class="mut">146.3B</td></tr>
+    <tr class="sum"><td>รวม</td><td>1,073.7B</td><td>913.9B</td><td class="pos">−159.8B</td><td class="pos">−14.9%</td><td></td><td>1,444.8B</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="mut" style="font-size:12.5px;margin:8px 2px">ทุกด้านใช้ต่ำกว่างบ — ด้านอ้อยเป็นผลต่างเงินสูงสุด (−93.9B) ส่วนฝ่ายสนับสนุนต่ำกว่างบมากสุดเชิง % (−19.9%) ควรเจาะว่าเป็นการควบคุมต้นทุนจริง หรือกิจกรรม/โครงการเลื่อนออกไป (timing/phasing)</p>
+
+<!-- ===== 2. Bridge by cost type ===== -->
+<h2><span class="n">2</span>สะพานผลต่างตามประเภทต้นทุน (Bridge: Revise → เกิดจริง)</h2>
+<div class="card" style="padding:16px 18px">
+<div class="wf">
+  <div class="item"><span>เริ่ม: งบ Revise</span><div class="track"></div><b style="text-align:right">1,073.7B</b></div>
+  <div class="item"><span class="mut">VC ต้นทุนผันแปร (อ้อย/วัตถุดิบ)</span><div class="track"><div class="fill" style="left:50%;width:24%;background:var(--green)"></div></div><b class="pos" style="text-align:right">−111.3B</b></div>
+  <div class="item"><span class="mut">FC ต้นทุนคงที่</span><div class="track"><div class="fill" style="left:48%;width:2%;background:var(--green)"></div></div><b class="pos" style="text-align:right">−9.1B</b></div>
+  <div class="item"><span class="mut">ภาษีเงินได้ (ไม่บันทึก)</span><div class="track"><div class="fill" style="left:46.5%;width:3.5%;background:var(--green)"></div></div><b class="pos" style="text-align:right">−16.1B</b></div>
+  <div class="item"><span class="mut">ค่าเสื่อม (DEP)</span><div class="track"><div class="fill" style="left:50%;width:3%;background:var(--red)"></div></div><b class="neg" style="text-align:right">+11.9B</b></div>
+  <div class="item"><span class="mut">ขาดทุน FX เกิดจริง</span><div class="track"><div class="fill" style="left:50%;width:7%;background:var(--red)"></div></div><b class="neg" style="text-align:right">+33.4B</b></div>
+  <div class="item"><span class="mut">FX ที่ยังไม่เกิดจริง (สุทธิ กำไร)</span><div class="track"><div class="fill" style="left:35%;width:15%;background:var(--green)"></div></div><b class="pos" style="text-align:right">−71.2B</b></div>
+  <div class="item"><span class="mut">อื่นๆ (ADM/SAL/ดอกเบี้ย/สุทธิ)</span><div class="track"><div class="fill" style="left:48%;width:2%;background:var(--green)"></div></div><b class="pos" style="text-align:right">+2.6B</b></div>
+  <div class="item" style="border-top:2px solid var(--line);padding-top:6px"><span><b>เกิดจริง</b></span><div class="track"></div><b style="text-align:right">913.9B</b></div>
+</div>
+</div>
+
+<h2 style="border:0;margin-top:22px"><span class="n" style="visibility:hidden">·</span>รายละเอียดตามประเภท (Type)</h2>
+<div class="card">
+<table>
+  <thead><tr><th>ประเภทต้นทุน</th><th>งบ Revise</th><th>เกิดจริง</th><th>ผลต่าง</th><th>%</th><th>งบ 2026</th></tr></thead>
+  <tbody>
+    <tr><td><span class="lbl">VC</span>ต้นทุนผันแปร (อ้อย/วัตถุดิบ)</td><td>641.5B</td><td>530.2B</td><td class="pos">−111.3B</td><td class="pos">−17.3%</td><td class="mut">812.4B</td></tr>
+    <tr><td><span class="lbl">INT</span>ดอกเบี้ยเงินกู้</td><td>184.0B</td><td>184.8B</td><td class="neg">+0.7B</td><td class="neg">+0.4%</td><td class="mut">205.2B</td></tr>
+    <tr><td><span class="lbl">FC</span>ต้นทุนคงที่</td><td>104.4B</td><td>95.3B</td><td class="pos">−9.1B</td><td class="pos">−8.7%</td><td class="mut">108.7B</td></tr>
+    <tr><td><span class="lbl">ADM</span>ค่าใช้จ่ายบริหาร</td><td>77.4B</td><td>80.3B</td><td class="neg">+2.8B</td><td class="neg">+3.7%</td><td class="mut">71.4B</td></tr>
+    <tr><td><span class="lbl">DEP</span>ค่าเสื่อมราคา (รวม)</td><td>83.4B</td><td>95.3B</td><td class="neg">+11.9B</td><td class="neg">+14.3%</td><td class="mut">145.1B</td></tr>
+    <tr><td><span class="lbl">SAL</span>เงินเดือน/ค่าแรง</td><td>11.2B</td><td>9.0B</td><td class="pos">−2.2B</td><td class="pos">−20.0%</td><td class="mut">10.9B</td></tr>
+    <tr><td><span class="lbl">FX</span>ผลต่างอัตราแลกเปลี่ยน (สุทธิ)</td><td>−0.4B</td><td>−37.8B</td><td class="pos">−37.4B</td><td class="mut">—</td><td class="mut">90.1B</td></tr>
+    <tr><td><span class="lbl">TAX</span>ภาษีเงินได้นิติบุคคล</td><td>16.1B</td><td>0.0B</td><td class="pos">−16.1B</td><td class="pos">−100%</td><td class="mut">0.0B</td></tr>
+    <tr class="sum"><td>รวมค่าใช้จ่ายสุทธิ</td><td>1,073.7B</td><td>913.9B</td><td class="pos">−159.8B</td><td class="pos">−14.9%</td><td>1,444.8B</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="mut" style="font-size:12px;margin:8px 2px">หมายเหตุ: FX สุทธิรวมทั้งขาดทุน/กำไรที่เกิดจริงและยังไม่เกิดจริง (realized/unrealized) ตามรูปแบบไฟล์ต้นทาง — ตัวเลขสุทธิเป็นกำไร 37.8B บดบังความผันผวนรวม (gross) ที่สูงมาก ดูข้อสังเกต #2</p>
+
+<!-- ===== 3. Audit findings ===== -->
+<h2><span class="n">3</span>ข้อสังเกตเชิงตรวจสอบ (Findings — Fact / Interpretation / Recommendation)</h2>
+
+<div class="find hi">
+  <span class="tag hi">HIGH</span><span class="lbl">IAS 12</span><span class="lbl">Completeness</span>
+  <h3>#1 ภาษีเงินได้นิติบุคคลเกิดจริง = 0 (ตั้งงบ 16.1B)</h3>
+  <div class="row"><b>Fact</b><span>GL 880110 ภาษีเงินได้นิติบุคคล: งบ Revise 16.1B · เกิดจริง 0 · ผลต่าง −100%</span></div>
+  <div class="row"><b>Interpretation</b><span>อาจเป็นจริง (ผลขาดทุนทางภาษี/สิทธิประโยชน์ BOI-ภาษี) หรืออาจเป็น <b>ความไม่ครบถ้วนของการตั้งประมาณการภาษี (tax provision) ณ สิ้นงวด</b> — ยังสรุปไม่ได้จากข้อมูลเท่าที่มี</span></div>
+  <div class="row"><b>Recommend</b><span>ขอกระดาษทำการคำนวณภาษี, สถานะขาดทุนสะสมทางภาษี, ภาษีเงินได้รอตัดบัญชี (deferred tax) และหนังสือสิทธิประโยชน์ทางภาษี · ยืนยันว่ามีการตั้งค้างจ่ายภาษีหรือไม่</span></div>
+</div>
+
+<div class="find hi">
+  <span class="tag hi">HIGH</span><span class="lbl">IAS 21</span><span class="lbl">Valuation</span>
+  <h3>#2 ความผันผวนอัตราแลกเปลี่ยนสูงมาก — ขาดทุนเกิดจริงเกินงบ +253%</h3>
+  <div class="row"><b>Fact</b><span>823100 ขาดทุน FX เกิดจริง: งบ 13.1B → จริง 46.5B (+33.4B, +253.6%) · รายการ FX ที่ยังไม่เกิดจริงแกว่งหลักหมื่นล้านทั้งกำไร (466110 −30.3B, 466100 −27.8B) และขาดทุน (823130 −26.4B)</span></div>
+  <div class="row"><b>Interpretation</b><span>สอดคล้องกับค่าเงินกีบผันผวน (Revise @640 → งบ 2026 @680) · สุทธิเป็นกำไร 37.8B แต่ <b>ค่าสุทธิบดบังความเสี่ยง gross</b> ที่แท้จริง</span></div>
+  <div class="row"><b>Recommend</b><span>ทบทวนนโยบายบริหารความเสี่ยง FX (natural hedge/สัญญาซื้อขายล่วงหน้า) · ตรวจการแยกประเภท realized vs unrealized และการวัดมูลค่ารายการเป็นเงินตราต่างประเทศ ณ สิ้นงวดตาม IAS 21</span></div>
+</div>
+
+<div class="find med">
+  <span class="tag med">MEDIUM</span><span class="lbl">Cut-off</span><span class="lbl">Cost Acctg</span>
+  <h3>#3 ค่าอ้อยสดต่ำกว่างบ 85.4B (−22.6%) — ต้นทุนหลักของโรงงาน</h3>
+  <div class="row"><b>Fact</b><span>510110 ค่าอ้อยสด: งบ 377.7B → จริง 292.3B (−85.4B) · เป็นผลต่างเงินสูงสุดของทั้งบริษัท และเป็น 32% ของต้นทุนเกิดจริง</span></div>
+  <div class="row"><b>Interpretation</b><span>สำหรับโรงงานน้ำตาล ค่าอ้อย = ต้นทุนใหญ่สุด ผลต่าง 22% ต้องกระทบยอด <b>ปริมาณอ้อยเข้าหีบ (ตัน) × ราคา/ตัน</b> — อาจปริมาณต่ำกว่าแผน หรือ <b>ค่าอ้อยค้างจ่ายยังไม่ตัดเข้างวด (cut-off/completeness)</b></span></div>
+  <div class="row"><b>Recommend</b><span>กระทบยอดกับรายงานอ้อยเข้าหีบ/แผนผลิต · ตรวจการตั้งค้างจ่ายค่าอ้อย ณ สิ้นงวด · แยกผลด้านปริมาณ (Volume) กับราคา (Price) ก่อนสรุปว่าประหยัด</span></div>
+</div>
+
+<div class="find med">
+  <span class="tag med">MEDIUM</span><span class="lbl">IAS 16/38</span>
+  <h3>#4 ค่าเสื่อมสิทธิใช้ที่ดินเกินงบ +224%</h3>
+  <div class="row"><b>Fact</b><span>640400 ปป.คส.สิทธิใช้ที่ดิน: งบ 5.9B → จริง 19.0B (+13.2B, +223.8%)</span></div>
+  <div class="row"><b>Interpretation</b><span>อาจมีการรับรู้สินทรัพย์/สิทธิใช้ที่ดินเพิ่มระหว่างปี หรืออายุการใช้งาน/วิธีคิดค่าเสื่อมต่างจากที่ตั้งงบ</span></div>
+  <div class="row"><b>Recommend</b><span>ตรวจทะเบียนสินทรัพย์ · ยืนยันเกณฑ์การตัดจำหน่ายสิทธิใช้ที่ดินและอายุการให้ประโยชน์</span></div>
+</div>
+
+<div class="find info">
+  <span class="tag info">INFO</span><span class="lbl">Audit focus</span>
+  <h3>#5 การกระจุกตัวของต้นทุน — 5 GL แรก = 74.3% ของเกิดจริง</h3>
+  <div class="row"><b>Fact</b><span>ค่าอ้อยสด 292.3B · ดอกเบี้ยเงินกู้ 179.7B · ค่าอ้อยสด-ไร่บริษัท 97.1B · ค่าบริหารทางอ้อม Share 63.5B · ขาดทุน FX 46.5B → รวม 679.1B / 913.9B</span></div>
+  <div class="row"><b>Recommend</b><span>งานตรวจสอบควรทุ่มน้ำหนักที่ 5 บัญชีนี้ (ค่าอ้อย, ดอกเบี้ย, ค่า share บริหาร, FX) เพราะเป็นตัวขับเคลื่อนต้นทุนและความเสี่ยง misstatement หลัก</span></div>
+</div>
+
+<div class="foot">
+  <p><b>วิธีการ (Methodology):</b> Variance = เกิดจริง − งบ Revise · Materiality เชิงสังเกต ≥ 10 พันล้านกีบ หรือ ≥ 10% (Actual vs Budget) · B = พันล้านกีบ · ผลต่างเป็นลบ (ต่ำกว่างบ) ด้านค่าใช้จ่าย = favorable แสดงสีเขียว · ข้อมูลจากไฟล์ ML_งบค่าใช้จ่าย_Revise 2025 ชีท "ML_งบค่าใช้จ่าย_Revise 2025" (คอลัมน์รวมของไฟล์: Revise=C39, เกิดจริง=C53) แมปเข้าผังหน่วยงานจริง 152 หน่วย/173 GL</p>
+  <p><b>ข้อจำกัดความรับผิด:</b> การวิเคราะห์เชิงบริหารเบื้องต้น มิใช่ความเห็นการสอบบัญชี · ข้อสังเกตทั้งหมดเป็น "Red Flag / ต้องตรวจเพิ่ม" ไม่ใช่ข้อสรุปว่ามีข้อผิดพลาดหรือทุจริต · ควรให้ผู้สอบบัญชี/ผู้มีวิชาชีพยืนยันก่อนใช้ในการรายงานหรือการตัดสินใจ · ประเด็นภาษีควรปรึกษาที่ปรึกษาภาษีที่มีใบอนุญาต</p>
+</div>
+</div>
+</body>
+</html>
