@@ -147,6 +147,9 @@ const PagesUser = (() => {
     const rvIcon = rvKind === 'LANDING' ? '🎯' : '🔁';
     const reviseMsg = rvOn
       ? `<div class="lock-banner revise-banner">${rvIcon} <b>${rvTitle}</b> — เดือน 1–${thru - 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) · เดือน ${thru} เพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือน ${thru + 1}–12 ปรับคาดการณ์ได้ · แถวที่ยอดต่างจากแผน ORIGINAL ต้องระบุเหตุผลก่อนส่ง</div>` : '';
+    // เกิดจริงที่บัญชีอัปโหลด (นอกรอบ Revise) — ช่องไฮไลต์ = ล็อก
+    const postedMsg = (!rvOn && Store.hasPostedActuals(c.year, c.deptId))
+      ? `<div class="lock-banner revise-banner">📥 <b>ตัวเลขเกิดจริงจากแผนกบัญชี</b> — ช่องที่ไฮไลต์คือยอดเกิดจริงที่บัญชีอัปโหลด (ล็อก แก้ไขไม่ได้) · ช่องอื่นยังกรอก/แก้ได้ตามปกติ</div>` : '';
     // ป้ายล็อกแบบกะทัดรัด — ย้ายไปอยู่ในแถบเครื่องมือข้างปุ่ม (แทน banner เต็มความกว้าง)
     const lockChip = !c.editable
       ? `<span class="lock-chip">🔒 ${['SUBMITTED'].includes(c.state.status) ? 'ส่งแล้ว — แก้ได้เมื่อถูกตีกลับ' : 'รอบงบถูก Lock — อ่านอย่างเดียว'}</span>` : '';
@@ -180,20 +183,22 @@ const PagesUser = (() => {
       const hasNote = n.reason.trim() || n.assumption.trim();
       const dis = (viewOrig || !c.editable || notUsed) ? 'disabled' : '';
       const pm = rvOn ? Store.originalMonths(c.year, c.deptId, r.key) : Store.rowMonths(c.prevYear, c.deptId, r.key);
-      const am = rvOn ? Store.actualMonths(c.year, c.deptId, r.key) : null;
+      const am = Store.actualMonths(c.year, c.deptId, r.key);   // เกิดจริง (บัญชีอัปโหลด) — ใช้ทุกโหมด
       const rowTip = `CCT ${r.cct} ${esc(r.cctName)} · IO ${r.io || '—'}`;
       const cells = m.map((v, i) => {
         const hasDetail = !!Store.cellDetail(c.year, c.deptId, r.key, i);
-        const isActual = rvOn && i < thru - 1;
+        const posted = am[i] !== null && am[i] !== undefined;   // ช่องที่บัญชีโพสต์เกิดจริง
         const isFloor = rvOn && i === thru - 1;
-        const cellCls = isActual ? ' cell-actual' : (isFloor ? ' cell-floor' : '');
-        const cellTip = isActual ? 'ตัวเลขเกิดจริง — ล็อกโดยแผนกบัญชี'
+        const isActual = rvOn && i < thru - 1;
+        const lockPosted = posted && !isFloor;                 // ล็อก (ยกเว้นเดือนพื้นรอบ Revise ที่ยังเพิ่มได้)
+        const cellCls = (isActual || lockPosted) ? ' cell-actual' : (isFloor ? ' cell-floor' : '');
+        const cellTip = (isActual || lockPosted) ? 'ตัวเลขเกิดจริง — ล็อกโดยแผนกบัญชี'
           : (isFloor ? `เกิดจริงแล้ว ${fmt(am?.[i] ?? 0)} กีบ — เพิ่มได้ ลดต่ำกว่านี้ไม่ได้` : '');
         const cAdj = adj && adj.monthNet[i] != null;
         const cAdjTip = cAdj ? esc(`ปรับจากคำร้อง (สุทธิ ${adj.monthNet[i] > 0 ? '+' : ''}${fmt(Math.round(adj.monthNet[i]))} กีบ):\n` + adj.monthLines[i].join('\n')) : '';
         return `<td class="num cell-td${cAdj ? ' cell-adj' : ''}"><div class="cell-wrap">
           <input class="cell${cellCls}" data-row="${r.key}" data-m="${i}" inputmode="decimal"
-            value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis || isActual ? 'disabled' : ''} ${cellTip ? `title="${cellTip}"` : ''}>
+            value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis || isActual || lockPosted ? 'disabled' : ''} ${cellTip ? `title="${cellTip}"` : ''}>
           ${viewOrig ? '' : `<button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${r.key}|${i}" tabindex="-1"
             title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>`}
           ${cAdj ? `<span class="cell-adj-dot" title="${cAdjTip}">🔄</span>` : ''}
@@ -251,7 +256,7 @@ const PagesUser = (() => {
           ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', rvOn ? 'เพิ่ม/ลดระหว่างปี' : 'เพิ่ม/ลด', `<span data-kpi-delta>${deltaBadge(cmp.diff, cmp.pct)}</span>`, 'เทียบ' + baseLabel)}
           ${gaugeKpi('ความครบถ้วน', c.comp.pct, 'เป้าหมาย 100% ก่อน Submit', 'data-kpi-comp')}
         </div>`
-      + reviseMsg
+      + reviseMsg + postedMsg
       + card('', `<div class="grid-toolbar">
           ${lockChip}
           <span class="grid-tools">

@@ -548,6 +548,64 @@ const Store = (() => {
     return { matched, unmatched };
   }
 
+  // ---- โพสต์ "เกิดจริง" ทับงบผู้กรอกทันที (ไม่ต้องเปิดรอบ Revise) — ล็อกช่องที่โพสต์ ----
+  // records = [{io,codeA,cct,glCode, months:[..]}] · เขียนได้ทั้ง 12 เดือน · ทับ row.months (งบ) + เก็บใน db.actuals (แหล่งจริง+ล็อก)
+  function postActuals(actor, year, records) {
+    assertAccounting(actor);
+    const y = Number(year);
+    if (!db.actuals) db.actuals = [];
+    let matched = 0, cells = 0; const unmatched = [];
+    records.forEach(rec => {
+      const ref = actualRowRef(rec);
+      if (!ref) { unmatched.push(rec.io || rec.codeA || ((rec.cct || '') + '/' + (rec.glCode || '')) || '?'); return; }
+      const key = ref.glId + '@' + ref.cct;
+      let a = db.actuals.find(x => x.year === y && x.departmentId === ref.departmentId && x.glId === ref.glId && x.cct === ref.cct);
+      if (!a) { a = { year: y, departmentId: ref.departmentId, glId: ref.glId, cct: ref.cct, months: Array(12).fill(null), updatedAt: null, updatedBy: null }; db.actuals.push(a); }
+      const row = ensureRow(y, ref.departmentId, key);
+      const mm = rec.months || [];
+      let touched = false;
+      for (let mi = 0; mi < 12 && mi < mm.length; mi++) {
+        const v = mm[mi];
+        if (v === null || v === undefined || !isFinite(v)) continue;
+        const old = row.months[mi];
+        a.months[mi] = v;
+        row.months[mi] = v;                 // ทับงบเดือนนั้นทันที
+        if (old !== v) audit(actor, 'โพสต์เกิดจริง (ทับงบ)', { deptId: ref.departmentId, glCode: auditRowRef(key).glCode, month: mi + 1, oldValue: old, newValue: v });
+        cells++; touched = true;
+      }
+      if (touched) {
+        const ts = new Date().toISOString();
+        a.updatedAt = ts; a.updatedBy = actor.name;
+        row.updatedAt = ts; row.updatedBy = actor.name + ' (เกิดจริง/บัญชี)';
+      }
+      matched++;
+    });
+    save();
+    return { matched, unmatched, cells };
+  }
+  // แปลงข้อความวาง (codeA หรือ CCT+GL ตามด้วยตัวเลขเดือน) → records แล้วโพสต์
+  function postActualsPaste(actor, year, text) {
+    assertAccounting(actor);
+    const num = s => { s = String(s).replace(/[,\s]/g, ''); if (s === '') return null; const v = Number(s); return isFinite(v) ? v : null; };
+    const records = [];
+    text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+      const cols = line.split('\t').map(s => s.trim());
+      const c0 = cols[0].replace(/\s/g, '');
+      const byCodeA = (db.departmentRows || []).find(x => x.codeA && x.codeA === c0);
+      if (byCodeA) { records.push({ codeA: c0, months: cols.slice(1).map(num) }); return; }
+      if (cols.length >= 2) {
+        const byPair = (db.departmentRows || []).find(x => x.cct === c0 && gl(x.glId)?.code === cols[1]);
+        if (byPair) { records.push({ cct: c0, glCode: cols[1], months: cols.slice(2).map(num) }); return; }
+      }
+      if (/\d{6}/.test(c0)) records.push({ codeA: c0, months: cols.slice(1).map(num) }); // ปล่อยให้ postActuals รายงานว่าจับคู่ไม่ได้
+    });
+    return postActuals(actor, year, records);
+  }
+  // หน่วยงานนี้มีเกิดจริง (โพสต์แล้ว) ในปีนี้ไหม
+  function hasPostedActuals(year, deptId) {
+    return (db.actuals || []).some(a => a.year === Number(year) && a.departmentId === deptId && a.months.some(v => v !== null && v !== undefined));
+  }
+
   // นำเข้า "งบ Revise" จากไฟล์ Excel: ตั้งค่างบ 12 เดือน (+MTP) ให้แถวที่จับคู่ได้ (authoritative)
   // records = [{io,codeA,cct,glCode,glName,deptCode,deptName,cctName, months:[12], mtp1, mtp2}]
   // opts.autoCreate = true → สร้างแผนก/GL/CCT/แถว ที่ยังไม่มีอัตโนมัติ (0 จับคู่ไม่ได้)
@@ -732,6 +790,11 @@ const Store = (() => {
     if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
     // กติการอบ Revise: เดือนที่มีเกิดจริงถูกล็อก · เดือนสุดท้ายของเกิดจริงเป็น "พื้น" (เพิ่มได้ ลดไม่ได้)
     const rv = revisePhase(year);
+    // เกิดจริงที่แผนกบัญชีอัปโหลด (postActuals) = ล็อกทันทีทุกโหมด · ยกเว้นเดือน "พื้น" ของรอบ Revise ที่ยังเพิ่มได้
+    const postedVal = actualMonths(year, deptId, rowKey)[monthIdx];
+    const isReviseFloor = rv.on && monthIdx === rv.thru - 1;
+    if (postedVal !== null && postedVal !== undefined && !isReviseFloor)
+      throw new Error(`เดือน ${monthIdx + 1} เป็นตัวเลขเกิดจริงที่แผนกบัญชีอัปโหลด — ล็อก แก้ไขไม่ได้`);
     if (rv.on) {
       if (monthIdx < rv.thru - 1) throw new Error(`เดือน ${monthIdx + 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) แก้ไขไม่ได้`);
       if (monthIdx === rv.thru - 1) {
@@ -1676,6 +1739,7 @@ const Store = (() => {
     originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
+    postActuals, postActualsPaste, hasPostedActuals,
     canEdit, setCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,

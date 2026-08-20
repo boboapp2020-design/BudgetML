@@ -999,6 +999,16 @@ const PagesAcc = (() => {
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
+      + card('📥 อัปโหลดตัวเลข "เกิดจริง" (บัญชี) — ทับงบผู้กรอกทันที', `
+          <p class="muted small">อัปโหลดไฟล์ตัวเลข<b>เกิดจริง</b> (Excel/CSV) — ระบบจับคู่แต่ละแถวด้วย <code>code a → IO → CCT+GL</code> แล้ว<b>เขียนทับช่องงบเดือนนั้นในตารางของผู้กรอกทันที</b> · ช่องที่ทับจะ<b>ถูกล็อก</b> (ผู้กรอกแก้ไม่ได้) · <b>ใช้ได้ทุกเมื่อ ไม่ต้องเปิดรอบ Revise</b></p>
+          <input type="file" id="postActFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
+          <span id="postActMsg" class="muted small" style="margin-left:10px"></span>
+          <div style="margin-top:12px;border-top:1px dashed var(--border);padding-top:10px">
+            <p class="muted small" style="margin:0 0 6px">— หรือวางจาก Excel: <code>code a</code> ตามด้วยตัวเลข 12 เดือน (คั่น Tab) · หรือ <code>CCT [Tab] รหัส GL</code> ตามด้วยตัวเลข —</p>
+            <textarea id="postActPaste" rows="5" placeholder="8003310100635202a\t45000000\t120000000\t8000000\t65000000\t…" style="font-family:monospace;font-size:12px;width:100%"></textarea>
+            <button class="primary-btn" id="postActPasteBtn" style="margin-top:8px">📥 โพสต์เกิดจริง (ทับงบ)</button>
+          </div>
+          <p class="warn-text small" style="margin-top:8px">⚠ เขียนทับตัวเลขที่แผนกกรอกในเดือนที่ตรงกัน (บันทึก audit log ว่ามาจากไฟล์เกิดจริง) — ถอยกลับได้จากเวอร์ชันงบ 📸 ที่บันทึกไว้</p>`)
       + card('🔍 ตรวจกระทบยอดกับไฟล์ (Reconciliation)', `
           <p class="muted small">อัปโหลดไฟล์งบ (Excel/CSV) เพื่อ<b>เทียบกับงบปี ${year} ในระบบ</b> — ดูว่าตรง/ต่าง/ขาดแถวไหน (จับคู่ด้วย code a / IO / CCT+GL) โดย<b>ไม่แก้ไขข้อมูล</b></p>
           <input type="file" id="reconFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
@@ -1217,6 +1227,41 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
+    // ---- โพสต์เกิดจริง (ทับงบ) จากไฟล์ ----
+    const postActResult = (r, srcTxt) => {
+      const unTxt = r.unmatched.length
+        ? `<div class="warn-text" style="margin-top:8px">⚠ จับคู่ไม่ได้ ${r.unmatched.length} แถว:</div><div class="muted small" style="max-height:120px;overflow:auto">${r.unmatched.slice(0, 60).map(u => esc(String(u))).join(' · ')}${r.unmatched.length > 60 ? ' …' : ''}</div>`
+        : '<p style="color:#0ca30c;margin-top:8px">✓ จับคู่ได้ครบทุกแถว</p>';
+      UI.modal('✅ โพสต์เกิดจริงแล้ว', `<p>ทับงบ <b>${r.matched}</b> แถว · <b>${r.cells}</b> ช่อง${srcTxt ? ` <span class="muted small">(${esc(srcTxt)})</span>` : ''}<br><span class="muted small">ช่องที่ทับถูกล็อกในตารางผู้กรอกแล้ว</span></p>${unTxt}`,
+        [{ label: 'ปิด', cls: 'primary-btn', onClick: cl => { cl(); App.render(); } }]);
+    };
+    document.getElementById('postActFile')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const msg = document.getElementById('postActMsg'); msg.textContent = 'กำลังอ่านไฟล์…';
+      try {
+        const grid = await fileToGrid(file);
+        const recs = gridToRecords(grid);
+        if (!recs.length) throw new Error('ไม่พบแถวข้อมูลในไฟล์');
+        const willMatch = recs.filter(r => Store.actualRowRef(r)).length;
+        msg.textContent = `พบ ${recs.length} แถว · จับคู่ได้ ${willMatch} แถว`;
+        UI.modal('📥 โพสต์เกิดจริง (ทับงบผู้กรอก)', `
+          <p>ไฟล์: <b>${esc(file.name)}</b></p>
+          <p>พบ <b>${recs.length}</b> แถว · จับคู่เข้า GL ได้ <b>${willMatch}</b> แถว${recs.length - willMatch ? ` · จับคู่ไม่ได้ ${recs.length - willMatch} แถว (จะถูกข้าม)` : ''}</p>
+          <p class="warn-text">⚠ ระบบจะ<b>เขียนทับตัวเลขงบที่แผนกกรอก</b> เฉพาะเดือนที่มีค่าในไฟล์ แล้ว<b>ล็อก</b>ช่องนั้น (ผู้กรอกแก้ไม่ได้) · ปีงบ ${UI.year()}</p>`, [
+          { label: 'ยกเลิก', cls: 'ghost-btn', onClick: close => { close(); e.target.value = ''; msg.textContent = ''; } },
+          { label: '📥 โพสต์เกิดจริง', cls: 'primary-btn', onClick: close => {
+              try { const r = Store.postActuals(user, UI.year(), recs); close(); e.target.value = ''; msg.textContent = ''; postActResult(r, file.name); }
+              catch (err) { toast(err.message, 'err'); }
+            } },
+        ]);
+      } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); e.target.value = ''; }
+    });
+    document.getElementById('postActPasteBtn')?.addEventListener('click', () => {
+      const text = document.getElementById('postActPaste').value;
+      if (!text.trim()) { toast('วางข้อมูลก่อน', 'err'); return; }
+      try { const r = Store.postActualsPaste(user, UI.year(), text); postActResult(r, 'วางจาก Excel'); }
+      catch (err) { toast(err.message, 'err'); }
+    });
     document.getElementById('reconFile')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
       const msg = document.getElementById('reconMsg'); msg.textContent = 'กำลังอ่านและกระทบยอด…';
