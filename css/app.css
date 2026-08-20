@@ -272,8 +272,9 @@ a { color: var(--blue); }
 .budget-card.revise-mode.show-prev .prev-ghost::before { content: 'งบเดิม '; }
 /* โหมด "ดูงบต้นปี" — ธีมสีส้ม/อำพันทั้งตาราง แยกจากงบปัจจุบัน (สีน้ำเงิน) */
 .vo-banner { background: #eee7dc; border: 1px solid #b6a68c; color: #4a3d2f; font-weight: 700; font-size: 13px; padding: 9px 14px; border-radius: 10px; margin: 0 0 10px; }
-/* โหมด "ดูงบต้นปี" — ใช้สีเหมือนงบปัจจุบัน (ไม่มีธีมแยก) · บอกโหมดผ่านปุ่มที่ active เท่านั้น */
-#viewOrigBtn.vo-on { background: #eef4fc !important; border-color: var(--blue) !important; color: var(--blue) !important; font-weight: 700; }
+/* โหมด "ดูงบต้นปี" — พื้นขาวเหมือนงบปัจจุบัน · แยกด้วย "ขอบเซลล์สีทองอำพัน" (งบอนุมัติ) */
+.budget-card.view-orig .cell, .budget-card.view-orig .cell:disabled { border-color: #d4a23c !important; }
+#viewOrigBtn.vo-on { background: #fdf3e0 !important; border-color: #d4a23c !important; color: #a6741a !important; font-weight: 700; }
 
 /* ---------- รอบ Revise ---------- */
 .revise-banner { background: #f3effc; border-color: #b7a6ec; color: #4a3492; }
