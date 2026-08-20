@@ -218,6 +218,7 @@ const SEED = (() => {
     changeWindows: [],    // สถานะเปิด/ปิดหน้าต่างปรับงบ ราย ปี×ช่วง — sync ตาราง change_windows
     userEmails: [],       // อีเมลแจ้งเตือนราย code (รหัสแผนก/ROLE) — sync ตาราง user_emails (ใช้กับ EmailBridge)
     userPasswords: [],    // รหัสผ่านที่ผู้ใช้เปลี่ยนเอง ราย email (ค่าเริ่มต้น 'a') — sync ตาราง user_passwords
+    userAccounts: [],     // สมุดผู้ใช้ที่แอดมินแก้ (email→บทบาท) — ว่าง = ใช้ EMAIL_DIR จากโค้ด · sync ตาราง user_accounts
     exchangeRates, fuelPrices, auditLogs, notifications,
   };
 })();

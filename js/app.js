@@ -31,6 +31,7 @@ const App = (() => {
     '#/acc/variance':    { role: 'ACCOUNTING', page: () => PagesAcc.variance,     bind: () => PagesAcc.varianceBind },
     '#/acc/control':     { role: 'ACCOUNTING', page: () => PagesAcc.control,      bind: () => PagesAcc.controlBind },
     '#/acc/system':      { role: 'ACCOUNTING', page: () => PagesAcc.system,       bind: () => PagesAcc.systemBind },
+    '#/acc/users':       { role: 'ACCOUNTING', page: () => PagesAcc.users,        bind: () => PagesAcc.usersBind },
     '#/acc/audit':       { role: 'ACCOUNTING', page: () => PagesAcc.audit,        bind: null },
     '#/acc/actuals':     { role: 'ACCOUNTING', page: () => PagesAcc.actuals,      bind: () => PagesAcc.actualsBind },
     '#/unitcost':        { role: '*',          page: () => PagesCost.unitCost,    bind: () => PagesCost.unitCostBind },
@@ -167,9 +168,9 @@ const App = (() => {
       const raw = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('deptPin').value;
       if (!raw) { UI.toast('กรุณากรอกอีเมล (หรือ admin)', 'err'); return; }
-      // ผู้ดูแลระบบ — ไม่ใช้อีเมล: admin / 1234
+      // ผู้ดูแลระบบ — ไม่ใช้อีเมล: admin / (รหัสเริ่มต้น 1234 · เปลี่ยนได้)
       if (raw.toLowerCase() === 'admin') {
-        if (pw !== '1234') { UI.toast('รหัสผ่าน admin ไม่ถูกต้อง', 'err'); return; }
+        if (pw !== Store.passwordFor('__admin__')) { UI.toast('รหัสผ่าน admin ไม่ถูกต้อง', 'err'); return; }
         return loginAs('accounting', null);
       }
       if (!raw.includes('@')) { UI.toast('กรอกอีเมลบริษัท เช่น yourname@mitrphol.com', 'err'); return; }

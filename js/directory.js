@@ -1161,17 +1161,24 @@ const EMAIL_DIR =
 
 const EmailAuth = (() => {
   const norm = e => String(e || '').trim().toLowerCase();
+  const rank = a => a.role === 'filler' ? 0 : (a.id === 'MGR:co' ? 2 : 1);
+  const sortAsg = out => out.sort((a, b) => rank(a) - rank(b) || String(a.id).localeCompare(String(b.id)));
   // สิทธิ์ทั้งหมดของอีเมลนี้ — ผู้กรอกขึ้นก่อน แล้วค่อยผู้อนุมัติ (ภาพรวมบริษัทท้ายสุด)
+  //  ถ้าแอดมินเคยแก้สมุดผู้ใช้ (Store.userAccounts) จะใช้อันนั้นก่อน มิฉะนั้นใช้ EMAIL_DIR (ฐานจากโค้ด)
   function assignmentsFor(email) {
     const key = norm(email);
     if (!key || !key.includes('@')) return [];
+    if (typeof Store !== 'undefined' && Store.directory) {
+      const a = Store.directoryAccount(key);
+      if (!a || a.active === false) return [];
+      return sortAsg(a.roles.map(r => ({ id: r.id, role: r.kind === 'filler' ? 'filler' : 'viewer', name: r.name, sub: r.sub || '' })));
+    }
     const out = [];
     EMAIL_DIR.forEach(u => {
       if (u.selected === false) return;
       if ((u.emails || []).some(e => norm(e) === key)) out.push({ id: u.id, role: u.role, name: u.name, sub: u.sub || '' });
     });
-    const rank = a => a.role === 'filler' ? 0 : (a.id === 'MGR:co' ? 2 : 1);
-    return out.sort((a, b) => rank(a) - rank(b) || String(a.id).localeCompare(String(b.id)));
+    return sortAsg(out);
   }
   return { assignmentsFor, norm };
 })();

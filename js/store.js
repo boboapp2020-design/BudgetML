@@ -87,12 +87,13 @@ const Store = (() => {
   }
   function logout() { sessionStorage.removeItem(SES_KEY); }
 
-  /* ---------- รหัสผ่านผู้ใช้อีเมล (ชั่วคราว: ค่าเริ่มต้น 'a' · admin ใช้ 1234 แยกต่างหาก) ----------
+  /* ---------- รหัสผ่าน (ค่าเริ่มต้น 'a' · admin key '__admin__' ค่าเริ่มต้น 1234) ----------
    * เก็บใน db.userPasswords [{email, pass, changedAt}] → sync ตาราง user_passwords (optional) */
   const DEFAULT_EMAIL_PASS = 'a';
+  const pwDefault = key => key === '__admin__' ? '1234' : DEFAULT_EMAIL_PASS;
   function passwordFor(email) {
     const key = String(email || '').trim().toLowerCase();
-    return (db.userPasswords || []).find(x => x.email === key)?.pass || DEFAULT_EMAIL_PASS;
+    return (db.userPasswords || []).find(x => x.email === key)?.pass || pwDefault(key);
   }
   function setUserPassword(email, oldPass, newPass) {
     const key = String(email || '').trim().toLowerCase();
@@ -110,6 +111,91 @@ const Store = (() => {
   function currentUser() {
     const id = sessionStorage.getItem(SES_KEY);
     return db.users.find(u => u.id === id) || null;
+  }
+
+  /* ---------- สมุดผู้ใช้ (email → บทบาท) จัดการโดยแอดมิน ----------
+   * ฐาน = EMAIL_DIR (directory.js). เมื่อแอดมินแก้ครั้งแรก → materialize ลง db.userAccounts (sync)
+   * โครงสร้าง account: { email, roles:[{kind:'filler'|'viewer', id, name, sub}], active } */
+  const normEmail = e => String(e || '').trim().toLowerCase();
+  function baseDirectory() {
+    const map = {};
+    (typeof EMAIL_DIR !== 'undefined' ? EMAIL_DIR : []).forEach(u => {
+      if (u.role === 'admin' || u.selected === false) return;
+      (u.emails || []).forEach(e => {
+        const k = normEmail(e); if (!k) return;
+        (map[k] = map[k] || { email: k, roles: [], active: true })
+          .roles.push({ kind: u.role === 'filler' ? 'filler' : 'viewer', id: u.id, name: u.name, sub: u.sub || '' });
+      });
+    });
+    return Object.values(map);
+  }
+  // สมุดผู้ใช้ที่ใช้จริง: ถ้าแอดมินเคยแก้ (db.userAccounts มีข้อมูล) ใช้อันนั้น มิฉะนั้นใช้ฐานจากโค้ด
+  function directory() {
+    return (db.userAccounts && db.userAccounts.length) ? db.userAccounts : baseDirectory();
+  }
+  function directoryAccount(email) {
+    const k = normEmail(email);
+    return directory().find(a => normEmail(a.email) === k) || null;
+  }
+  // materialize ฐาน → db.userAccounts (เรียกก่อนแก้ทุกครั้ง เพื่อให้แก้ได้แล้ว sync)
+  function ensureUserAccounts() {
+    if (!db.userAccounts || !db.userAccounts.length) db.userAccounts = JSON.parse(JSON.stringify(baseDirectory()));
+    return db.userAccounts;
+  }
+  // ชื่อของบทบาท (จาก id) — filler=รหัสแผนก, viewer=MGR:node
+  function roleMeta(kind, id) {
+    if (kind === 'filler') { const d = dept('d' + id) || db.departments.find(x => x.code === id); return { name: d?.name || id, sub: '' }; }
+    const u = oversightUnit(String(id).replace(/^MGR:/, '')); return { name: u?.name || id, sub: u?.approver ? 'ระดับฝ่าย (ผู้อนุมัติ)' : '' };
+  }
+  function addUserAccount(actor, email) {
+    assertAccounting(actor);
+    const k = normEmail(email);
+    if (!k || !k.includes('@')) throw new Error('กรอกอีเมลให้ถูกต้อง');
+    const accs = ensureUserAccounts();
+    if (accs.some(a => normEmail(a.email) === k)) throw new Error('มีอีเมลนี้อยู่แล้ว');
+    accs.push({ email: k, roles: [], active: true });
+    audit(actor, 'เพิ่มผู้ใช้', { newValue: k });
+    save();
+  }
+  function removeUserAccount(actor, email) {
+    assertAccounting(actor);
+    const k = normEmail(email);
+    const accs = ensureUserAccounts();
+    const i = accs.findIndex(a => normEmail(a.email) === k);
+    if (i < 0) throw new Error('ไม่พบผู้ใช้');
+    accs.splice(i, 1);
+    audit(actor, 'ลบผู้ใช้', { oldValue: k });
+    save();
+  }
+  function addUserRole(actor, email, kind, id) {
+    assertAccounting(actor);
+    const k = normEmail(email);
+    const accs = ensureUserAccounts();
+    const a = accs.find(x => normEmail(x.email) === k);
+    if (!a) throw new Error('ไม่พบผู้ใช้');
+    if (a.roles.some(r => r.kind === kind && String(r.id) === String(id))) throw new Error('มีบทบาทนี้อยู่แล้ว');
+    const m = roleMeta(kind, id);
+    a.roles.push({ kind, id, name: m.name, sub: m.sub });
+    audit(actor, 'เพิ่มบทบาทผู้ใช้', { newValue: `${k} → ${kind} ${id}` });
+    save();
+  }
+  function removeUserRole(actor, email, kind, id) {
+    assertAccounting(actor);
+    const k = normEmail(email);
+    const accs = ensureUserAccounts();
+    const a = accs.find(x => normEmail(x.email) === k);
+    if (!a) throw new Error('ไม่พบผู้ใช้');
+    a.roles = a.roles.filter(r => !(r.kind === kind && String(r.id) === String(id)));
+    audit(actor, 'ลบบทบาทผู้ใช้', { oldValue: `${k} → ${kind} ${id}` });
+    save();
+  }
+  // รีเซ็ตรหัสผ่านผู้ใช้กลับเป็นค่าเริ่มต้น (แอดมินช่วยผู้ใช้ที่ลืมรหัส)
+  function resetUserPassword(actor, email) {
+    assertAccounting(actor);
+    const k = normEmail(email);
+    if (db.userPasswords) db.userPasswords = db.userPasswords.filter(x => x.email !== k);
+    audit(actor, 'รีเซ็ตรหัสผ่านผู้ใช้', { newValue: k + ' → ค่าเริ่มต้น' });
+    save();
   }
 
   /* ---------- audit / notification ---------- */
@@ -1487,6 +1573,7 @@ const Store = (() => {
     get db() { return db; },
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
     login, loginByUsername, logout, currentUser, passwordFor, setUserPassword,
+    directory, baseDirectory, directoryAccount, addUserAccount, removeUserAccount, addUserRole, removeUserRole, resetUserPassword,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
     oversight, oversightUnit, childUnits, subtreeDeptCodes, subtreeDepartments, subtreeUnits, unitOfDept,
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,

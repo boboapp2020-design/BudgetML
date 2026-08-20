@@ -1239,6 +1239,36 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 @media(max-width:860px){.glrow-form{grid-template-columns:repeat(2,1fr)}}
 .glrow-form label.opt{opacity:1;color:#54617a}
 .glrow-form label small{color:#b3760a;font-weight:700}
+/* หน้าจัดการผู้ใช้ (Admin) */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.stats-row .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 16px}
+.stats-row .stat b{display:block;font-size:26px;font-weight:800;color:var(--navy);line-height:1.1;font-variant-numeric:tabular-nums}
+.stats-row .stat span{font-size:12.5px;color:var(--ink-2);font-weight:600}
+.ud-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(370px,1fr));gap:14px}
+.ud-card{background:var(--surface);border:1.5px solid var(--border-strong);border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(13,54,107,.05)}
+.ud-card.ud-off{opacity:.6}
+.ud-card .ch{display:flex;align-items:center;gap:11px;padding:13px 15px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#f2f6fd,transparent)}
+.ud-card .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#2f7fd6,#0c2c61);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0}
+.ud-card .ci{min-width:0;flex:1}
+.ud-card .em{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ud-card .ci .sub{font-size:11.5px;color:var(--muted)}
+.ud-card .hatbadge{font-size:12px;font-weight:800;background:var(--navy);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ud-card .hats{padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.ud-card .hat{display:flex;gap:9px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--bg)}
+.ud-card .hat .ic{font-size:16px;flex-shrink:0}
+.ud-card .hat .txt{min-width:0;flex:1}
+.ud-card .hat .tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-bottom:1px}
+.ud-card .hat.fill .tag{background:#eaf1fe;color:#2563eb} .ud-card .hat.div .tag{background:#e8f6ec;color:#1c7c33} .ud-card .hat.area .tag{background:#fdf3e2;color:#b3760a} .ud-card .hat.co .tag{background:#f2ecfd;color:#6d28d9}
+.ud-card .hat .pg{font-size:13px;font-weight:600;color:var(--ink)}
+.ud-card .hat .pg small{display:block;font-weight:400;color:var(--ink-2);font-size:11.5px}
+.hat-x{background:none;border:none;color:#b7c0d0;font-size:14px;cursor:pointer;padding:2px 6px;border-radius:6px;flex-shrink:0}
+.hat-x:hover{background:var(--crit-bg);color:var(--up)}
+.ud-foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 14px;border-top:1px solid var(--border);background:#fbfcfe}
+.ud-addsel{font:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;flex:1;min-width:150px}
+.toolbar{display:flex;gap:10px;align-items:center;margin:16px 0}
+.toolbar input{flex:1;font:inherit;font-size:14.5px;padding:10px 14px;border:1.5px solid var(--border-strong);border-radius:11px;background:var(--surface);color:var(--ink)}
+.toolbar input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,106,191,.14)}
+.toolbar .count{font-size:13px;color:var(--muted);font-weight:600;white-space:nowrap}
 /* หน้าเลือกบทบาท (login ด้วยอีเมลที่มีหลายสิทธิ์) */
 .pk-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;margin:14px 0 6px;padding-right:4px}
 .pk-group{font-size:14px;font-weight:800;color:#2b3654;margin:10px 0 2px;padding-bottom:5px;border-bottom:2px solid #e4ebf5}

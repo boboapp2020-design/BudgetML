@@ -172,8 +172,9 @@ const UI = (() => {
                   ${email ? `<div class="um-email">${esc(email)}</div>` : ''}
                   <div class="um-role">${roleLabel}</div></div>
               </div>
+              ${user.role === 'ACCOUNTING' ? '<a class="um-item" href="#/acc/users">👥 จัดการผู้ใช้ <small>เพิ่ม / ลบ / เปลี่ยนบทบาท · รีเซ็ตรหัส</small></a>' : ''}
               ${multiRole ? '<button class="um-item" id="switchRoleBtn">🔄 สลับบทบาท / แผนก <small>เปลี่ยนหมวกโดยไม่ต้องออกจากระบบ</small></button>' : ''}
-              ${email ? '<button class="um-item" id="changePwBtn">🔑 เปลี่ยนรหัสผ่าน <small>รหัสเดียวใช้ทุกบทบาทของคุณ</small></button>' : ''}
+              <button class="um-item" id="changePwBtn" data-pwkey="${user.role === 'ACCOUNTING' ? '__admin__' : esc(email)}">🔑 เปลี่ยนรหัสผ่าน <small>${user.role === 'ACCOUNTING' ? 'รหัสผู้ดูแลระบบ' : 'รหัสเดียวใช้ทุกบทบาทของคุณ'}</small></button>
               <button class="um-item um-danger" id="logoutBtn">🚪 ออกจากระบบ</button>
             </div>`;
             })()}
@@ -201,11 +202,12 @@ const UI = (() => {
     });
     // สลับบทบาท: ออกจาก session ปัจจุบันแต่คงอีเมลไว้ → หน้า login เปิดตัวเลือกบทบาทให้ทันที
     document.getElementById('switchRoleBtn')?.addEventListener('click', () => { Store.logout(); location.hash = '#/login'; App.render(); });
-    // เปลี่ยนรหัสผ่าน (ผูกกับอีเมลของผู้ใช้ — ค่าเริ่มต้น 'a')
-    document.getElementById('changePwBtn')?.addEventListener('click', () => {
-      const email = sessionStorage.getItem('abp_email');
+    // เปลี่ยนรหัสผ่าน (ผูกกับ key: อีเมลของผู้ใช้ หรือ __admin__ สำหรับแอดมิน)
+    document.getElementById('changePwBtn')?.addEventListener('click', e => {
+      const email = e.currentTarget.dataset.pwkey || sessionStorage.getItem('abp_email');
       if (!email) return;
-      modal(`เปลี่ยนรหัสผ่าน — ${esc(email)}`, `
+      const who = email === '__admin__' ? 'ผู้ดูแลระบบ (admin)' : email;
+      modal(`เปลี่ยนรหัสผ่าน — ${esc(who)}`, `
         <label class="fld"><span>รหัสผ่านปัจจุบัน</span><input id="pwOld" type="password" autocomplete="current-password"></label>
         <label class="fld"><span>รหัสผ่านใหม่ <small class="muted">(อย่างน้อย 4 ตัวอักษร)</small></span><input id="pwNew" type="password" autocomplete="new-password"></label>
         <label class="fld"><span>ยืนยันรหัสผ่านใหม่</span><input id="pwNew2" type="password" autocomplete="new-password"></label>`, [

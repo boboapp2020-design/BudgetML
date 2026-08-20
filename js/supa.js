@@ -260,6 +260,11 @@ const Supa = (() => {
       toRow: u => ({ email: u.email, pass: u.pass, changed_at: nz(u.changedAt) }),
       fromRow: r => ({ email: r.email, pass: r.pass, changedAt: r.changed_at }),
     },
+    { name: 'user_accounts', pk: ['email'], assign: 'userAccounts', optional: true, // สมุดผู้ใช้ที่แอดมินจัดการ (email→roles)
+      list: db => db.userAccounts || [],
+      toRow: a => ({ email: a.email, roles: a.roles || [], active: a.active !== false }),
+      fromRow: r => ({ email: r.email, roles: r.roles || [], active: r.active !== false }),
+    },
     { name: 'snapshot_rows', pk: ['year', 'label', 'department_id', 'gl_id', 'cct'],
       list: db => (db.budgetSnapshots || []).flatMap(s => (s.rows || []).map(r =>
         ({ year: s.year, label: s.label, department_id: r.departmentId, gl_id: r.glId, cct: r.cct, months: r.months }))),
