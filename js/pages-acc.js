@@ -76,21 +76,23 @@ const PagesAcc = (() => {
     const waitingNames = waiting.slice(0, 20).map(x => esc(x.d.name.replace('แผนก', ''))).join(' · ')
       + (waiting.length > 20 ? ` · และอีก ${waiting.length - 20} แผนก` : '');
 
-    // ---------- สรุปรายด้าน (4 ด้าน) ----------
+    // ---------- สรุปรายสังกัด (จัดกลุ่มตาม d.area = คอลัมน์สังกัด/CT) ----------
     const sides = Store.db.meta.sides || {};
+    const affName = d => d.area || sides[d.side || (d.code || '')[0]] || 'อื่นๆ';   // สังกัด (CT)
+    const affSide = d => d.side || (d.code || '')[0] || '1';                        // ด้าน (ไว้เลือกไอคอน/สี)
     const sideAgg = {};
     depts.forEach(d => {
-      const s = d.side || (d.code || '')[0];
+      const key = affName(d);
       const t = Store.deptTotal(year, d.id);
-      const a = sideAgg[s] = sideAgg[s] || { total: 0, n: 0, top: null };
+      const a = sideAgg[key] = sideAgg[key] || { total: 0, n: 0, top: null, side: affSide(d) };
       a.total += t; a.n++;
       if (!a.top || t > a.top.t) a.top = { name: d.name, t };
     });
-    const sideCards = Object.keys(sideAgg).sort().map(s => {
-      const a = sideAgg[s], m = SIDE_META[s] || SIDE_META['1'];
+    const sideCards = Object.keys(sideAgg).sort().map(key => {
+      const a = sideAgg[key], m = SIDE_META[a.side] || SIDE_META['1'];
       const share = cur > 0 ? a.total / cur * 100 : 0;
       return `<a class="side-card" style="--sc:${m.c};--scbg:${m.bg}" href="#/acc/departments">
-        <div class="sc-head"><span>${m.icon}</span> ${esc(sides[s] || 'อื่นๆ')} <span class="sc-n">${a.n} แผนก</span></div>
+        <div class="sc-head"><span>${m.icon}</span> ${esc(key)} <span class="sc-n">${a.n} แผนก</span></div>
         <div class="sc-val">${thShort(a.total)} <small>กีบ</small></div>
         <div class="sc-bar"><i style="width:${Math.max(2, share).toFixed(1)}%"></i></div>
         <div class="sc-sub">${share.toFixed(1)}% ของทั้งบริษัท · สูงสุด: ${esc((a.top ? a.top.name : '—').replace('แผนก', ''))}</div>
@@ -150,23 +152,26 @@ const PagesAcc = (() => {
     let thru = 0; actuals.forEach(a => a.months.forEach((v, i) => { if (v) thru = Math.max(thru, i + 1); }));
     const sumM = (m, n) => (m || []).slice(0, n).reduce((s, v) => s + (v || 0), 0);
     const glSap = {}; Store.db.glAccounts.forEach(g => { glSap[g.id] = g.glGroupSap || g.glGroup || 'อื่น ๆ'; });
-    const dSideOf = {}; depts.forEach(d => { dSideOf[d.id] = d.side || '1'; });
+    // จัดกลุ่มตาม "สังกัด" (d.area = คอลัมน์ CT) แทน "ด้าน" (d.side)
+    const affMeta = Store.db.meta.sides || {};
+    const affSideOf = {};   // ชื่อสังกัด → เลขด้าน (ไว้เลือกไอคอน/สี)
+    const dSideOf = {}; depts.forEach(d => { const a = d.area || affMeta[d.side || (d.code || '')[0]] || 'อื่นๆ'; dSideOf[d.id] = a; affSideOf[a] = d.side || (d.code || '')[0] || '1'; });
     const fpa = { origYTD: 0, actYTD: 0, origFull: 0, bySide: {}, byGrp: {} };
     const sideBucket = s => fpa.bySide[s] = fpa.bySide[s] || { oY: 0, aY: 0, oF: 0, lF: 0 };
     const grpBucket = g => fpa.byGrp[g] = fpa.byGrp[g] || { oY: 0, aY: 0, oF: 0 };
     (snap ? snap.rows : []).forEach(r => {
       const oY = sumM(r.months, thru), oF = sumM(r.months, 12);
       fpa.origYTD += oY; fpa.origFull += oF;
-      const sb = sideBucket(dSideOf[r.departmentId] || '1'); sb.oY += oY; sb.oF += oF;
+      const sb = sideBucket(dSideOf[r.departmentId] || 'อื่นๆ'); sb.oY += oY; sb.oF += oF;
       const gb = grpBucket(glSap[r.glId]); gb.oY += oY; gb.oF += oF;
     });
     actuals.forEach(a => {
       const aY = sumM(a.months, thru);
       fpa.actYTD += aY;
-      sideBucket(dSideOf[a.departmentId] || '1').aY += aY;
+      sideBucket(dSideOf[a.departmentId] || 'อื่นๆ').aY += aY;
       grpBucket(glSap[a.glId]).aY += aY;
     });
-    bs.forEach(b => { sideBucket(dSideOf[b.departmentId] || '1').lF += sumM(b.months, 12); });
+    bs.forEach(b => { sideBucket(dSideOf[b.departmentId] || 'อื่นๆ').lF += sumM(b.months, 12); });
     const ytdVar = fpa.actYTD - fpa.origYTD;                         // − = ต่ำกว่าแผน (favorable ด้านต้นทุน)
     const ytdPct = fpa.origYTD > 0 ? ytdVar / fpa.origYTD * 100 : 0;
     const outlook = cur - fpa.origFull;                              // งบล่าสุด (จริง+คาดการณ์) เทียบแผนเต็มปี
@@ -222,7 +227,7 @@ const PagesAcc = (() => {
       const dv = v.aY - v.oY, dp = v.oY > 0 ? dv / v.oY * 100 : 0;
       const fo = v.lF - v.oF, fop = v.oF > 0 ? fo / v.oF * 100 : 0;
       return `<tr>
-        <td>${(SIDE_META[s] || {}).icon || ''} ${esc(sidesMeta[s] || s)}</td>
+        <td>${(SIDE_META[affSideOf[s]] || {}).icon || ''} ${esc(s)}</td>
         <td class="num">${fmt(Math.round(v.oY))}</td><td class="num">${fmt(Math.round(v.aY))}</td>
         <td class="num ${dv > 0 ? 'txt-up' : dv < 0 ? 'txt-down' : ''}">${(dv >= 0 ? '+' : '') + fmt(Math.round(dv))}</td>
         <td>${deltaBadge(dv, dp)}</td>
@@ -416,7 +421,8 @@ const PagesAcc = (() => {
     if (qs.d) return drillDept(user, qs.d);
 
     const sides = Store.db.meta.sides || {};
-    const depts = Store.activeDepartments().slice().sort((a, b) => a.code.localeCompare(b.code));
+    const affOf = d => d.area || (Store.db.meta.sides || {})[d.side || (d.code || '')[0]] || 'อื่นๆ';   // สังกัด (CT)
+    const depts = Store.activeDepartments().slice().sort((a, b) => affOf(a).localeCompare(affOf(b)) || a.code.localeCompare(b.code));
     const totCur = depts.reduce((s, d) => s + Store.deptTotal(year, d.id), 0);
     const totPrev = depts.reduce((s, d) => s + Store.deptTotal(prevYear, d.id), 0);
     const totCmp = Store.compare(totCur, totPrev);
@@ -427,12 +433,12 @@ const PagesAcc = (() => {
       const cmp = Store.compare(cur, prev);
       const comp = Store.completion(year, d.id);
       const st = Store.deptState(year, d.id);
-      const side = d.side || (d.code || '')[0];
+      const aff = d.area || sides[d.side || (d.code || '')[0]] || 'อื่นๆ';   // สังกัด (CT)
       let head = '';
-      if (side !== lastSide) {
-        lastSide = side;
-        const n = depts.filter(x => (x.side || (x.code || '')[0]) === side).length;
-        head = `<tr class="side-row"><td colspan="9">${esc(sides[side] || 'อื่นๆ')} · ${n} หน่วยงาน</td></tr>`;
+      if (aff !== lastSide) {
+        lastSide = aff;
+        const n = depts.filter(x => (x.area || sides[x.side || (x.code || '')[0]] || 'อื่นๆ') === aff).length;
+        head = `<tr class="side-row"><td colspan="9">${esc(aff)} · ${n} หน่วยงาน</td></tr>`;
       }
       return `${head}<tr>
         <td class="chk-col"><input type="checkbox" class="dsel" value="${d.id}"></td>
@@ -556,7 +562,8 @@ const PagesAcc = (() => {
       row[50] = sum(act);
       row[88] = rr.resp || ''; row[89] = g.glGroup || ''; row[90] = g.glGroupSap || '';
       row[91] = u.subDivCode || ''; row[92] = u.subDiv || ''; row[93] = u.div || '';
-      row[94] = u.areaCode || ''; row[95] = u.area || ''; row[96] = g.glType || ''; row[97] = u.area || '';
+      // ด้าน (94-95) = จากด้าน/side ของแผนก · สังกัด (97) = คอลัมน์ CT (u.area)
+      row[94] = ownerDept.side || ''; row[95] = (db.meta.sides || {})[ownerDept.side] || ''; row[96] = g.glType || ''; row[97] = u.area || '';
       // 51-74: คาดการณ์ + งบปีถัดไปรายเดือน (ระบบไม่มีข้อมูลนี้ → 0 ตามไฟล์ · ไม่ให้เป็นช่องว่าง)
       for (let i = 51; i <= 74; i++) row[i] = 0;
       row[62] = sum(act);                                   // รวมเกิดจริง+คาดการณ์
@@ -1775,16 +1782,16 @@ const PagesAcc = (() => {
     const outlook = cur - origFull, outlookPct = origFull > 0 ? outlook / origFull * 100 : 0;
     const runRate = thru > 0 ? actYTD / thru * 12 : 0;
     const sides = Store.db.meta.sides || {}, sideAgg = {};
-    depts.forEach(d => { const s = d.side || (d.code || '')[0]; const a = sideAgg[s] = sideAgg[s] || { total: 0, n: 0 }; a.total += Store.deptTotal(year, d.id); a.n++; });
-    const sideList = Object.keys(sideAgg).map(s => ({ s, name: sides[s] || 'อื่นๆ', total: sideAgg[s].total, n: sideAgg[s].n, share: cur > 0 ? sideAgg[s].total / cur * 100 : 0 })).sort((a, b) => b.total - a.total);
+    depts.forEach(d => { const s = d.area || sides[d.side || (d.code || '')[0]] || 'อื่นๆ'; const a = sideAgg[s] = sideAgg[s] || { total: 0, n: 0 }; a.total += Store.deptTotal(year, d.id); a.n++; });
+    const sideList = Object.keys(sideAgg).map(s => ({ s, name: s, total: sideAgg[s].total, n: sideAgg[s].n, share: cur > 0 ? sideAgg[s].total / cur * 100 : 0 })).sort((a, b) => b.total - a.total);
     const topDepts = depts.map(d => ({ name: d.name, v: Store.deptTotal(year, d.id) })).filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 8);
     const gById = {}; Store.db.glAccounts.forEach(g => gById[g.id] = g);
     const grp = {}; bs.forEach(b => { const g = gById[b.glId]; if (!g) return; const k = g.glGroupSap || g.glGroup || 'อื่นๆ'; grp[k] = (grp[k] || 0) + sumM(b.months, 12); });
     const topGrp = Object.entries(grp).map(([name, v]) => ({ name, v })).filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 8);
-    const dSideOf = {}; depts.forEach(d => dSideOf[d.id] = d.side || '1');
-    const sv = {}; (snap ? snap.rows : []).forEach(r => { const s = dSideOf[r.departmentId] || '1'; (sv[s] = sv[s] || { oY: 0, aY: 0 }).oY += sumM(r.months, thru); });
-    actuals.forEach(a => { const s = dSideOf[a.departmentId] || '1'; (sv[s] = sv[s] || { oY: 0, aY: 0 }).aY += sumM(a.months, thru); });
-    const varList = Object.keys(sv).map(s => ({ name: sides[s] || s, oY: sv[s].oY, aY: sv[s].aY, dv: sv[s].aY - sv[s].oY })).sort((a, b) => b.dv - a.dv);
+    const dSideOf = {}; depts.forEach(d => dSideOf[d.id] = d.area || sides[d.side || (d.code || '')[0]] || 'อื่นๆ');
+    const sv = {}; (snap ? snap.rows : []).forEach(r => { const s = dSideOf[r.departmentId] || 'อื่นๆ'; (sv[s] = sv[s] || { oY: 0, aY: 0 }).oY += sumM(r.months, thru); });
+    actuals.forEach(a => { const s = dSideOf[a.departmentId] || 'อื่นๆ'; (sv[s] = sv[s] || { oY: 0, aY: 0 }).aY += sumM(a.months, thru); });
+    const varList = Object.keys(sv).map(s => ({ name: s, oY: sv[s].oY, aY: sv[s].aY, dv: sv[s].aY - sv[s].oY })).sort((a, b) => b.dv - a.dv);
     const vol = m => { const v = Store.volume(year, m); return v.actual ?? v.plan ?? 0; };
     const caneTon = vol('caneCompany') + vol('caneCommunity'), sugarTon = vol('sugarProduce') + vol('sugarTrading');
     const reqs = Store.changeRequests().filter(r => r.year === year);
