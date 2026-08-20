@@ -180,6 +180,12 @@ a { color: var(--blue); }
 .card-head h3 { font-size: 14px; color: var(--ink); font-weight: 700; }
 .card-body { padding: 14px 16px 16px; }
 .card-flush .card-body { padding: 0; }
+/* Budget Control — แต่ละส่วนเป็นกล่องมีกรอบชัดเจน + หัวสีของตัวเอง */
+.ctrl-page .card { border: 1.5px solid #c2d1e8 !important; border-radius: 14px !important; box-shadow: 0 1px 3px rgba(13,54,107,.06), 0 8px 20px rgba(13,54,107,.06) !important; }
+.ctrl-page .card + .card { margin-top: 18px; }
+.ctrl-page .card-head { padding: 12px 16px; background: linear-gradient(180deg, #eef4fd 0%, #e3edfa 100%); border-bottom: 1.5px solid #c2d1e8; }
+.ctrl-page .card-head h3 { font-size: 14.5px; color: var(--navy); display: flex; align-items: center; gap: 7px; }
+.ctrl-page .card-body { padding: 16px; }
 .card-flush .grid-hint { margin: 10px 16px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px; }

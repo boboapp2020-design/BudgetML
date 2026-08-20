@@ -714,9 +714,9 @@ const PagesUser = (() => {
           <div><b>ราคาน้ำมัน</b><small>Fuel Price</small></div>
           <span class="pill-green" style="margin-left:auto">ข้อมูลล่าสุด</span></div>
         <div class="fuel-info"><div class="ft-ratebox-head"><b>🛢 ราคากลาง ${year}</b></div>
-          ${fuels.map(f => `<div class="fuel-row"><span>${esc(f.fuelType)}</span><b>${fmt(f.pricePerLiter)}.00 กีบ/ลิตร</b></div>`).join('')}
+          ${fuels.map(f => `<div class="fuel-row"><span>${esc(UI.fuelLabel(f.fuelType))}</span><b>${fmt(f.pricePerLiter)}.00 กีบ/ลิตร</b></div>`).join('')}
         </div>
-        <label class="fld"><span>ชนิดน้ำมัน</span><select id="fuType">${fuels.map(f => `<option value="${f.pricePerLiter}">⛽ ${esc(f.fuelType)}</option>`).join('')}</select></label>
+        <label class="fld"><span>ชนิดน้ำมัน</span><select id="fuType">${fuels.map(f => `<option value="${f.pricePerLiter}">⛽ ${esc(UI.fuelLabel(f.fuelType))}</option>`).join('')}</select></label>
         <label class="fld"><span>ราคาปัจจุบัน (กีบ/ลิตร)</span><input id="fuPrice" inputmode="decimal" value="${fuels[0] ? fmt(fuels[0].pricePerLiter) : ''}"></label>
         <div class="two-up">
           <label class="fld"><span>คาดว่าเพิ่มขึ้น %</span><div class="suffix-wrap"><input id="fuInc" inputmode="decimal" value="0"><span class="suffix">%</span></div></label>

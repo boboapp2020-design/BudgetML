@@ -869,7 +869,7 @@ const PagesAcc = (() => {
     const rates = Store.db.exchangeRates.filter(r => r.year === year);
 
     const syncOn = Sync.enabled();
-    return pageHead('Budget Control', `จัดการรอบงบประมาณ หน่วยงาน GL และ Budget Rate · Admin เท่านั้น <a href="#/acc/system" style="opacity:.35;font-size:12px;text-decoration:none" title="ตั้งค่าระบบ (IT)">⚙</a>`)
+    return '<div class="ctrl-page">' + pageHead('Budget Control', `จัดการรอบงบประมาณ หน่วยงาน GL และ Budget Rate · Admin เท่านั้น <a href="#/acc/system" style="opacity:.35;font-size:12px;text-decoration:none" title="ตั้งค่าระบบ (IT)">⚙</a>`)
       + card('รอบงบประมาณ (Budget Periods)', `
           <div class="table-scroll"><table class="data-table"><thead><tr><th>ปีงบ</th><th>สถานะ</th><th>ประวัติ</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
           <div class="inline-form" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:6px">
@@ -908,7 +908,7 @@ const PagesAcc = (() => {
           </tbody></table></div>`)
       + card(`⛽ ราคากลางน้ำมัน ปี ${year}`, `
           <div class="table-scroll"><table class="data-table small"><thead><tr><th>ชนิดน้ำมัน</th><th class="num">กีบ / ลิตร</th><th></th></tr></thead><tbody>
-          ${Store.db.fuelPrices.filter(f => f.year === year).map(f => `<tr><td>${esc(f.fuelType)}</td><td class="num">${fmt(f.pricePerLiter)}</td>
+          ${Store.db.fuelPrices.filter(f => f.year === year).map(f => `<tr><td>${esc(UI.fuelLabel(f.fuelType))}</td><td class="num">${fmt(f.pricePerLiter)}</td>
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
@@ -921,7 +921,8 @@ const PagesAcc = (() => {
             <button class="primary-btn" id="backupBtn">⬇ ดาวน์โหลดสำรองทั้งหมด (JSON)</button>
             <label class="ghost-btn" style="cursor:pointer;margin:0"><input type="file" id="restoreFile" accept=".json" style="display:none"> 📁 กู้คืนจากไฟล์สำรอง</label>
           </div>
-          <p class="muted small" style="margin-top:8px">สำรองทุกอย่าง (งบทุกปี · master · เกิดจริง · สถานะ · audit) เป็นไฟล์เดียว เก็บไว้กู้คืนได้ · แนะนำดาวน์โหลดก่อนทำงานสำคัญทุกครั้ง · กู้คืนจะเขียนทับข้อมูลปัจจุบัน + ซิงค์ขึ้นฐานข้อมูล</p>`);
+          <p class="muted small" style="margin-top:8px">สำรองทุกอย่าง (งบทุกปี · master · เกิดจริง · สถานะ · audit) เป็นไฟล์เดียว เก็บไว้กู้คืนได้ · แนะนำดาวน์โหลดก่อนทำงานสำคัญทุกครั้ง · กู้คืนจะเขียนทับข้อมูลปัจจุบัน + ซิงค์ขึ้นฐานข้อมูล</p>`)
+      + '</div>';
   }
   function controlBind(user) {
 
@@ -1085,7 +1086,7 @@ const PagesAcc = (() => {
     document.querySelectorAll('[data-editfuel]').forEach(b => b.addEventListener('click', () => {
       const ft = b.dataset.editfuel;
       const f = Store.db.fuelPrices.find(x => x.year === UI.year() && x.fuelType === ft);
-      UI.modal(`แก้ไขราคากลางน้ำมัน — ${esc(ft)} ปี ${UI.year()}`,
+      UI.modal(`แก้ไขราคากลางน้ำมัน — ${esc(UI.fuelLabel(ft))} ปี ${UI.year()}`,
         `<label class="fld"><span>กีบ / ลิตร</span><input id="fuelVal" inputmode="decimal" value="${f.pricePerLiter}"></label>`, [
         { label: 'ยกเลิก', cls: 'ghost-btn' },
         { label: 'บันทึก', cls: 'primary-btn', onClick: close => {

@@ -36,6 +36,13 @@ const UI = (() => {
     const s = STATUS_TH[st] || STATUS_TH.DRAFT;
     return `<span class="status-badge ${s.cls}">${s.label} · ${s.th}</span>`;
   };
+  // ชื่อชนิดน้ำมัน — แสดงไทย / ลาว (คง key เดิมไว้ใช้แก้ไข/lookup)
+  const fuelLabel = ft => {
+    const k = String(ft || '').trim().toLowerCase();
+    if (k === 'diesel' || k === 'ดีเซล') return 'ดีเซล / ກາຊວນ';
+    if (k === 'benzin' || k === 'benzine' || k === 'gasoline' || k === 'เบนซิน') return 'เบนซิน / ແອັດຊັງ';
+    return ft;
+  };
 
   /* ---------- layout shell ---------- */
   const NAV_USER = [
@@ -250,6 +257,6 @@ const UI = (() => {
     ths.forEach((th, idx) => { if (th.classList.contains('sortable')) th.addEventListener('click', () => doSort(idx)); });
   }
 
-  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, STATUS_TH, deptIcon, enableSort,
+  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, fuelLabel, STATUS_TH, deptIcon, enableSort,
            shell, bindShell, year, setYear, kpi, card, pageHead, asOf, toast, modal, confirm2 };
 })();
