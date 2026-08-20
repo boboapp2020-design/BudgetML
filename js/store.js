@@ -1311,6 +1311,30 @@ const Store = (() => {
     audit(actor, 'ขอแก้ไขต้นทุน PPT (Edit)', { newValue: `${year} · ${d.name}` });
     save();
   }
+  // แผนกที่รับผิดชอบกรอกปริมาณทั้งหมด (จาก volumeEditors)
+  function pptResponsibleDepts() {
+    const codes = new Set();
+    VOLUME_METRICS.forEach(m => volumeEditorsFor(m.key).forEach(c => codes.add(c)));
+    return [...codes];
+  }
+  // แอดมิน Submit ปริมาณให้ครบทุกแผนกที่รับผิดชอบ (finalize → คำนวณ/ตัน)
+  function submitAllPpt(actor, year) {
+    assertAccounting(actor);
+    if (!db.pptSubmits) db.pptSubmits = [];
+    let n = 0;
+    pptResponsibleDepts().forEach(code => {
+      if (!pptSubmitted(year, code)) { db.pptSubmits.push({ year: Number(year), deptCode: code, submittedAt: new Date().toISOString(), submittedBy: actor.name + ' (แอดมิน)' }); n++; }
+    });
+    audit(actor, 'ส่งปริมาณผลิตแทนทุกแผนก (แอดมิน)', { newValue: `ปี ${year} · ${n} แผนก` });
+    save();
+  }
+  // แอดมินปลดล็อก/เปิดแก้ปริมาณทั้งหมดของปี
+  function unlockAllPpt(actor, year) {
+    assertAccounting(actor);
+    db.pptSubmits = (db.pptSubmits || []).filter(x => x.year !== Number(year));
+    audit(actor, 'ปลดล็อกปริมาณผลิตทั้งหมด (แอดมิน)', { newValue: `ปี ${year}` });
+    save();
+  }
   function setPptAmount(actor, year, code, amount) {
     if (!canEditPpt(actor, code, year)) throw new Error('กรอกจำนวนเงินนี้ไม่ได้ — ต้องเป็นแผนกที่ได้รับมอบหมายหมวดนี้ และรอบปีต้องเปิดอยู่ (แอดมินแก้ได้เสมอ)');
     if (amount !== null && (typeof amount !== 'number' || !isFinite(amount))) throw new Error('ค่าไม่ถูกต้อง');
@@ -1648,7 +1672,7 @@ const Store = (() => {
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
-    pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt,
+    pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt, submitAllPpt, unlockAllPpt,
     myNotifications, markNotificationsRead, notify,
     CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow, budgetRoundClosed, currentMonth, windowForMonth,
     changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,

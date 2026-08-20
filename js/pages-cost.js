@@ -148,11 +148,16 @@ const PagesCost = (() => {
     // สถานะล็อกแบบแข็ง (เฉพาะกรณีรอบปิดแล้วยังส่งค้าง) — ปุ่ม Submit/Edit จริงอยู่ในการ์ดกรอก
     const submitBar = (isFiller && mySubmitted && !yearOpen)
       ? `<div class="lock-banner">🔒 ส่งปริมาณปี ${year} แล้ว · รอบปีปิด — ให้แอดมินปลดล็อกก่อนจึงแก้ได้อีก</div>` : '';
-    // แถบปุ่ม Submit / Edit ในส่วนกรอก (ผู้กรอกปริมาณ)
-    const fillFoot = (isFiller && yearOpen)
-      ? (mySubmitted
+    // แถบปุ่ม Submit / Edit ในส่วนกรอก — โผล่ทุกคนที่กรอกช่องได้ (ผู้กรอกปริมาณ หรือ แอดมิน)
+    const isAdmin = user.role === 'ACCOUNTING';
+    const canFill = Store.canEditVolume(user, null, year) || isAdmin;
+    // สถานะ "ส่งแล้ว": filler=แผนกตนส่ง · admin=ทุกแผนกรับผิดชอบส่งครบ
+    const allSubmitted = Store.VOLUME_METRICS.every(m => metricSubmitted(m.key));
+    const finalized = isAdmin ? allSubmitted : mySubmitted;
+    const fillFoot = canFill
+      ? (finalized
         ? `<div class="uc-fill-foot done"><span class="uc-st uc-st-ok">✅ ส่งข้อมูลแล้ว — ค่าถูกส่งไปคำนวณ/ตันเรียบร้อย</span><button class="ghost-btn" id="pptEditBtn">✏️ แก้ไข (Edit)</button></div>`
-        : `<div class="uc-fill-foot"><span class="muted">กรอกปริมาณครบแล้วกดส่งเพื่อคำนวณ/ตัน · ส่งแล้วยังกด "แก้ไข" เองได้ (ถ้ารอบยังเปิด)</span><button class="primary-btn" id="pptSubmitBtn">✅ Submit — ส่งข้อมูล</button></div>`)
+        : `<div class="uc-fill-foot"><span class="muted">กรอกปริมาณครบแล้วกดส่งเพื่อคำนวณ/ตัน · ส่งแล้วยังกด "แก้ไข" ได้</span><button class="primary-btn" id="pptSubmitBtn">✅ Submit — ส่งข้อมูล</button></div>`)
       : '';
     const adminUnlock = (user.role === 'ACCOUNTING' && submits.length)
       ? card(`📮 แผนกที่ส่งปริมาณแล้ว ปี ${year} (${submits.length})`, submits.map(s => {
@@ -193,13 +198,14 @@ const PagesCost = (() => {
       try { Store.setVolume(user, year, inp.dataset.vol, inp.dataset.field, val); UI.toast('บันทึกปริมาณแล้ว — คำนวณต่อตันใหม่'); App.render(); }
       catch (e) { UI.toast(e.message, 'err'); }
     }));
+    const isAdmin = user.role === 'ACCOUNTING';
     document.getElementById('pptSubmitBtn')?.addEventListener('click', () => {
-      UI.confirm2('ส่งปริมาณผลิต', `ส่งปริมาณผลิตปี ${year}?`, 'ค่าจะถูกส่งไปคำนวณต่อตัน · ยังกด "แก้ไข (Edit)" เองได้ถ้ารอบยังเปิด', () => {
-        try { Store.submitPpt(user, year); UI.toast('ส่งปริมาณแล้ว — คำนวณต่อตันเรียบร้อย'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+      UI.confirm2('ส่งปริมาณผลิต', `ส่งปริมาณผลิตปี ${year}?`, 'ค่าจะถูกส่งไปคำนวณต่อตัน · ยังกด "แก้ไข (Edit)" ได้ภายหลัง', () => {
+        try { isAdmin ? Store.submitAllPpt(user, year) : Store.submitPpt(user, year); UI.toast('ส่งปริมาณแล้ว — คำนวณต่อตันเรียบร้อย'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
       });
     });
     document.getElementById('pptEditBtn')?.addEventListener('click', () => {
-      try { Store.reopenOwnPpt(user, year); UI.toast('เปิดให้แก้ไขปริมาณแล้ว'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+      try { isAdmin ? Store.unlockAllPpt(user, year) : Store.reopenOwnPpt(user, year); UI.toast('เปิดให้แก้ไขปริมาณแล้ว'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
     });
     document.querySelectorAll('[data-unlock-ppt]').forEach(b => b.addEventListener('click', () => {
       try { Store.unlockPpt(user, year, b.dataset.unlockPpt); UI.toast('ปลดล็อกแล้ว — แผนกแก้ไขได้อีก'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }

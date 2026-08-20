@@ -186,8 +186,7 @@ a { color: var(--blue); }
 .kpi-noic .kpi-sub { margin-top: 8px; font-size: 12px; color: #8a97ab; }
 /* หน้ากรอกงบ (4 การ์ด) — กะทัดรัด และทุกการ์ดสูงเท่ากัน */
 .kpi-grid-4 { align-items: stretch; }
-.kpi-grid-4 .kpi { display: flex; flex-direction: column; justify-content: center; }
-.kpi-grid-4 .kpi-gauge { justify-content: flex-start; }
+.kpi-grid-4 .kpi { display: flex; flex-direction: column; justify-content: flex-start; }
 .kpi-grid-4 .kpi { padding: 11px 14px; }
 .kpi-grid-4 .kpi-noic .kpi-label { margin-bottom: 5px; }
 .kpi-grid-4 .kpi-noic .kpi-value { font-size: 28px; line-height: 1.05; }
