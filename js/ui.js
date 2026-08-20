@@ -273,12 +273,18 @@ const UI = (() => {
     return `<div class="kpi ${extraCls}"><div class="kpi-label">${label}</div>
       <div class="kpi-value">${value}</div><div class="kpi-sub">${sub}</div></div>`;
   }
+  // ตัดอิโมจิหน้า/ท้ายหัวข้อออก (ดูเป็นทางการขึ้น) — เก็บ HTML/ข้อความอื่นไว้
+  const stripEmoji = s => typeof s === 'string'
+    ? s.replace(/^(?:[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}️‍]|\s)+/u, '')
+        .replace(/(?:[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}️‍]|\s)+$/u, '').trim()
+    : s;
   function card(title, bodyHtml, opts = {}) {
-    return `<section class="card ${opts.cls || ''}">${title ? `<div class="card-head"><h3>${title}</h3>${opts.action || ''}</div>` : ''}
+    const t = stripEmoji(title);
+    return `<section class="card ${opts.cls || ''}">${t ? `<div class="card-head"><h3>${t}</h3>${opts.action || ''}</div>` : ''}
       <div class="card-body">${bodyHtml}</div></section>`;
   }
   function pageHead(title, sub, actions = '') {
-    return `<div class="page-head"><div><h1>${title}</h1><div class="page-sub">${sub}</div></div><div class="page-actions">${actions}</div></div>`;
+    return `<div class="page-head"><div><h1>${stripEmoji(title)}</h1><div class="page-sub">${sub}</div></div><div class="page-actions">${actions}</div></div>`;
   }
   function asOf() {
     return `<span class="asof">ข้อมูล ณ ${fmtDT(new Date().toISOString())} · หน่วย: กีบ (LAK)</span>`;

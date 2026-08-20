@@ -1559,9 +1559,9 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
  *  บล็อกนี้อยู่ท้ายไฟล์ = ชนะทุก rule ก่อนหน้า (รวม glossy !important)
  * ============================================================= */
 :root{
-  --navy:#1f2b43; --navy-2:#27364f; --blue:#2e7cf6; --blue-soft:#8ab5f9;
+  --navy:#12203b; --navy-2:#1b2a47; --blue:#2e7cf6; --blue-soft:#8ab5f9;
   --bg:#f5f7fb; --surface:#ffffff; --border:#e8edf5; --border-strong:#d4dcea;
-  --ink:#1f2b43; --ink-2:#5b6b84; --muted:#8b98ad;
+  --ink:#0d1526; --ink-2:#44536b; --muted:#7b899e;
   --radius:12px;
   --shadow:0 1px 2px rgba(31,43,67,.06),0 4px 12px rgba(31,43,67,.09),0 12px 24px rgba(31,43,67,.06);
   --shadow-lg:0 2px 4px rgba(31,43,67,.08),0 10px 24px rgba(31,43,67,.13),0 24px 48px rgba(31,43,67,.10);

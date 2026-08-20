@@ -194,8 +194,8 @@ const PagesUser = (() => {
         return `<td class="num cell-td${cAdj ? ' cell-adj' : ''}"><div class="cell-wrap">
           <input class="cell${cellCls}" data-row="${r.key}" data-m="${i}" inputmode="decimal"
             value="${v === null ? '' : fmt(v)}" placeholder="กรอก" ${dis || isActual ? 'disabled' : ''} ${cellTip ? `title="${cellTip}"` : ''}>
-          <button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${r.key}|${i}" tabindex="-1"
-            title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>
+          ${viewOrig ? '' : `<button class="cell-detail-btn ${hasDetail ? 'has' : ''}" data-dt="${r.key}|${i}" tabindex="-1"
+            title="${hasDetail ? 'มีรายละเอียดค่าใช้จ่าย — คลิกเพื่อดู/แก้ไข' : 'เพิ่มรายละเอียดค่าใช้จ่าย (หลายรายการ)'}">🧾</button>`}
           ${cAdj ? `<span class="cell-adj-dot" title="${cAdjTip}">🔄</span>` : ''}
         </div><span class="prev-ghost" title="${rvOn ? 'งบเดิม' : 'ปีก่อน'} ${Store.MONTH_S[i]}">${fmt(pm[i] ?? 0)}</span></td>`;
       }).join('');

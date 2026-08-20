@@ -150,7 +150,8 @@ const PagesCost = (() => {
       ? `<div class="lock-banner">🔒 ส่งปริมาณปี ${year} แล้ว · รอบปีปิด — ให้แอดมินปลดล็อกก่อนจึงแก้ได้อีก</div>` : '';
     // แถบปุ่ม Submit / Edit ในส่วนกรอก — โผล่ทุกคนที่กรอกช่องได้ (ผู้กรอกปริมาณ หรือ แอดมิน)
     const isAdmin = user.role === 'ACCOUNTING';
-    const canFill = Store.canEditVolume(user, null, year) || isAdmin;
+    // filler ที่ส่งแล้วก็ยังเห็นแถบ (ไว้กด Edit ปลดล็อกเอง) — canEditVolume จะ false หลังส่ง
+    const canFill = Store.canEditVolume(user, null, year) || isAdmin || (isFiller && mySubmitted && yearOpen);
     // สถานะ "ส่งแล้ว": filler=แผนกตนส่ง · admin=ทุกแผนกรับผิดชอบส่งครบ
     const allSubmitted = Store.VOLUME_METRICS.every(m => metricSubmitted(m.key));
     const finalized = isAdmin ? allSubmitted : mySubmitted;

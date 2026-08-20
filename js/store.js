@@ -163,6 +163,7 @@ const Store = (() => {
     const accs = ensureUserAccounts();
     const i = accs.findIndex(a => normEmail(a.email) === k);
     if (i < 0) throw new Error('ไม่พบผู้ใช้');
+    if (accs.length <= 1) throw new Error('ต้องมีผู้ใช้อย่างน้อย 1 คน — ลบคนสุดท้ายไม่ได้'); // กันลิสต์ว่างแล้ว fallback กลับ default
     accs.splice(i, 1);
     audit(actor, 'ลบผู้ใช้', { oldValue: k });
     save();
@@ -360,7 +361,7 @@ const Store = (() => {
     if (snapshotFor(year)) return false;
     if (!db.budgetSnapshots) db.budgetSnapshots = [];
     db.budgetSnapshots.push({
-      year: Number(year), label: 'ORIGINAL', takenAt: new Date().toISOString(), takenBy: actor ? actor.name : 'system',
+      year: Number(year), label: 'ORIGINAL', takenAt: new Date().toISOString(), createdAt: new Date().toISOString(), takenBy: actor ? actor.name : 'system',
       rows: db.budgets.filter(b => b.year === Number(year)).map(b => ({
         departmentId: b.departmentId, glId: b.glId, cct: b.cct, months: b.months.slice(), mtp1: b.mtp1, mtp2: b.mtp2,
       })),
@@ -1588,6 +1589,14 @@ const Store = (() => {
     assertAccounting(actor);
     const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
     if (req.status !== 'PENDING_ACC') throw new Error('คำร้องนี้ดำเนินการไปแล้ว');
+    // ตรวจซ้ำ ณ ตอนอนุมัติ: งบต้นทาง (delta ติดลบ) ต้องพอ — กันการโยก/ลดเกินยอดจนเงินงอก (เช่น ยอดถูกปรับลดหลังยื่น)
+    req.items.forEach(it => {
+      if (it.delta < 0) {
+        const r = rowByKey(req.year, it.deptId, it.glId + '@' + it.cct);
+        const cur = r ? (r.months[it.month - 1] || 0) : 0;
+        if (cur + it.delta < 0) throw new Error(`งบต้นทางไม่พอ ณ ตอนอนุมัติ (${gl(it.glId)?.code} เดือน ${it.month} คงเหลือ ${Math.round(cur).toLocaleString()} กีบ) — ตีกลับให้หน่วยงานยื่นใหม่`);
+      }
+    });
     req.items.forEach(it => {
       const row = ensureRow(req.year, it.deptId, it.glId + '@' + it.cct);
       const i = it.month - 1, old = row.months[i] || 0;

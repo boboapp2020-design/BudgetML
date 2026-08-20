@@ -8,7 +8,7 @@ const PagesAcc = (() => {
 
   // การ์ด KPI แบบมีไอคอนสี (สไตล์เดียวกับหน้ากรอกงบ)
   function kpiC(icon, iconBg, tint, label, valueHtml, sub) {
-    return `<div class="kpi kpi-c ${tint}"><div class="kpi-ic" style="background:${iconBg}">${icon}</div>
+    return `<div class="kpi kpi-noic ${tint}">
       <div class="kpi-body"><div class="kpi-label">${label}</div>
       <div class="kpi-value">${valueHtml}</div><div class="kpi-sub">${sub}</div></div></div>`;
   }
@@ -1873,7 +1873,8 @@ const PagesAcc = (() => {
       </div></div>`;
     document.body.appendChild(ov);
     document.body.classList.add('no-scroll');
-    const close = () => { ov.remove(); document.body.classList.remove('no-scroll'); App.render(); };
+    const onEsc = e => { if (e.key === 'Escape') close(); };
+    const close = () => { document.removeEventListener('keydown', onEsc); ov.remove(); document.body.classList.remove('no-scroll'); App.render(); };
     const renderRoles = () => {
       const a = Store.directoryAccount(email) || { roles: [] };
       document.getElementById('umSub').textContent = a.roles.length + ' บทบาท';
@@ -1904,7 +1905,7 @@ const PagesAcc = (() => {
     document.getElementById('umClose').addEventListener('click', close);
     document.getElementById('umDone').addEventListener('click', close);
     ov.addEventListener('click', e => { if (e.target === ov) close(); });
-    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+    document.addEventListener('keydown', onEsc);
   }
   function usersBind(user) {
     document.getElementById('addUserBtn')?.addEventListener('click', () => {
