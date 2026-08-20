@@ -1598,12 +1598,14 @@ const PagesAcc = (() => {
           <td data-v="${pct}"><div class="comp-bar"><div class="comp-fill ${pct >= 100 ? '' : 'full'}" style="width:${Math.min(100, pct).toFixed(0)}%;background:${f.c}"></div></div>${pct.toFixed(1)}%</td>
           <td data-v="${pct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
       }).join('');
-    const grpRows = Object.keys(budByGrp).map(grp => ({ grp, bud: budByGrp[grp], act: actByGrp[grp] || 0 }))
+    const grpName = g => (typeof PPT_MAP !== 'undefined' && PPT_MAP.codeName && PPT_MAP.codeName[g]) || '';
+    const grpRows = Object.keys(budByGrp).map(grp => ({ grp, name: grpName(grp), bud: budByGrp[grp], act: actByGrp[grp] || 0 }))
       .sort((a, b) => b.bud - a.bud).map(x => {
         const rem = x.bud - x.act, pct = x.bud > 0 ? x.act / x.bud * 100 : 0, f = flag(x.act, x.bud);
-        return `<tr><td><b>${esc(x.grp)}</b></td><td class="num">${fmt(x.bud)}</td><td class="num">${fmt(x.act)}</td>
-          <td class="num" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
-          <td>${pct.toFixed(1)}%</td><td><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
+        return `<tr><td data-v="${esc(x.name || x.grp)}" title="${esc(x.name || 'กลุ่ม ' + x.grp)}"><span class="grp-code">${esc(x.grp)}</span> <b>${esc(x.name || 'กลุ่ม ' + x.grp)}</b></td>
+          <td class="num" data-v="${x.bud}">${fmt(x.bud)}</td><td class="num" data-v="${x.act}">${fmt(x.act)}</td>
+          <td class="num" data-v="${rem}" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
+          <td data-v="${pct}">${pct.toFixed(1)}%</td><td data-v="${pct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
       }).join('');
 
     const emptyNote = actTotal === 0
@@ -1621,11 +1623,11 @@ const PagesAcc = (() => {
       + card(`ควบคุมงบรายแผนก — คลิกหัวคอลัมน์เพื่อเรียง`, `<div class="table-scroll" style="max-height:60vh"><table class="data-table sortable-table" id="varTable">
           <thead><tr><th class="sortable">แผนก</th><th class="num sortable">งบทั้งปี (กีบ)</th><th class="num sortable">เกิดจริง (กีบ)</th><th class="num sortable">คงเหลือ (กีบ)</th><th class="sortable">% ใช้ไป</th><th class="sortable">สถานะ</th></tr></thead>
           <tbody>${deptRows}</tbody></table></div>`, { cls: 'card-flush' })
-      + card(`ควบคุมงบตามกลุ่มบัญชี`, `<div class="table-scroll"><table class="data-table">
-          <thead><tr><th>กลุ่มบัญชี</th><th class="num">งบทั้งปี</th><th class="num">เกิดจริง</th><th class="num">คงเหลือ</th><th>% ใช้ไป</th><th>สถานะ</th></tr></thead>
+      + card(`ควบคุมงบตามกลุ่มบัญชี — คลิกหัวคอลัมน์เพื่อเรียง · ชี้ที่ชื่อกลุ่มเพื่อดูรายละเอียด`, `<div class="table-scroll"><table class="data-table sortable-table" id="grpTable">
+          <thead><tr><th class="sortable">กลุ่มบัญชี</th><th class="num sortable">งบทั้งปี</th><th class="num sortable">เกิดจริง</th><th class="num sortable">คงเหลือ</th><th class="sortable">% ใช้ไป</th><th class="sortable">สถานะ</th></tr></thead>
           <tbody>${grpRows}</tbody></table></div>`, { cls: 'card-flush' });
   }
-  function varianceBind() { UI.enableSort(document.getElementById('varTable')); }
+  function varianceBind() { UI.enableSort(document.getElementById('varTable')); UI.enableSort(document.getElementById('grpTable')); }
 
   /* ============ โหมดนำเสนอผู้บริหาร (full-screen) — ดึงตัวตึงจากทุกหน้าแอดมิน ============ */
   function presentCompute(year) {
@@ -1772,7 +1774,7 @@ const PagesAcc = (() => {
         return `<span class="rp ${t}">${UI.roleBadge(t)}<span class="rp-nm">${esc(r.name)}${r.kind === 'filler' ? ` <em>${r.id}</em>` : ''}</span>
           <button class="rp-x" title="ลบบทบาท" data-delrole="${esc(a.email)}|${r.kind}|${esc(String(r.id))}">✕</button></span>`; }).join('')
         || '<span class="muted small">ยังไม่มีบทบาท — เพิ่มด้านล่าง</span>';
-      return `<div class="ur" data-email="${esc(a.email)}">
+      return `<div class="ur" data-email="${esc(a.email)}" data-rn="${a.roles.length}">
         <div class="ur-head">
           <div class="av">${esc(a.email[0].toUpperCase())}</div>
           <div class="ur-main"><div class="ur-em">${esc(a.email)}</div><div class="ur-sum">${sum}</div></div>
@@ -1792,8 +1794,15 @@ const PagesAcc = (() => {
       + (custom ? '' : `<div class="lock-banner" style="background:#eef4fc;border-color:#cfe0f5;color:#2b3654">ℹ️ กำลังใช้รายชื่อค่าเริ่มต้นจากระบบ — เมื่อแก้ครั้งแรกจะบันทึกทั้งชุด (ต้องรัน <b>supabase/user-accounts.sql</b>)</div>`)
       + `<div class="ud-bar">
           <input id="udSearch" placeholder="🔍 ค้นหา อีเมล / หน่วยงาน / รหัส…" autocomplete="off">
+          <select id="udSort" title="เรียงลำดับ">
+            <option value="role-desc">▾ บทบาทมาก→น้อย</option>
+            <option value="role-asc">▴ บทบาทน้อย→มาก</option>
+            <option value="email-asc">A→Z อีเมล</option>
+            <option value="email-desc">Z→A อีเมล</option>
+          </select>
+          <span class="ud-sep"></span>
           <input id="newUserEmail" placeholder="+ อีเมลผู้ใช้ใหม่" autocomplete="off">
-          <button class="primary-btn" id="addUserBtn">➕ เพิ่ม</button>
+          <button class="primary-btn" id="addUserBtn">เพิ่มผู้ใช้</button>
           <span class="count" id="udCount"></span>
         </div>`
       + `<div class="ur-list" id="udGrid">${rows}</div>`;
@@ -1827,7 +1836,7 @@ const PagesAcc = (() => {
     }));
     // กด/ปิด แถวเพื่อจัดการบทบาท (ไม่สลับเมื่อกดปุ่ม/dropdown ข้างใน)
     document.querySelectorAll('.ur-head').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
-    const q = document.getElementById('udSearch'), grid = document.getElementById('udGrid'), cnt = document.getElementById('udCount');
+    const q = document.getElementById('udSearch'), grid = document.getElementById('udGrid'), cnt = document.getElementById('udCount'), sortSel = document.getElementById('udSort');
     const rows = [...grid.querySelectorAll('.ur')];
     const filt = () => {
       const f = (q.value || '').trim().toLowerCase();
@@ -1835,7 +1844,18 @@ const PagesAcc = (() => {
       rows.forEach(c => { const hit = !f || c.textContent.toLowerCase().includes(f); c.style.display = hit ? '' : 'none'; if (hit) n++; });
       cnt.textContent = n + ' / ' + rows.length + ' คน';
     };
-    q?.addEventListener('input', filt); filt();
+    const sortRows = () => {
+      const m = sortSel.value;
+      const rn = el => Number(el.dataset.rn || 0), em = el => el.dataset.email || '';
+      const cmp = m === 'role-asc' ? (a, b) => rn(a) - rn(b) || em(a).localeCompare(em(b))
+        : m === 'email-asc' ? (a, b) => em(a).localeCompare(em(b))
+        : m === 'email-desc' ? (a, b) => em(b).localeCompare(em(a))
+        : (a, b) => rn(b) - rn(a) || em(a).localeCompare(em(b));
+      [...rows].sort(cmp).forEach(el => grid.appendChild(el));
+    };
+    q?.addEventListener('input', filt);
+    sortSel?.addEventListener('change', sortRows);
+    filt();
   }
 
   return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind, users, usersBind, exportForUser };
