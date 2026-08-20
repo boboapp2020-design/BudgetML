@@ -221,11 +221,23 @@ const Store = (() => {
   }
   function myNotifications(user) {
     return db.notifications.filter(n =>
+      n.targetRole === '*' ||                                     // ประกาศถึงทุกคน (จากแอดมิน)
       (n.targetRole && n.targetRole === user.role) ||
       (n.targetDeptId && n.targetDeptId === user.departmentId));
   }
+  const isAnnouncement = n => n.targetRole === '*';
   function markNotificationsRead(user) {
     myNotifications(user).forEach(n => { n.read = true; }); save();
+  }
+  // ประกาศจากแอดมินถึงทุกคน (targetRole='*') — โผล่ในกระดิ่งของทุกบทบาท/ทุกแผนก
+  function postAnnouncement(actor, message) {
+    assertAccounting(actor);
+    const msg = String(message || '').trim();
+    if (!msg) throw new Error('กรุณาระบุข้อความประกาศ');
+    notify({ role: '*' }, msg);
+    audit(actor, 'ประกาศถึงทุกคน', { newValue: msg.slice(0, 160) });
+    save();
+    return true;
   }
 
   /* ---------- queries ---------- */
@@ -1746,7 +1758,7 @@ const Store = (() => {
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt, submitAllPpt, unlockAllPpt,
-    myNotifications, markNotificationsRead, notify,
+    myNotifications, markNotificationsRead, notify, postAnnouncement, isAnnouncement,
     CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow, budgetRoundClosed, currentMonth, windowForMonth,
     changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,
     createChangeRequest, mgrApproveRequest, mgrRejectRequest, accApproveRequest, accRejectRequest, cancelChangeRequest, reqAdjustmentsFor,

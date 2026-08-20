@@ -215,10 +215,20 @@ const UI = (() => {
             })()}
           </div>
           <div id="notiPanel" class="noti-panel" hidden>
-            <div class="noti-head">การแจ้งเตือน</div>
-            ${notis.length ? notis.slice(0, 15).map(n =>
-              `<div class="noti-item ${n.read ? '' : 'unread'}"><div>${esc(n.message)}</div><div class="noti-ts">${fmtDT(n.ts)}</div></div>`).join('')
-              : '<div class="noti-item">ไม่มีการแจ้งเตือน</div>'}
+            <div class="noti-head">🔔 กระดานข่าว / การแจ้งเตือน${unread ? ` · <span class="noti-unread-n">${unread} ใหม่</span>` : ''}</div>
+            ${user.role === 'ACCOUNTING' ? `<div class="noti-compose">
+              <textarea id="annInput" rows="2" placeholder="พิมพ์ประกาศถึงทุกคน (ทุกแผนก/ทุกบทบาท)…"></textarea>
+              <button id="annPostBtn" class="primary-btn small">📢 ประกาศถึงทุกคน</button>
+            </div>` : ''}
+            <div class="noti-list">
+            ${notis.length ? notis.slice(0, 40).map(n => {
+              const ann = Store.isAnnouncement(n);
+              return `<div class="noti-item ${n.read ? '' : 'unread'} ${ann ? 'is-ann' : ''}">
+                <span class="noti-ic">${ann ? '📢' : '🔔'}</span>
+                <div class="noti-body"><div class="noti-msg">${ann ? '<b class="noti-tag">ประกาศจากผู้ดูแลระบบ</b> ' : ''}${esc(n.message)}</div>
+                <div class="noti-ts">${fmtDT(n.ts)}</div></div></div>`;
+            }).join('') : '<div class="noti-item noti-empty">ยังไม่มีการแจ้งเตือน</div>'}
+            </div>
           </div>
         </header>
         <main class="content">${contentHtml}</main>
@@ -272,6 +282,23 @@ const UI = (() => {
     btn?.addEventListener('click', () => {
       panel.hidden = !panel.hidden;
       if (!panel.hidden) { Store.markNotificationsRead(user); btn.querySelector('.noti-dot')?.remove(); }
+    });
+    // แอดมินโพสต์ประกาศถึงทุกคน (targetRole='*') — เพิ่มลงกระดานสดโดยไม่ต้อง reload
+    document.getElementById('annPostBtn')?.addEventListener('click', () => {
+      const ta = document.getElementById('annInput'); const msg = ta.value.trim();
+      if (!msg) { toast('พิมพ์ข้อความประกาศก่อน', 'err'); ta.focus(); return; }
+      try {
+        Store.postAnnouncement(user, msg);
+        ta.value = ''; toast('ประกาศถึงทุกคนแล้ว 📢');
+        const list = document.querySelector('#notiPanel .noti-list');
+        if (list) {
+          list.querySelector('.noti-empty')?.remove();
+          const div = document.createElement('div');
+          div.className = 'noti-item unread is-ann';
+          div.innerHTML = `<span class="noti-ic">📢</span><div class="noti-body"><div class="noti-msg"><b class="noti-tag">ประกาศจากผู้ดูแลระบบ</b> ${esc(msg)}</div><div class="noti-ts">${fmtDT(new Date().toISOString())}</div></div>`;
+          list.insertBefore(div, list.firstChild);
+        }
+      } catch (e) { toast(e.message, 'err'); }
     });
     document.addEventListener('click', e => {
       if (panel && !panel.hidden && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) panel.hidden = true;
