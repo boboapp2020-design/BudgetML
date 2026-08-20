@@ -703,6 +703,63 @@ const Store = (() => {
     return { matched, unmatched, cellsCur, cellsOrig, created };
   }
 
+  // ---- นำเข้าจากไฟล์ V7-อนุมัติ: ORIGINAL2026=I-T · notes(BT=สมมติฐาน→assumption, BU=สาเหตุ→reason) · MTP(BV=2027,BW=2028) · งบ2025(Jan-Oct+Nov-Dec) ----
+  // data = { y2026:[{codeA,cct,gl,it[12],assumption,reason,mtp1,mtp2}], b2025janoct:[{cct,gl,janOct[10]}], b2025novdec:[{codeA,nov,dec}] }
+  function importV7Data(actor, data) {
+    assertAccounting(actor);
+    const R = v => (v === null || v === undefined || !isFinite(v)) ? 0 : Math.round(v);
+    const rows = db.departmentRows || [];
+    const byCodeA = {}; rows.forEach(r => { if (r.codeA) byCodeA[r.codeA] = r; });
+    const byCctGl = {}; rows.forEach(r => { const gc = gl(r.glId)?.code; if (gc) byCctGl[r.cct + '|' + gc] = r; });
+    const res = { orig2026: 0, notes: 0, mtp: 0, b2025: 0, unmatched2026: 0, matched2025: 0 };
+    // ---- 2026: ORIGINAL=I-T · notes · MTP ----
+    const origMap = {};
+    (data.y2026 || []).forEach(rec => {
+      const ref = (rec.codeA && byCodeA[rec.codeA]) || byCctGl[rec.cct + '|' + rec.gl];
+      if (!ref) { res.unmatched2026++; return; }
+      const key = ref.glId + '@' + ref.cct;
+      origMap[ref.departmentId + '|' + ref.glId + '|' + ref.cct] = (rec.it || []).map(R);
+      res.orig2026++;
+      const reason = (rec.reason || '').trim(), assumption = (rec.assumption || '').trim();
+      if (reason || assumption) {
+        let n = db.glNotes.find(x => x.year === 2026 && x.departmentId === ref.departmentId && x.rowKey === key);
+        if (!n) { n = { year: 2026, departmentId: ref.departmentId, rowKey: key, reason: '', assumption: '' }; db.glNotes.push(n); }
+        n.reason = reason; n.assumption = assumption; res.notes++;
+      }
+      const m1 = R(rec.mtp1), m2 = R(rec.mtp2);
+      if (m1 || m2) { const brow = ensureRow(2026, ref.departmentId, key); brow.mtp1 = m1; brow.mtp2 = m2; res.mtp++; }
+    });
+    // rebuild ORIGINAL 2026 = I-T (แถวที่ไม่มีในไฟล์คงค่าเดิม)
+    const oldOrig = snapByLabel(2026, 'ORIGINAL'); const oldMap = {};
+    if (oldOrig) oldOrig.rows.forEach(r => { oldMap[r.departmentId + '|' + r.glId + '|' + r.cct] = r.months; });
+    db.budgetSnapshots = (db.budgetSnapshots || []).filter(s => !(s.year === 2026 && s.label === 'ORIGINAL'));
+    const origRows = db.budgets.filter(b => b.year === 2026).map(b => {
+      const k = b.departmentId + '|' + b.glId + '|' + b.cct;
+      const months = origMap[k] ? origMap[k] : (oldMap[k] ? oldMap[k].slice() : Array(12).fill(0));
+      return { departmentId: b.departmentId, glId: b.glId, cct: b.cct, months, mtp1: b.mtp1, mtp2: b.mtp2 };
+    });
+    db.budgetSnapshots.push({ year: 2026, label: 'ORIGINAL', takenAt: new Date().toISOString(), createdAt: new Date().toISOString(), takenBy: actor.name + ' (V7)', rows: origRows });
+    // ---- งบ 2025 = Jan-Oct (by cct+gl) + Nov-Dec (by codeA) ----
+    const joMap = {}; (data.b2025janoct || []).forEach(rec => { joMap[rec.cct + '|' + rec.gl] = (rec.janOct || []).map(R); });
+    const ndMap = {}; (data.b2025novdec || []).forEach(rec => { if (rec.codeA) ndMap[rec.codeA] = [R(rec.nov), R(rec.dec)]; });
+    rows.forEach(ref => {
+      const gc = gl(ref.glId)?.code;
+      const jo = joMap[ref.cct + '|' + gc];
+      const nd = ref.codeA ? ndMap[ref.codeA] : null;
+      if (!jo && !nd) return;
+      const months = Array(12).fill(0);
+      if (jo) for (let i = 0; i < 10; i++) months[i] = jo[i] || 0;
+      if (nd) { months[10] = nd[0] || 0; months[11] = nd[1] || 0; }
+      let brow = db.budgets.find(b => b.year === 2025 && b.departmentId === ref.departmentId && b.glId === ref.glId && b.cct === ref.cct);
+      if (!brow) { brow = { year: 2025, departmentId: ref.departmentId, glId: ref.glId, cct: ref.cct, months: Array(12).fill(0), mtp1: null, mtp2: null, updatedAt: null, updatedBy: null }; db.budgets.push(brow); }
+      brow.months = months; brow.updatedAt = new Date().toISOString(); brow.updatedBy = actor.name + ' (V7)';
+      res.b2025++;
+    });
+    audit(actor, 'นำเข้าจากไฟล์ V7 (งบ2025 + ORIGINAL2026 + เหตุผล/สมมติฐาน/MTP)', { newValue: `2025:${res.b2025} · orig2026:${res.orig2026} · notes:${res.notes} · mtp:${res.mtp}` });
+    save();
+    return res;
+  }
+
   // นำเข้า "งบ Revise" จากไฟล์ Excel: ตั้งค่างบ 12 เดือน (+MTP) ให้แถวที่จับคู่ได้ (authoritative)
   // records = [{io,codeA,cct,glCode,glName,deptCode,deptName,cctName, months:[12], mtp1, mtp2}]
   // opts.autoCreate = true → สร้างแผนก/GL/CCT/แถว ที่ยังไม่มีอัตโนมัติ (0 จับคู่ไม่ได้)
@@ -1836,7 +1893,7 @@ const Store = (() => {
     originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
-    postActuals, postActualsPaste, hasPostedActuals, importDualBudget,
+    postActuals, postActualsPaste, hasPostedActuals, importDualBudget, importV7Data,
     canEdit, setCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
