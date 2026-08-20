@@ -119,9 +119,12 @@ const UI = (() => {
   }
   function setYear(y) { selectedYear = Number(y); }
 
+  // หน้าที่เข้าจากเมนูอื่น (ไม่มีใน sidebar) → ให้ไฮไลต์เมนูที่เกี่ยวข้อง
+  const NAV_ALIAS = { '#/acc/users': '#/acc/control', '#/acc/system': '#/acc/control', '#/acc/actuals': '#/acc/control' };
   function shell(user, contentHtml, activeHash) {
+    const effHash = NAV_ALIAS[activeHash.split('?')[0]] || activeHash;
     const nav = (user.role === 'ACCOUNTING' ? NAV_ACC : user.role === 'MANAGER' ? NAV_MGR : NAV_USER)
-      .map(n => `<a href="${n.hash}" class="nav-item ${activeHash.startsWith(n.hash) ? 'active' : ''}">
+      .map(n => `<a href="${n.hash}" class="nav-item ${effHash.startsWith(n.hash) ? 'active' : ''}">
         <span class="nav-ic">${n.icon}</span>
         <span class="nav-tx">${n.label}<small>${n.sub || ''}</small></span></a>`).join('');
     // การ์ดรอบงบประมาณปัจจุบัน (ท้าย sidebar)
