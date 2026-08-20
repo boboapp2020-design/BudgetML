@@ -265,7 +265,6 @@ const PagesUser = (() => {
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
             <a class="ghost-btn small btn-review" href="#/review">✓ ตรวจสอบงบ</a>
           </span></div>
-        ${viewOrig ? '<div class="vo-banner">📌 กำลังดูงบต้นปี (อนุมัติ) — อ่านอย่างเดียว · กด "🔙 กลับงบปัจจุบัน" เพื่อแก้ไข</div>' : ''}
         <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') });
   }
 
