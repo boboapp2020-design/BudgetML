@@ -82,36 +82,46 @@ const PagesReq = (() => {
 
     const form = (open.length && user.departmentId) ? card('➕ ยื่นคำร้องใหม่', `
       <div class="req-form">
-        <label class="fld"><span>ประเภทคำร้อง</span>
-          <select id="reqType"><option value="increase">➕ ขอเพิ่มงบ</option><option value="decrease">➖ ขอลดงบ</option><option value="transfer">🔄 ขอโยกงบ (ในหรือข้ามหน่วยงาน)</option></select></label>
+        <div class="req-section">
+          <div class="req-section-h">① ประเภทคำร้อง</div>
+          <label class="fld"><span>เลือกสิ่งที่ต้องการทำ</span>
+            <select id="reqType"><option value="increase">➕ ขอเพิ่มงบ</option><option value="decrease">➖ ขอลดงบ</option><option value="transfer">🔄 ขอโยกงบ (ในหรือข้ามหน่วยงาน)</option></select></label>
+        </div>
 
-        <div id="reqSingle">
-          <div class="req-grid3">
-            <label class="fld"><span>ช่องงบที่จะปรับ (GL)</span><select id="reqRow">${rowOpts}</select></label>
-            <label class="fld"><span>เดือน</span><select id="reqMonth">${monthOpts}</select></label>
-            <label class="fld"><span>จำนวนเงิน (กีบ)</span><input id="reqAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
+        <div class="req-section">
+          <div class="req-section-h">② รายละเอียดการปรับงบ</div>
+          <div id="reqSingle">
+            <div class="req-grid3">
+              <label class="fld"><span>ช่องงบที่จะปรับ (GL)</span><select id="reqRow">${rowOpts}</select></label>
+              <label class="fld"><span>เดือน</span><select id="reqMonth">${monthOpts}</select></label>
+              <label class="fld"><span>จำนวนเงิน (กีบ)</span><input id="reqAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
+            </div>
+          </div>
+
+          <div id="reqTransfer" style="display:none">
+            <div class="req-tr">
+              <div class="req-tr-side"><div class="req-tr-h">จาก (−)</div>
+                <label class="fld"><span>ช่องต้นทาง</span><select id="reqFromRow">${rowOpts}</select></label>
+                <label class="fld"><span>เดือน</span><select id="reqFromMonth">${monthOpts}</select></label></div>
+              <div class="req-tr-arrow">➜</div>
+              <div class="req-tr-side"><div class="req-tr-h">ไป (+)</div>
+                <label class="fld"><span>หน่วยงานปลายทาง</span><select id="reqToDept">${deptOpts}</select></label>
+                <label class="fld"><span>ช่องปลายทาง</span><select id="reqToRow">${rowOpts}</select></label>
+                <label class="fld"><span>เดือน</span><select id="reqToMonth">${monthOpts}</select></label></div>
+            </div>
+            <label class="fld"><span>จำนวนเงินที่โยก (กีบ)</span><input id="reqTAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
           </div>
         </div>
 
-        <div id="reqTransfer" style="display:none">
-          <div class="req-tr">
-            <div class="req-tr-side"><div class="req-tr-h">จาก (−)</div>
-              <label class="fld"><span>ช่องต้นทาง</span><select id="reqFromRow">${rowOpts}</select></label>
-              <label class="fld"><span>เดือน</span><select id="reqFromMonth">${monthOpts}</select></label></div>
-            <div class="req-tr-arrow">➜</div>
-            <div class="req-tr-side"><div class="req-tr-h">ไป (+)</div>
-              <label class="fld"><span>หน่วยงานปลายทาง</span><select id="reqToDept">${deptOpts}</select></label>
-              <label class="fld"><span>ช่องปลายทาง</span><select id="reqToRow">${rowOpts}</select></label>
-              <label class="fld"><span>เดือน</span><select id="reqToMonth">${monthOpts}</select></label></div>
-          </div>
-          <label class="fld"><span>จำนวนเงินที่โยก (กีบ)</span><input id="reqTAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
+        <div class="req-section">
+          <div class="req-section-h">③ เหตุผลและเอกสารประกอบ</div>
+          <label class="fld"><span>เหตุผล / ความจำเป็น <b class="req-req">*</b></span><textarea id="reqReason" rows="2" placeholder="อธิบายเหตุผลของการปรับงบ"></textarea></label>
+          <label class="fld"><span>เลขที่ / อ้างอิง memo</span><input id="reqMemo" placeholder="เช่น memo เลขที่ ... / อ้างอิงเอกสาร"></label>
+          <label class="fld"><span>📎 แนบไฟล์ memo <small class="muted">(PDF หรือรูป · ไม่เกิน 10MB)</small></span>
+            <input type="file" id="reqMemoFile" accept=".pdf,image/*"><small class="muted" id="reqFileHint"></small></label>
         </div>
 
-        <label class="fld"><span>เหตุผล / ความจำเป็น <b class="req-req">*</b></span><textarea id="reqReason" rows="2" placeholder="อธิบายเหตุผลของการปรับงบ"></textarea></label>
-        <label class="fld"><span>เลขที่ / อ้างอิง memo</span><input id="reqMemo" placeholder="เช่น memo เลขที่ ... / อ้างอิงเอกสาร"></label>
-        <label class="fld"><span>📎 แนบไฟล์ memo <small class="muted">(PDF หรือรูป · ไม่เกิน 10MB)</small></span>
-          <input type="file" id="reqMemoFile" accept=".pdf,image/*"><small class="muted" id="reqFileHint"></small></label>
-        <button class="primary-btn" id="reqSubmit">📨 ส่งคำร้อง (ไปหัวหน้าฝ่าย)</button>
+        <div class="req-submit-wrap"><button class="primary-btn" id="reqSubmit">📨 ส่งคำร้อง (ไปหัวหน้าฝ่าย)</button></div>
       </div>`) : card('', `<div class="lock-banner">🔒 ยังไม่เปิดหน้าต่างปรับงบปี ${year} — ยื่นคำร้องไม่ได้ (รอแผนกบัญชีเปิดช่วงเดือน 1-3 หรือ 5-12)</div>`);
 
     const list = mine.length
