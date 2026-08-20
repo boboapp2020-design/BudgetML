@@ -82,29 +82,31 @@ const App = (() => {
           <h2>เข้าสู่ระบบ</h2>
           <div class="lv-sub">ระบบงบประมาณประจำปี</div>
 
-          <label class="fld"><span>เลือกหน่วยงาน / ฝ่ายของคุณ</span>
-            <select id="deptSel">
-              <option value="">🏢 — เลือกหน่วยงาน หรือ ฝ่าย —</option>
-              <optgroup label="ผู้ดูแล / ผู้บริหาร">
-                <option value="accounting">👑 ผู้ดูแลระบบ — แผนกบัญชี</option>
-                ${mgrOpts}
-              </optgroup>
-              ${deptOpts}
-            </select></label>
+          <label class="fld"><span>อีเมลบริษัท <small class="muted">(ผู้ดูแลระบบพิมพ์ admin)</small></span>
+            <input id="loginEmail" type="text" placeholder="เช่น yourname@mitrphol.com" autocomplete="username"></label>
 
-          <label class="fld"><span>รหัสผ่าน${authOn() ? '' : ' <small class="muted">(โหมดทดลอง — ไม่บังคับ)</small>'}</span>
+          <label class="fld"><span>รหัสผ่าน${authOn() ? '' : ' <small class="muted">(เฉพาะ admin — อีเมลไม่ต้องกรอก)</small>'}</span>
             <div class="lv-pass">
               <span class="lv-lock">🔒</span>
-              <input id="deptPin" type="password" placeholder="${authOn() ? 'กรอกรหัสผ่านของคุณ' : 'ไม่ต้องกรอกในโหมดนี้'}" autocomplete="current-password">
+              <input id="deptPin" type="password" placeholder="${authOn() ? 'กรอกรหัสผ่านของคุณ' : 'รหัสผ่าน (เฉพาะ admin)'}" autocomplete="current-password">
               <button type="button" class="lv-eye" id="pwEye" aria-label="แสดง/ซ่อนรหัสผ่าน">👁</button>
             </div></label>
 
-          <div class="lv-row">
-            <label class="lv-remember"><input type="checkbox" id="rememberMe"> จดจำฉันในระบบ</label>
-            <a class="lv-forgot" id="forgotLink">ลืมรหัสผ่าน?</a>
-          </div>
-
           <button class="primary-btn big lv-submit" id="deptLoginBtn">🔒 เข้าสู่ระบบ</button>
+
+          <a class="lv-forgot lv-alt-toggle" id="unitLoginLink">เข้าแบบเลือกหน่วยงาน (แบบเดิม) ▾</a>
+          <div id="unitLoginBox" hidden>
+            <label class="fld"><span>เลือกหน่วยงาน / ฝ่ายของคุณ</span>
+              <select id="deptSel">
+                <option value="">🏢 — เลือกหน่วยงาน หรือ ฝ่าย —</option>
+                <optgroup label="ผู้ดูแล / ผู้บริหาร">
+                  <option value="accounting">👑 ผู้ดูแลระบบ — แผนกบัญชี</option>
+                  ${mgrOpts}
+                </optgroup>
+                ${deptOpts}
+              </select></label>
+            <button class="ghost-btn" id="unitLoginBtn" style="width:100%">เข้าด้วยหน่วยงานที่เลือก</button>
+          </div>
 
           <div class="lv-secure">🛡️ ระบบปลอดภัยด้วยมาตรฐานระดับองค์กร</div>
         </div>
@@ -131,25 +133,94 @@ const App = (() => {
       }
     }
 
-    const doLogin = () => {
-      const code = document.getElementById('deptSel').value;
-      if (!code) { UI.toast('กรุณาเลือกหน่วยงานก่อน', 'err'); return; }
-      const pw = document.getElementById('deptPin').value;
-      if (authOn()) return authLogin(code, pw, document.getElementById('deptLoginBtn'));
-      const user = Store.login(code, '1234');   // โหมดทดลอง (ปิด login) — เลือกหน่วยงานเข้าได้เลย
-      if (!user) { UI.toast('ไม่พบบัญชีผู้ใช้ของหน่วยงานนี้', 'err'); return; }
+    // เข้าเป็น 1 บทบาท (id = รหัสแผนก หรือ MGR:<node>) — เก็บอีเมลไว้เพื่อปุ่ม "สลับบทบาท"
+    const loginAs = (id, email) => {
+      const user = Store.login(id, '1234');
+      if (!user) { UI.toast('ไม่พบบัญชีผู้ใช้ (' + id + ')', 'err'); return; }
+      if (email) sessionStorage.setItem('abp_email', email); else sessionStorage.removeItem('abp_email');
       enter(user);
+    };
+
+    // หน้าเลือกบทบาท — 1 อีเมลมีหลายสิทธิ์ (กรอกหลายแผนก และ/หรือ เป็นผู้อนุมัติ)
+    function renderPicker(email, asg) {
+      const year = UI.year();
+      const fillers = asg.filter(a => a.role === 'filler');
+      const viewers = asg.filter(a => a.role !== 'filler');
+      const fillBtn = a => {
+        const deptId = 'd' + a.id;
+        const st = Store.deptState(year, deptId).status;
+        const pct = Store.completion(year, deptId).pct;
+        const chip = st === 'LOCKED' ? '<span class="pk-chip pk-lock">🔒 ปิดรอบ</span>'
+          : st === 'SUBMITTED' ? '<span class="pk-chip pk-ok">✅ ส่งแล้ว</span>'
+          : st === 'NEED_REVISION' ? '<span class="pk-chip pk-warn">↩ ถูกตีกลับ — แก้ไขได้</span>'
+          : `<span class="pk-chip">⏳ กรอกแล้ว ${pct}%</span>`;
+        return `<button class="pk-item" data-pick="${a.id}"><b>${UI.esc(a.name)}</b> <small>(${a.id})</small>${chip}</button>`;
+      };
+      const viewBtn = a => {
+        const unitId = a.id.replace(/^MGR:/, '');
+        const pending = Store.subtreeDepartments(unitId).filter(d => Store.deptState(year, d.id).status === 'SUBMITTED').length;
+        const isCo = unitId === 'co';
+        return `<button class="pk-item" data-pick="${a.id}"><b>${UI.esc(a.name)}</b>
+          ${pending ? `<span class="pk-chip pk-warn">🔔 รอทวนสอบ ${pending}</span>` : '<span class="pk-chip">ไม่มีงานค้าง</span>'}
+          <small>${isCo ? 'ผู้ดูภาพรวมทั้งบริษัท (กจก.)' : UI.esc(a.sub)}</small></button>`;
+      };
+      document.querySelector('.lv-login').innerHTML = `
+        <div class="lv-badge">${UI.APP_LOGO}</div>
+        <h2>เลือกบทบาท</h2>
+        <div class="lv-sub">${UI.esc(email)} · มี ${asg.length} สิทธิ์ในระบบ</div>
+        <div class="pk-list">
+          ${fillers.length ? `<div class="pk-group">📝 ผู้กรอกงบ (${fillers.length} แผนก)</div>` + fillers.map(fillBtn).join('') : ''}
+          ${viewers.length ? `<div class="pk-group">✅ ผู้อนุมัติ / ผู้ดูภาพรวม</div>` + viewers.map(viewBtn).join('') : ''}
+        </div>
+        <a class="lv-forgot lv-alt-toggle" id="pkBack">← ใช้บัญชีอื่น</a>`;
+      document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => loginAs(b.dataset.pick, email)));
+      document.getElementById('pkBack').addEventListener('click', () => { sessionStorage.removeItem('abp_email'); loginPage(); });
+    }
+
+    const doLogin = () => {
+      const raw = document.getElementById('loginEmail').value.trim();
+      const pw = document.getElementById('deptPin').value;
+      if (!raw) { UI.toast('กรุณากรอกอีเมล (หรือ admin)', 'err'); return; }
+      // ผู้ดูแลระบบ — ไม่ใช้อีเมล: admin / 1234
+      if (raw.toLowerCase() === 'admin') {
+        if (pw !== '1234') { UI.toast('รหัสผ่าน admin ไม่ถูกต้อง', 'err'); return; }
+        return loginAs('accounting', null);
+      }
+      if (!raw.includes('@')) { UI.toast('กรอกอีเมลบริษัท เช่น yourname@mitrphol.com', 'err'); return; }
+      const email = EmailAuth.norm(raw);
+      const asg = EmailAuth.assignmentsFor(email);
+      if (!asg.length) { UI.toast('ไม่พบอีเมลนี้ในระบบ — ติดต่อแผนกบัญชี (ผู้ดูแลระบบ)', 'err'); return; }
+      if (asg.length === 1) return loginAs(asg[0].id, email);
+      sessionStorage.setItem('abp_email', email);
+      renderPicker(email, asg);
     };
     document.getElementById('deptLoginBtn').addEventListener('click', doLogin);
     document.getElementById('deptPin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-    document.getElementById('deptSel').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+    // ทางสำรอง: เข้าแบบเลือกหน่วยงาน (dropdown เดิม)
+    document.getElementById('unitLoginLink').addEventListener('click', () => {
+      const box = document.getElementById('unitLoginBox');
+      box.hidden = !box.hidden;
+    });
+    document.getElementById('unitLoginBtn').addEventListener('click', () => {
+      const code = document.getElementById('deptSel').value;
+      if (!code) { UI.toast('กรุณาเลือกหน่วยงานก่อน', 'err'); return; }
+      if (authOn()) return authLogin(code, document.getElementById('deptPin').value, document.getElementById('unitLoginBtn'));
+      loginAs(code, null);
+    });
 
     document.getElementById('pwEye').addEventListener('click', () => {
       const inp = document.getElementById('deptPin');
       inp.type = inp.type === 'password' ? 'text' : 'password';
     });
-    document.getElementById('forgotLink').addEventListener('click', () =>
-      UI.toast('ลืมรหัสผ่าน — ติดต่อแผนกบัญชี/ผู้ดูแลระบบเพื่อรีเซ็ตให้', 'info'));
+
+    // กลับมาจากปุ่ม "สลับบทบาท" — มีอีเมลค้างอยู่ → เปิดหน้าเลือกบทบาททันที
+    const pe = sessionStorage.getItem('abp_email');
+    if (pe) {
+      const asg = EmailAuth.assignmentsFor(pe);
+      if (asg.length > 1) renderPicker(pe, asg);
+    }
   }
 
   function render() {

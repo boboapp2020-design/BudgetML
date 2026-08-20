@@ -1213,6 +1213,20 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 @media(max-width:860px){.glrow-form{grid-template-columns:repeat(2,1fr)}}
 .glrow-form label.opt{opacity:1;color:#54617a}
 .glrow-form label small{color:#b3760a;font-weight:700}
+/* หน้าเลือกบทบาท (login ด้วยอีเมลที่มีหลายสิทธิ์) */
+.pk-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;margin:14px 0 6px;padding-right:4px}
+.pk-group{font-size:14px;font-weight:800;color:#2b3654;margin:10px 0 2px;padding-bottom:5px;border-bottom:2px solid #e4ebf5}
+.pk-group:first-child{margin-top:0}
+.pk-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-align:left;font:inherit;font-size:14.5px;color:#1c2b45;
+  background:#fff;border:1.5px solid #cdd8ea;border-radius:12px;padding:11px 14px;cursor:pointer;transition:all .15s ease}
+.pk-item:hover{border-color:#2563eb;background:#eef4fc;transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.14)}
+.pk-item small{color:#8a97ab;font-size:12px}
+.pk-chip{margin-left:auto;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;background:#eef2f8;color:#5a6b85;white-space:nowrap}
+.pk-chip.pk-ok{background:#e7f6ea;color:#1c7c33}
+.pk-chip.pk-warn{background:#fdeeea;color:#c0392b}
+.pk-chip.pk-lock{background:#f0efec;color:#6b6a66}
+.lv-alt-toggle{display:block;text-align:center;margin-top:14px;cursor:pointer;font-size:14px}
+#unitLoginBox{margin-top:12px;padding-top:12px;border-top:1px dashed #cdd8ea}
 /* แถบตีกลับหลายแผนก + checkbox เลือกแผนก (หน้าตรวจสอบของแอดมิน) */
 .bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:#fbfcfe;font-size:13px}
 .bulk-bar select{font:inherit;font-size:12.5px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:8px;max-width:280px}

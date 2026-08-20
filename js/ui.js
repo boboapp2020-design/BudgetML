@@ -157,6 +157,14 @@ const UI = (() => {
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
             <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : user.role === 'MANAGER' ? esc(user.name || '') : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId))}</span>
               <span class="uc-name">${esc(user.name)}</span></div>
+            ${(() => { // ปุ่มสลับบทบาท — เฉพาะคน login ด้วยอีเมลที่มีหลายสิทธิ์
+              try {
+                const pe = sessionStorage.getItem('abp_email');
+                if (pe && typeof EmailAuth !== 'undefined' && EmailAuth.assignmentsFor(pe).length > 1)
+                  return '<button id="switchRoleBtn" class="ghost-btn" title="เปลี่ยนบทบาท/แผนก โดยไม่ต้องออกจากระบบ">🔄 สลับบทบาท</button>';
+              } catch (e) {}
+              return '';
+            })()}
             <button id="logoutBtn" class="ghost-btn">ออกจากระบบ</button>
           </div>
           <div id="notiPanel" class="noti-panel" hidden>
@@ -173,7 +181,9 @@ const UI = (() => {
 
   function bindShell(user) {
     document.getElementById('yearSel')?.addEventListener('change', e => { setYear(e.target.value); App.render(); });
-    document.getElementById('logoutBtn')?.addEventListener('click', () => { Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', () => { sessionStorage.removeItem('abp_email'); Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
+    // สลับบทบาท: ออกจาก session ปัจจุบันแต่คงอีเมลไว้ → หน้า login เปิดตัวเลือกบทบาทให้ทันที
+    document.getElementById('switchRoleBtn')?.addEventListener('click', () => { Store.logout(); location.hash = '#/login'; App.render(); });
     const btn = document.getElementById('notiBtn'), panel = document.getElementById('notiPanel');
     btn?.addEventListener('click', () => {
       panel.hidden = !panel.hidden;
