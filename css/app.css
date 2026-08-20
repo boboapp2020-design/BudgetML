@@ -272,7 +272,10 @@ a { color: var(--blue); }
 .budget-card.revise-mode.show-prev .prev-ghost::before { content: 'งบเดิม '; }
 /* โหมด "ดูงบต้นปี" — ธีมสีส้ม/อำพันทั้งตาราง แยกจากงบปัจจุบัน (สีน้ำเงิน) */
 .vo-banner { background: #eee7dc; border: 1px solid #b6a68c; color: #4a3d2f; font-weight: 700; font-size: 13px; padding: 9px 14px; border-radius: 10px; margin: 0 0 10px; }
-/* โหมด "ดูงบต้นปี" — พื้นขาวเหมือนงบปัจจุบัน · แยกด้วย "ขอบเซลล์สีทองอำพัน" (งบอนุมัติ) */
+/* โหมด "ดูงบต้นปี" — พื้นเซลล์ขาว · แยกจากงบปัจจุบัน (น้ำเงิน) ด้วยหัวตาราง + ขอบเซลล์ "โทนทองอำพัน" (งบอนุมัติ) */
+.budget-card.view-orig .budget-table th { background: linear-gradient(180deg, #bf982f 0%, #93701c 100%) !important; border-bottom-color: #d4a23c !important; }
+.budget-card.view-orig .budget-table th.sticky-col { background: linear-gradient(180deg, #bf982f 0%, #93701c 100%) !important; }
+.budget-card.view-orig .th-yr { color: #f2e6c4 !important; }
 .budget-card.view-orig .cell, .budget-card.view-orig .cell:disabled { border-color: #d4a23c !important; }
 #viewOrigBtn.vo-on { background: #fdf3e0 !important; border-color: #d4a23c !important; color: #a6741a !important; font-weight: 700; }
 
