@@ -195,7 +195,13 @@ const UI = (() => {
                   const t = a.role === 'filler' ? 'fill' : (a.id === 'MGR:co' ? 'co' : /area/.test(a.id) ? 'area' : 'div');
                   return `<button class="um-swrole ${isCur ? 'cur' : ''}" data-switch="${esc(String(a.id))}" data-roletip="${esc(TIP[t])}" ${isCur ? 'disabled' : ''}>
                     ${roleBadge(t)}<span class="umr-nm">${esc(a.name)}${a.role === 'filler' ? ` <em>${a.id}</em>` : ''}</span>${isCur ? '<span class="umr-cur">● อยู่นี่</span>' : ''}</button>`; };
-                switcher = `<div class="um-switch"><div class="um-switch-h">🔄 สลับบทบาท (${asg.length})</div><div class="um-switch-list">${asg.map(item).join('')}</div></div>`;
+                switcher = `<div class="um-switch"><div class="um-switch-h">🔄 สลับบทบาท (${asg.length})</div>
+                  <div class="um-legend">
+                    <span><i class="rl-dot ri-fill"></i>ผู้กรอกงบประมาณ</span>
+                    <span><i class="rl-dot ri-div"></i>ผู้ตรวจสอบงบประมาณ</span>
+                    <span><i class="rl-dot ri-area"></i>ผู้รีวิวงบประมาณ</span>
+                  </div>
+                  <div class="um-switch-list">${asg.map(item).join('')}</div></div>`;
               }
               return `
             <button class="user-chip uc-clickable" id="userMenuBtn" title="ตั้งค่าบัญชีของฉัน"><span class="uc-avatar">${avatar}</span>
