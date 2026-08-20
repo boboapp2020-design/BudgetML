@@ -1546,20 +1546,22 @@ body{background:var(--bg)}
 .brand-name{color:var(--ink)}
 .brand-sub{color:var(--muted)}
 .brand-link:hover{background:#f2f6fd}
-.nav-item{color:#5b6b84}
-.nav-item:hover{background:#f2f6fd;color:var(--blue)}
-.nav-item.active{background:#e9f1fe;color:var(--blue);font-weight:700;box-shadow:none !important}
+.nav-item{color:#4a5a74;font-weight:600}
+.nav-item:hover{background:#eef4fe;color:var(--blue)}
+.nav-item.active{background:linear-gradient(135deg,#2e7cf6,#2168e6) !important;color:#fff !important;font-weight:700;box-shadow:0 6px 16px rgba(46,124,246,.32) !important}
+.nav-item.active .nav-ic{filter:none}
 .nav-tx small{color:#9aa7bb}
-.nav-item.active .nav-tx small{color:#6b96d8}
+.nav-item.active .nav-tx small{color:rgba(255,255,255,.82)}
 .sidebar-foot{border-top:1px solid var(--border);color:#8b98ad}
-.sf-company{color:#5b6b84}
-.period-card{background:#f5f8fd;border:1px solid var(--border)}
-.pc-title{color:#8b98ad}
-.pc-year{color:var(--ink)}
-.pc-badge.closed{background:#e2e8f2;color:#5b6b84}
-.pc-range{color:#8b98ad}
-.pc-bar{background:#e4eaf4}
-.pc-fill{background:var(--blue)}
+.sf-company{color:#3a4763;font-weight:700}
+/* การ์ดรอบงบ — ไล่สีฟ้าอ่อนให้มีสีสัน */
+.period-card{background:linear-gradient(135deg,#eaf2fe,#e2ecfb) !important;border:1px solid #cfe0f8 !important}
+.pc-title{color:#5f7196}
+.pc-year{color:#1a3566}
+.pc-badge.closed{background:#dbe6f7;color:#3a5788}
+.pc-range{color:#7286a8}
+.pc-bar{background:#d3e0f5}
+.pc-fill{background:linear-gradient(90deg,#2e7cf6,#5b9bfa)}
 
 /* ---------- Topbar: ขาวแบน เงาจาง ---------- */
 .topbar{background:#fff !important;border-bottom:1px solid var(--border-strong);box-shadow:0 1px 8px rgba(31,43,67,.05) !important;backdrop-filter:none}

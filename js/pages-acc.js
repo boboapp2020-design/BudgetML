@@ -1777,6 +1777,12 @@ const PagesAcc = (() => {
     }).join('');
     return pageHead('จัดการผู้ใช้', `${dir.length} อีเมล · คลิกที่รายชื่อเพื่อจัดการบทบาท · รหัสเริ่มต้นทุกคน = a`,
         '<a class="ghost-btn" href="#/acc/dashboard">← กลับ</a>')
+      + `<div class="ud-add">
+          <b>➕ เพิ่มผู้ใช้ใหม่</b>
+          <input id="newUserEmail" placeholder="อีเมล เช่น name@mitrphol.com" autocomplete="off">
+          <select id="newUserRole">${roleOpts('— เลือกบทบาท (บังคับ) —')}</select>
+          <button class="primary-btn" id="addUserBtn">เพิ่มผู้ใช้</button>
+        </div>`
       + `<div class="stats-row">${stat(dir.length, '👥 ผู้ใช้ (อีเมล)')}${stat(nFill, '📝 มีบทบาทผู้กรอก')}${stat(nApp, '✅ มีบทบาทผู้อนุมัติ/ผู้ดู')}${stat(nMulti, '🎭 หลายบทบาท')}</div>`
       + (custom ? '' : `<div class="lock-banner" style="background:#eef4fc;border-color:#cfe0f5;color:#2b3654">ℹ️ กำลังใช้รายชื่อค่าเริ่มต้นจากระบบ — เมื่อแก้ครั้งแรกจะบันทึกทั้งชุด (ต้องรัน <b>supabase/user-accounts.sql</b>)</div>`)
       + `<div class="ud-bar2">
@@ -1788,12 +1794,6 @@ const PagesAcc = (() => {
             <option value="email-desc">เรียง: Z→A อีเมล</option>
           </select>
           <span class="count" id="udCount"></span>
-        </div>`
-      + `<div class="ud-add">
-          <b>➕ เพิ่มผู้ใช้ใหม่</b>
-          <input id="newUserEmail" placeholder="อีเมล เช่น name@mitrphol.com" autocomplete="off">
-          <select id="newUserRole">${roleOpts('เลือกบทบาทแรก (ไม่บังคับ)')}</select>
-          <button class="primary-btn" id="addUserBtn">เพิ่มผู้ใช้</button>
         </div>`
       + `<div class="ur-list" id="udGrid">${rows}</div>`;
   }
@@ -1855,9 +1855,10 @@ const PagesAcc = (() => {
     document.getElementById('addUserBtn')?.addEventListener('click', () => {
       const el = document.getElementById('newUserEmail'), rl = document.getElementById('newUserRole');
       const email = el.value.trim();
+      if (!rl.value) { toast('ต้องเลือกบทบาทอย่างน้อย 1 ก่อนเพิ่มผู้ใช้', 'err'); rl.focus(); return; }
       try {
         Store.addUserAccount(user, email);
-        if (rl.value) { const [k, id] = rl.value.split('|'); Store.addUserRole(user, email, k, id); }
+        const [k, id] = rl.value.split('|'); Store.addUserRole(user, email, k, id);
         toast('เพิ่มผู้ใช้แล้ว'); el.value = ''; rl.value = ''; openUserModal(user, email);
       } catch (e) { toast(e.message, 'err'); }
     });
