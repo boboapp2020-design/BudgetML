@@ -143,8 +143,9 @@ const PagesUser = (() => {
     const rvIcon = rvKind === 'LANDING' ? '🎯' : '🔁';
     const reviseMsg = rvOn
       ? `<div class="lock-banner revise-banner">${rvIcon} <b>${rvTitle}</b> — เดือน 1–${thru - 1} เป็นตัวเลขเกิดจริง (ล็อกโดยแผนกบัญชี) · เดือน ${thru} เพิ่มได้แต่ลดต่ำกว่าเกิดจริงไม่ได้ · เดือน ${thru + 1}–12 ปรับคาดการณ์ได้ · แถวที่ยอดต่างจากแผน ORIGINAL ต้องระบุเหตุผลก่อนส่ง</div>` : '';
-    const lockMsg = !c.editable
-      ? `<div class="lock-banner">🔒 ${['SUBMITTED'].includes(c.state.status) ? 'ส่งข้อมูลแล้ว — แก้ไขได้เมื่อถูกตีกลับ (Need Revision)' : 'รอบงบประมาณนี้ถูกปิด/Lock แล้ว — อ่านได้อย่างเดียว'}</div>` : '';
+    // ป้ายล็อกแบบกะทัดรัด — ย้ายไปอยู่ในแถบเครื่องมือข้างปุ่ม (แทน banner เต็มความกว้าง)
+    const lockChip = !c.editable
+      ? `<span class="lock-chip">🔒 ${['SUBMITTED'].includes(c.state.status) ? 'ส่งแล้ว — แก้ได้เมื่อถูกตีกลับ' : 'รอบงบถูก Lock — อ่านอย่างเดียว'}</span>` : '';
 
     const head = `<tr>
       <th class="sticky-col th-gl">GL / บัญชี</th>
@@ -247,8 +248,8 @@ const PagesUser = (() => {
           ${gaugeKpi('ความครบถ้วน', c.comp.pct, 'เป้าหมาย 100% ก่อน Submit', 'data-kpi-comp')}
         </div>`
       + reviseMsg
-      + lockMsg
       + card('', `<div class="grid-toolbar">
+          ${lockChip}
           <span class="grid-tools">
             <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขปีก่อนใต้ทุกช่อง (เทียบเดือนต่อเดือน)">🔀 ปีก่อน</button>
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶ ขยาย</button>
@@ -426,6 +427,12 @@ const PagesUser = (() => {
     };
     const fsToggle = () => setFs(!fsCard.classList.contains('fullscreen'));
     fsBtn?.addEventListener('click', fsToggle);
+    // ESC = ย่อกลับ + ล้าง no-scroll (กันสถานะค้างเมื่อออกจากหน้า)
+    const fsEsc = e => {
+      if (e.key === 'Escape' && fsCard.classList.contains('fullscreen')) setFs(false);
+      if (!document.body.contains(fsCard)) { document.body.classList.remove('no-scroll'); document.removeEventListener('keydown', fsEsc); }
+    };
+    document.addEventListener('keydown', fsEsc);
 
     /* --- ล้างข้อมูลทั้งปี --- */
     document.getElementById('gridClearBtn')?.addEventListener('click', () => {

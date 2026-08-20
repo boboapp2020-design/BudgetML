@@ -153,6 +153,9 @@ const App = (() => {
   }
 
   function render() {
+    // กันสถานะค้าง: โหมดเต็มจอ/modal ที่ตั้ง body.no-scroll (overflow:hidden) แล้วเปลี่ยนหน้า
+    // จะทำให้ทุกหน้าเลื่อนไม่ได้ — ล้างทุกครั้งที่ render (โหมดเต็มจอจะถูกตั้งใหม่เองใน bind ถ้าจำเป็น)
+    document.body.classList.remove('no-scroll');
     const hash = location.hash || '#/login';
     const base = hash.split('?')[0];
     const user = Store.currentUser();
