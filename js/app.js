@@ -85,10 +85,10 @@ const App = (() => {
           <label class="fld"><span>อีเมลบริษัท <small class="muted">(ผู้ดูแลระบบพิมพ์ admin)</small></span>
             <input id="loginEmail" type="text" placeholder="เช่น yourname@mitrphol.com" autocomplete="username"></label>
 
-          <label class="fld"><span>รหัสผ่าน${authOn() ? '' : ' <small class="muted">(เฉพาะ admin — อีเมลไม่ต้องกรอก)</small>'}</span>
+          <label class="fld"><span>รหัสผ่าน</span>
             <div class="lv-pass">
               <span class="lv-lock">🔒</span>
-              <input id="deptPin" type="password" placeholder="${authOn() ? 'กรอกรหัสผ่านของคุณ' : 'รหัสผ่าน (เฉพาะ admin)'}" autocomplete="current-password">
+              <input id="deptPin" type="password" placeholder="กรอกรหัสผ่านของคุณ" autocomplete="current-password">
               <button type="button" class="lv-eye" id="pwEye" aria-label="แสดง/ซ่อนรหัสผ่าน">👁</button>
             </div></label>
 
@@ -190,6 +190,7 @@ const App = (() => {
       const email = EmailAuth.norm(raw);
       const asg = EmailAuth.assignmentsFor(email);
       if (!asg.length) { UI.toast('ไม่พบอีเมลนี้ในระบบ — ติดต่อแผนกบัญชี (ผู้ดูแลระบบ)', 'err'); return; }
+      if (pw !== Store.passwordFor(email)) { UI.toast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
       if (asg.length === 1) return loginAs(asg[0].id, email);
       sessionStorage.setItem('abp_email', email);
       renderPicker(email, asg);
@@ -206,7 +207,10 @@ const App = (() => {
     document.getElementById('unitLoginBtn').addEventListener('click', () => {
       const code = document.getElementById('deptSel').value;
       if (!code) { UI.toast('กรุณาเลือกหน่วยงานก่อน', 'err'); return; }
-      if (authOn()) return authLogin(code, document.getElementById('deptPin').value, document.getElementById('unitLoginBtn'));
+      const pw = document.getElementById('deptPin').value;
+      if (authOn()) return authLogin(code, pw, document.getElementById('unitLoginBtn'));
+      // ทางสำรอง: admin ใช้ 1234 · ที่เหลือใช้รหัสกลาง 'a'
+      if (code === 'accounting' ? pw !== '1234' : pw !== 'a') { UI.toast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
       loginAs(code, null);
     });
 

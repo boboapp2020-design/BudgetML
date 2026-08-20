@@ -157,11 +157,14 @@ const UI = (() => {
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
             <div class="user-chip"><span class="uc-avatar" title="${user.role === 'ACCOUNTING' ? 'ผู้ดูแลระบบ' : user.role === 'MANAGER' ? esc(user.name || '') : esc(Store.dept(user.departmentId)?.name || '')}">${user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId))}</span>
               <span class="uc-name">${esc(user.name)}</span></div>
-            ${(() => { // ปุ่มสลับบทบาท — เฉพาะคน login ด้วยอีเมลที่มีหลายสิทธิ์
+            ${(() => { // ปุ่มของคน login ด้วยอีเมล: เปลี่ยนรหัสผ่าน + สลับบทบาท (ถ้ามีหลายสิทธิ์)
               try {
                 const pe = sessionStorage.getItem('abp_email');
-                if (pe && typeof EmailAuth !== 'undefined' && EmailAuth.assignmentsFor(pe).length > 1)
-                  return '<button id="switchRoleBtn" class="ghost-btn" title="เปลี่ยนบทบาท/แผนก โดยไม่ต้องออกจากระบบ">🔄 สลับบทบาท</button>';
+                if (!pe || typeof EmailAuth === 'undefined') return '';
+                let h = '<button id="changePwBtn" class="icon-btn" title="เปลี่ยนรหัสผ่าน">🔑</button>';
+                if (EmailAuth.assignmentsFor(pe).length > 1)
+                  h += '<button id="switchRoleBtn" class="ghost-btn" title="เปลี่ยนบทบาท/แผนก โดยไม่ต้องออกจากระบบ">🔄 สลับบทบาท</button>';
+                return h;
               } catch (e) {}
               return '';
             })()}
@@ -184,6 +187,23 @@ const UI = (() => {
     document.getElementById('logoutBtn')?.addEventListener('click', () => { sessionStorage.removeItem('abp_email'); Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
     // สลับบทบาท: ออกจาก session ปัจจุบันแต่คงอีเมลไว้ → หน้า login เปิดตัวเลือกบทบาทให้ทันที
     document.getElementById('switchRoleBtn')?.addEventListener('click', () => { Store.logout(); location.hash = '#/login'; App.render(); });
+    // เปลี่ยนรหัสผ่าน (ผูกกับอีเมลของผู้ใช้ — ค่าเริ่มต้น 'a')
+    document.getElementById('changePwBtn')?.addEventListener('click', () => {
+      const email = sessionStorage.getItem('abp_email');
+      if (!email) return;
+      modal(`เปลี่ยนรหัสผ่าน — ${esc(email)}`, `
+        <label class="fld"><span>รหัสผ่านปัจจุบัน</span><input id="pwOld" type="password" autocomplete="current-password"></label>
+        <label class="fld"><span>รหัสผ่านใหม่ <small class="muted">(อย่างน้อย 4 ตัวอักษร)</small></span><input id="pwNew" type="password" autocomplete="new-password"></label>
+        <label class="fld"><span>ยืนยันรหัสผ่านใหม่</span><input id="pwNew2" type="password" autocomplete="new-password"></label>`, [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: '🔑 บันทึกรหัสผ่านใหม่', cls: 'primary-btn', onClick: close => {
+            const o = document.getElementById('pwOld').value, n = document.getElementById('pwNew').value, n2 = document.getElementById('pwNew2').value;
+            if (n !== n2) { toast('รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน', 'err'); return; }
+            try { Store.setUserPassword(email, o, n); toast('เปลี่ยนรหัสผ่านเรียบร้อย — ใช้รหัสใหม่ในการเข้าครั้งถัดไป'); close(); }
+            catch (e) { toast(e.message, 'err'); }
+          } },
+      ]);
+    });
     const btn = document.getElementById('notiBtn'), panel = document.getElementById('notiPanel');
     btn?.addEventListener('click', () => {
       panel.hidden = !panel.hidden;

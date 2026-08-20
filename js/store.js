@@ -86,6 +86,27 @@ const Store = (() => {
     return u;
   }
   function logout() { sessionStorage.removeItem(SES_KEY); }
+
+  /* ---------- รหัสผ่านผู้ใช้อีเมล (ชั่วคราว: ค่าเริ่มต้น 'a' · admin ใช้ 1234 แยกต่างหาก) ----------
+   * เก็บใน db.userPasswords [{email, pass, changedAt}] → sync ตาราง user_passwords (optional) */
+  const DEFAULT_EMAIL_PASS = 'a';
+  function passwordFor(email) {
+    const key = String(email || '').trim().toLowerCase();
+    return (db.userPasswords || []).find(x => x.email === key)?.pass || DEFAULT_EMAIL_PASS;
+  }
+  function setUserPassword(email, oldPass, newPass) {
+    const key = String(email || '').trim().toLowerCase();
+    if (!key) throw new Error('ไม่พบอีเมลของผู้ใช้');
+    if (String(oldPass) !== passwordFor(key)) throw new Error('รหัสผ่านปัจจุบันไม่ถูกต้อง');
+    newPass = String(newPass || '');
+    if (newPass.length < 4) throw new Error('รหัสผ่านใหม่ต้องยาวอย่างน้อย 4 ตัวอักษร');
+    if (!db.userPasswords) db.userPasswords = [];
+    let row = db.userPasswords.find(x => x.email === key);
+    if (!row) { row = { email: key, pass: newPass, changedAt: null }; db.userPasswords.push(row); }
+    row.pass = newPass;
+    row.changedAt = new Date().toISOString();
+    save();
+  }
   function currentUser() {
     const id = sessionStorage.getItem(SES_KEY);
     return db.users.find(u => u.id === id) || null;
@@ -1465,7 +1486,7 @@ const Store = (() => {
   return {
     get db() { return db; },
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
-    login, loginByUsername, logout, currentUser,
+    login, loginByUsername, logout, currentUser, passwordFor, setUserPassword,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
     oversight, oversightUnit, childUnits, subtreeDeptCodes, subtreeDepartments, subtreeUnits, unitOfDept,
     cctName, deptRows, rowByKey, rowMonths, rowTotal, splitKey,

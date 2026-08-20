@@ -255,6 +255,11 @@ const Supa = (() => {
       toRow: u => ({ code: u.code, emails: u.emails || [] }),
       fromRow: r => ({ code: r.code, emails: r.emails || [] }),
     },
+    { name: 'user_passwords', pk: ['email'], assign: 'userPasswords', optional: true, // รหัสผ่านราย email (default 'a')
+      list: db => db.userPasswords || [],
+      toRow: u => ({ email: u.email, pass: u.pass, changed_at: nz(u.changedAt) }),
+      fromRow: r => ({ email: r.email, pass: r.pass, changedAt: r.changed_at }),
+    },
     { name: 'snapshot_rows', pk: ['year', 'label', 'department_id', 'gl_id', 'cct'],
       list: db => (db.budgetSnapshots || []).flatMap(s => (s.rows || []).map(r =>
         ({ year: s.year, label: s.label, department_id: r.departmentId, gl_id: r.glId, cct: r.cct, months: r.months }))),
