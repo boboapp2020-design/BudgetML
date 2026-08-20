@@ -155,13 +155,23 @@ const UI = (() => {
           </div>
           <div class="topbar-right">
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
-            ${(() => { // เมนูโปรไฟล์ — คลิกที่ user chip: ข้อมูลผู้ใช้ + เปลี่ยนรหัสผ่าน + สลับบทบาท + ออกจากระบบ
+            ${(() => { // เมนูโปรไฟล์ — คลิก user chip: ข้อมูล + สลับบทบาท (ในเมนูเลย) + เปลี่ยนรหัส + ออก
               const email = sessionStorage.getItem('abp_email') || '';
-              const multiRole = !!email && typeof EmailAuth !== 'undefined' && EmailAuth.assignmentsFor(email).length > 1;
+              const curId = sessionStorage.getItem('abp_roleid') || '';
+              const asg = email && typeof EmailAuth !== 'undefined' ? EmailAuth.assignmentsFor(email) : [];
               const roleLabel = user.role === 'ACCOUNTING' ? '👑 ผู้ดูแลระบบ (Admin)'
                 : user.role === 'MANAGER' ? '✅ ผู้อนุมัติ / ผู้ดู — ' + esc(user.name || '')
                 : '📝 ผู้กรอกงบ — ' + esc(Store.dept(user.departmentId)?.name || '');
               const avatar = user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId));
+              // รายการสลับบทบาท (เฉพาะคนหลายบทบาท)
+              let switcher = '';
+              if (asg.length > 1) {
+                const item = a => { const isCur = String(a.id) === curId;
+                  const ic = a.role === 'filler' ? '📝' : (a.id === 'MGR:co' ? '🏢' : /area/.test(a.id) ? '🏭' : '✅');
+                  return `<button class="um-swrole ${isCur ? 'cur' : ''}" data-switch="${esc(String(a.id))}" ${isCur ? 'disabled' : ''}>
+                    <span class="umr-ic">${ic}</span><span class="umr-nm">${esc(a.name)}${a.role === 'filler' ? ` <em>${a.id}</em>` : ''}</span>${isCur ? '<span class="umr-cur">● อยู่นี่</span>' : ''}</button>`; };
+                switcher = `<div class="um-switch"><div class="um-switch-h">🔄 สลับบทบาท (${asg.length})</div><div class="um-switch-list">${asg.map(item).join('')}</div></div>`;
+              }
               return `
             <button class="user-chip uc-clickable" id="userMenuBtn" title="ตั้งค่าบัญชีของฉัน"><span class="uc-avatar">${avatar}</span>
               <span class="uc-name">${esc(user.name)}</span><span class="uc-caret">▾</span></button>
@@ -172,8 +182,8 @@ const UI = (() => {
                   ${email ? `<div class="um-email">${esc(email)}</div>` : ''}
                   <div class="um-role">${roleLabel}</div></div>
               </div>
+              ${switcher}
               ${user.role === 'ACCOUNTING' ? '<a class="um-item" href="#/acc/users">👥 จัดการผู้ใช้ <small>เพิ่ม / ลบ / เปลี่ยนบทบาท · รีเซ็ตรหัส</small></a>' : ''}
-              ${multiRole ? '<button class="um-item" id="switchRoleBtn">🔄 สลับบทบาท / แผนก <small>เปลี่ยนหมวกโดยไม่ต้องออกจากระบบ</small></button>' : ''}
               <button class="um-item" id="changePwBtn" data-pwkey="${user.role === 'ACCOUNTING' ? '__admin__' : esc(email)}">🔑 เปลี่ยนรหัสผ่าน <small>${user.role === 'ACCOUNTING' ? 'รหัสผู้ดูแลระบบ' : 'รหัสเดียวใช้ทุกบทบาทของคุณ'}</small></button>
               <button class="um-item um-danger" id="logoutBtn">🚪 ออกจากระบบ</button>
             </div>`;
@@ -193,15 +203,15 @@ const UI = (() => {
 
   function bindShell(user) {
     document.getElementById('yearSel')?.addEventListener('change', e => { setYear(e.target.value); App.render(); });
-    document.getElementById('logoutBtn')?.addEventListener('click', () => { sessionStorage.removeItem('abp_email'); Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', () => { sessionStorage.removeItem('abp_email'); sessionStorage.removeItem('abp_roleid'); Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
     // เมนูโปรไฟล์ (คลิกที่ user chip)
     const umBtn = document.getElementById('userMenuBtn'), umenu = document.getElementById('userMenu');
     umBtn?.addEventListener('click', () => { umenu.hidden = !umenu.hidden; });
     document.addEventListener('click', e => {
       if (umenu && !umenu.hidden && !umenu.contains(e.target) && !umBtn.contains(e.target)) umenu.hidden = true;
     });
-    // สลับบทบาท: ออกจาก session ปัจจุบันแต่คงอีเมลไว้ → หน้า login เปิดตัวเลือกบทบาทให้ทันที
-    document.getElementById('switchRoleBtn')?.addEventListener('click', () => { Store.logout(); location.hash = '#/login'; App.render(); });
+    // สลับบทบาททันทีจากในเมนู (ไม่ต้องออกจากระบบ)
+    document.querySelectorAll('[data-switch]').forEach(b => b.addEventListener('click', () => App.switchRole(b.dataset.switch)));
     // เปลี่ยนรหัสผ่าน (ผูกกับ key: อีเมลของผู้ใช้ หรือ __admin__ สำหรับแอดมิน)
     document.getElementById('changePwBtn')?.addEventListener('click', e => {
       const email = e.currentTarget.dataset.pwkey || sessionStorage.getItem('abp_email');

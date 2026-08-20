@@ -120,49 +120,14 @@ const App = (() => {
       }
     }
 
-    // เข้าเป็น 1 บทบาท (id = รหัสแผนก หรือ MGR:<node>) — เก็บอีเมลไว้เพื่อปุ่ม "สลับบทบาท"
+    // เข้าเป็น 1 บทบาท (id = รหัสแผนก หรือ MGR:<node>) — เก็บอีเมล+role id ไว้เพื่อสลับบทบาทในแอป
     const loginAs = (id, email) => {
       const user = Store.login(id, '1234');
       if (!user) { UI.toast('ไม่พบบัญชีผู้ใช้ (' + id + ')', 'err'); return; }
-      if (email) sessionStorage.setItem('abp_email', email); else sessionStorage.removeItem('abp_email');
+      if (email) { sessionStorage.setItem('abp_email', email); sessionStorage.setItem('abp_roleid', id); }
+      else { sessionStorage.removeItem('abp_email'); sessionStorage.removeItem('abp_roleid'); }
       enter(user);
     };
-
-    // หน้าเลือกบทบาท — 1 อีเมลมีหลายสิทธิ์ (กรอกหลายแผนก และ/หรือ เป็นผู้อนุมัติ)
-    function renderPicker(email, asg) {
-      const year = UI.year();
-      const fillers = asg.filter(a => a.role === 'filler');
-      const viewers = asg.filter(a => a.role !== 'filler');
-      const fillBtn = a => {
-        const deptId = 'd' + a.id;
-        const st = Store.deptState(year, deptId).status;
-        const pct = Store.completion(year, deptId).pct;
-        const chip = st === 'LOCKED' ? '<span class="pk-chip pk-lock">🔒 ปิดรอบ</span>'
-          : st === 'SUBMITTED' ? '<span class="pk-chip pk-ok">✅ ส่งแล้ว</span>'
-          : st === 'NEED_REVISION' ? '<span class="pk-chip pk-warn">↩ ถูกตีกลับ — แก้ไขได้</span>'
-          : `<span class="pk-chip">⏳ กรอกแล้ว ${pct}%</span>`;
-        return `<button class="pk-item" data-pick="${a.id}"><b>${UI.esc(a.name)}</b> <small>(${a.id})</small>${chip}</button>`;
-      };
-      const viewBtn = a => {
-        const unitId = a.id.replace(/^MGR:/, '');
-        const pending = Store.subtreeDepartments(unitId).filter(d => Store.deptState(year, d.id).status === 'SUBMITTED').length;
-        const isCo = unitId === 'co';
-        return `<button class="pk-item" data-pick="${a.id}"><b>${UI.esc(a.name)}</b>
-          ${pending ? `<span class="pk-chip pk-warn">🔔 รอทวนสอบ ${pending}</span>` : '<span class="pk-chip">ไม่มีงานค้าง</span>'}
-          <small>${isCo ? 'ผู้ดูภาพรวมทั้งบริษัท (กจก.)' : UI.esc(a.sub)}</small></button>`;
-      };
-      document.querySelector('.lv-login').innerHTML = `
-        <div class="lv-badge">${UI.APP_LOGO}</div>
-        <h2>เลือกบทบาท</h2>
-        <div class="lv-sub">${UI.esc(email)} · มี ${asg.length} สิทธิ์ในระบบ</div>
-        <div class="pk-list">
-          ${fillers.length ? `<div class="pk-group">📝 ผู้กรอกงบ (${fillers.length} แผนก)</div>` + fillers.map(fillBtn).join('') : ''}
-          ${viewers.length ? `<div class="pk-group">✅ ผู้อนุมัติ / ผู้ดูภาพรวม</div>` + viewers.map(viewBtn).join('') : ''}
-        </div>
-        <a class="lv-forgot lv-alt-toggle" id="pkBack">← ใช้บัญชีอื่น</a>`;
-      document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => loginAs(b.dataset.pick, email)));
-      document.getElementById('pkBack').addEventListener('click', () => { sessionStorage.removeItem('abp_email'); loginPage(); });
-    }
 
     const doLogin = () => {
       const raw = document.getElementById('loginEmail').value.trim();
@@ -178,9 +143,8 @@ const App = (() => {
       const asg = EmailAuth.assignmentsFor(email);
       if (!asg.length) { UI.toast('ไม่พบอีเมลนี้ในระบบ — ติดต่อแผนกบัญชี (ผู้ดูแลระบบ)', 'err'); return; }
       if (pw !== Store.passwordFor(email)) { UI.toast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
-      if (asg.length === 1) return loginAs(asg[0].id, email);
-      sessionStorage.setItem('abp_email', email);
-      renderPicker(email, asg);
+      // เข้าเลย — บทบาทเริ่มต้น = อันแรก (ผู้กรอกก่อน ตาม sort) · สลับบทบาทได้ในเมนูโปรไฟล์
+      loginAs(asg[0].id, email);
     };
     document.getElementById('deptLoginBtn').addEventListener('click', doLogin);
     document.getElementById('deptPin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
@@ -197,13 +161,6 @@ const App = (() => {
       const inp = document.getElementById('deptPin');
       inp.type = inp.type === 'password' ? 'text' : 'password';
     });
-
-    // กลับมาจากปุ่ม "สลับบทบาท" — มีอีเมลค้างอยู่ → เปิดหน้าเลือกบทบาททันที
-    const pe = sessionStorage.getItem('abp_email');
-    if (pe) {
-      const asg = EmailAuth.assignmentsFor(pe);
-      if (asg.length > 1) renderPicker(pe, asg);
-    }
   }
 
   function render() {
@@ -272,7 +229,16 @@ const App = (() => {
     }).catch(() => { clearTimeout(fallback); done(); });
   });
 
-  return { render };
+  // สลับบทบาทในแอปทันที (ไม่ต้องออกจากระบบ) — ใช้จากเมนูโปรไฟล์
+  function switchRole(id) {
+    const u = Store.login(id, '1234');
+    if (!u) { UI.toast('สลับบทบาทไม่สำเร็จ', 'err'); return; }
+    sessionStorage.setItem('abp_roleid', id);
+    location.hash = u.role === 'ACCOUNTING' ? '#/acc/dashboard' : u.role === 'MANAGER' ? '#/mgr/dashboard' : '#/budget';
+    safeRender();
+  }
+
+  return { render, switchRole };
 })();
 
 window.App = App;
