@@ -233,7 +233,6 @@ const PagesUser = (() => {
          <button id="ioViewBtn" class="ghost-btn">🔎 IO / CCT</button>
          <button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
-         <a class="ghost-btn btn-green" href="#/review">ตรวจสอบงบประมาณ →</a>
          <button id="exportMyXlsx" class="ghost-btn btn-green btn-push-right" title="ดาวน์โหลด Excel (ML Form) เฉพาะหน่วยงานของคุณ">⬇ Excel ของฉัน</button>`)
       + `<div class="kpi-grid kpi-grid-4">
           ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', (rvOn ? 'ยอด Revise ปี ' : 'ยอดรวมปี ') + c.year, `<span data-kpi-total>${fmt(cur)}</span> <small>กีบ</small>`, rvOn ? `เกิดจริง 1-${thru} + คาดการณ์ ${thru + 1}-12` : 'คำนวณอัตโนมัติ real-time')}
@@ -243,11 +242,11 @@ const PagesUser = (() => {
         </div>`
       + reviseMsg
       + lockMsg
-      + card('', `<div class="grid-hint">💡 Tab/Enter เลื่อนช่อง · วาง (Ctrl+V) จาก Excel ได้หลายช่องพร้อมกัน · ช่องว่าง = ยังไม่กรอก (ใส่ 0 หากไม่มีงบ) · 🧾 ที่มุมช่อง = รายละเอียดหลายรายการ
-          <span class="hint-actions">
+      + card('', `<div class="grid-toolbar">
+          <span class="grid-tools">
             <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขปีก่อนใต้ทุกช่อง (เทียบเดือนต่อเดือน)">🔀 ปีก่อน</button>
-            <button id="gridClearBtn" class="ghost-btn small btn-clear" title="ล้างข้อมูลที่กรอกทั้งปีนี้" ${c.editable ? '' : 'disabled'}>🗑 ล้างข้อมูล</button>
-            <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
+            <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶ ขยาย</button>
+            <a class="ghost-btn small btn-review" href="#/review">ตรวจสอบงบประมาณ →</a>
           </span></div>
         <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') });
   }

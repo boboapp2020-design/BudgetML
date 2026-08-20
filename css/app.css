@@ -154,6 +154,8 @@ a { color: var(--blue); }
 .kpi-grid-4 .kpi { padding: 11px 14px; }
 .kpi-grid-4 .kpi-noic .kpi-label { margin-bottom: 5px; }
 .kpi-grid-4 .kpi-noic .kpi-value { font-size: 28px; line-height: 1.05; }
+/* การ์ด "เพิ่ม/ลด" — badge เป็นตัวเลขหลักของการ์ด จึงทำให้ใหญ่ชัด */
+.kpi-grid-4 .kpi-noic .kpi-value .delta { font-size: 24px; font-weight: 800; padding: 4px 14px; border-radius: 10px; }
 .kpi-grid-4 .kpi-noic .kpi-sub { margin-top: 5px; }
 .kpi-grid-4 .gauge-wrap { padding: 0; }
 .kpi-grid-4 .gauge-wrap svg { width: 88px; height: auto; }
@@ -354,9 +356,20 @@ body.no-scroll { overflow: hidden; }
   border-radius: 8px; padding: 8px 12px; display: flow-root; /* กัก float ปุ่มไว้ในแถบเสมอ */
 }
 .hint-actions { float: right; display: inline-flex; gap: 6px; margin: -3px 0 0 10px; }
-.btn-fs { font-size: 14px; padding: 3px 9px !important; }
+.btn-fs { font-size: 13px; padding: 4px 11px !important; }
 .btn-clear:hover:not(:disabled) { border-color: var(--up) !important; color: var(--up) !important; background: var(--crit-bg) !important; }
 .btn-clear:disabled { opacity: .5; cursor: not-allowed; }
+/* แถบเครื่องมือเหนือตาราง — ปุ่มปีก่อน · ขยาย · ตรวจสอบงบ */
+.grid-toolbar { display: flex; justify-content: flex-end; padding: 8px 14px; }
+.grid-tools { display: inline-flex; gap: 8px; align-items: center; }
+.card-flush .grid-toolbar { margin: 0; }
+.budget-card.fullscreen .grid-toolbar { flex-shrink: 0; }
+/* ปุ่มตรวจสอบงบ — ธีมใหม่ (ไล่สีม่วง-คราม เด่นแยกจากปุ่มเขียว) */
+.btn-review {
+  background: linear-gradient(135deg, #6366f1, #4f46e5); border: none !important;
+  color: #fff !important; font-weight: 600; box-shadow: 0 2px 8px rgba(79,70,229,.28);
+}
+.btn-review:hover { color: #fff !important; filter: brightness(1.06); box-shadow: 0 5px 14px rgba(79,70,229,.36); }
 .lock-banner {
   background: var(--warn-bg); border: 1px solid var(--warn-bd); border-radius: 8px;
   padding: 10px 14px; margin-bottom: 14px; font-weight: 600;
