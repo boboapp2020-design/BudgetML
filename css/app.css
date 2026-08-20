@@ -190,8 +190,10 @@ a { color: var(--blue); }
 .kpi-grid-4 .kpi { padding: 11px 14px; }
 .kpi-grid-4 .kpi-noic .kpi-label { margin-bottom: 5px; }
 .kpi-grid-4 .kpi-noic .kpi-value { font-size: 28px; line-height: 1.05; }
+/* การ์ด "เพิ่ม/ลด" — badge เป็นตัวเลขหลัก จัดให้พอดี ไม่ล้นทับบรรทัดอื่น */
+.kpi-grid-4 .kpi-noic .kpi-value:has(.delta) { line-height: 1; margin: 4px 0 2px; }
 /* การ์ด "เพิ่ม/ลด" — badge เป็นตัวเลขหลักของการ์ด จึงทำให้ใหญ่ชัด */
-.kpi-grid-4 .kpi-noic .kpi-value .delta { font-size: 24px; font-weight: 800; padding: 4px 14px; border-radius: 10px; }
+.kpi-grid-4 .kpi-noic .kpi-value .delta { display: inline-block; font-size: 21px; font-weight: 800; padding: 4px 13px; border-radius: 10px; line-height: 1.2; vertical-align: middle; }
 .kpi-grid-4 .kpi-noic .kpi-sub { margin-top: 5px; }
 .kpi-grid-4 .gauge-wrap { padding: 0; }
 .kpi-grid-4 .gauge-wrap svg { width: 88px; height: auto; }
