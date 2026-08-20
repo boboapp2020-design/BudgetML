@@ -642,17 +642,38 @@ const Store = (() => {
 
   // ---- นำเข้าจากไฟล์ต้นฉบับ 2 ชุด: current (AM-AX) → db.budgets (งบปัจจุบัน) · original (I-T) → ORIGINAL (งบต้นปี freeze) ----
   // records = [{io,codeA,cct,glCode, current:[12], original:[12]}]
-  function importDualBudget(actor, year, records) {
+  function importDualBudget(actor, year, records, opts = {}) {
     assertAccounting(actor);
     const y = Number(year);
     const R = v => (v === null || v === undefined || !isFinite(v)) ? null : Math.round(v);
     let matched = 0, cellsCur = 0; const unmatched = [];
+    const created = { depts: 0, ccts: 0, rows: 0 };
     const origMap = {};
     // แมทช์ด้วย code a เป็นหลัก (unique · เลี่ยง io ที่ซ้ำข้ามแถว) → fallback actualRowRef
     const byCodeA = {}; (db.departmentRows || []).forEach(r => { if (r.codeA) byCodeA[r.codeA] = r; });
     const matchRow = rec => (rec.codeA && byCodeA[rec.codeA]) ? byCodeA[rec.codeA] : actualRowRef(rec);
     records.forEach(rec => {
-      const ref = matchRow(rec);
+      let ref = matchRow(rec);
+      // สร้างแผนก/CCT/แถว ใหม่ ถ้าไม่พบ (opts.autoCreate) — ต้องมี GL อยู่แล้ว + ระบุ CCT + รหัสแผนก
+      if (!ref && opts.autoCreate && /^\d{6,7}$/.test(rec.glCode || '') && rec.cct && rec.deptCode) {
+        const glId = 'g' + rec.glCode;
+        if (gl(glId)) {
+          let dept = db.departments.find(d => d.code === rec.deptCode);
+          if (!dept) {
+            const side = (rec.deptCode || '')[0] || '';
+            dept = { id: 'd' + rec.deptCode, code: rec.deptCode, name: rec.deptName || rec.cctName || ('หน่วยงาน ' + rec.deptCode), nameEn: '', side, area: (db.meta.sides || {})[side] || '', active: true };
+            db.departments.push(dept); created.depts++;
+          }
+          if (!(db.cctMaster || []).some(c => c.code === rec.cct)) { (db.cctMaster = db.cctMaster || []).push({ code: rec.cct, name: rec.cctName || '', departmentId: dept.id }); created.ccts++; }
+          if (!(db.departmentRows || []).some(x => x.departmentId === dept.id && x.cct === rec.cct && x.glId === glId)) {
+            (db.departmentRows = db.departmentRows || []).push({ departmentId: dept.id, cct: rec.cct, glId, io: rec.io || '', codeA: rec.codeA || '' });
+            if (!db.departmentGL.some(x => x.departmentId === dept.id && x.glId === glId)) db.departmentGL.push({ departmentId: dept.id, glId });
+            created.rows++;
+          }
+          ref = db.departmentRows.find(x => x.departmentId === dept.id && x.cct === rec.cct && x.glId === glId);
+          if (ref && rec.codeA) byCodeA[rec.codeA] = ref;
+        }
+      }
       if (!ref) { unmatched.push(rec.codeA || ((rec.cct || '') + '/' + (rec.glCode || '')) || '?'); return; }
       const key = ref.glId + '@' + ref.cct;
       const row = ensureRow(y, ref.departmentId, key);
@@ -677,9 +698,9 @@ const Store = (() => {
       return { departmentId: b.departmentId, glId: b.glId, cct: b.cct, months, mtp1: b.mtp1, mtp2: b.mtp2 };
     });
     db.budgetSnapshots.push({ year: y, label: 'ORIGINAL', takenAt: new Date().toISOString(), createdAt: new Date().toISOString(), takenBy: actor.name + ' (นำเข้าไฟล์ต้นฉบับ)', rows: origRows });
-    audit(actor, 'นำเข้างบจากไฟล์ต้นฉบับ (AM-AX→ปัจจุบัน · I-T→ต้นปี)', { newValue: `ปี ${y}: ${matched} แถว · ปัจจุบัน ${cellsCur} ช่อง · ต้นปี ${cellsOrig} ช่อง` });
+    audit(actor, 'นำเข้างบจากไฟล์ต้นฉบับ (AM-AX→ปัจจุบัน · I-T→ต้นปี)', { newValue: `ปี ${y}: ${matched} แถว · ปัจจุบัน ${cellsCur} ช่อง · ต้นปี ${cellsOrig} ช่อง · สร้างใหม่ ${created.rows} แถว` });
     save();
-    return { matched, unmatched, cellsCur, cellsOrig };
+    return { matched, unmatched, cellsCur, cellsOrig, created };
   }
 
   // นำเข้า "งบ Revise" จากไฟล์ Excel: ตั้งค่างบ 12 เดือน (+MTP) ให้แถวที่จับคู่ได้ (authoritative)

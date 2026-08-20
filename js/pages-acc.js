@@ -1299,10 +1299,11 @@ const PagesAcc = (() => {
           { label: 'ยกเลิก', cls: 'ghost-btn', onClick: close => { close(); e.target.value = ''; msg.textContent = ''; } },
           { label: '📗 นำเข้า (ทับข้อมูล)', cls: 'danger-btn', onClick: close => {
               try {
-                const r = Store.importDualBudget(user, UI.year(), recs);
+                const r = Store.importDualBudget(user, UI.year(), recs, { autoCreate: true });
                 close(); e.target.value = ''; msg.textContent = '';
-                const un = r.unmatched.length ? `<div class="warn-text" style="margin-top:8px">ไม่พบในระบบ ${r.unmatched.length} แถว:</div><div class="muted small" style="max-height:110px;overflow:auto">${r.unmatched.slice(0, 40).map(u => esc(String(u))).join(' · ')}</div>` : '<p style="color:#0ca30c;margin-top:8px">✓ นำเข้าครบทุกแถวที่มีในระบบ</p>';
-                UI.modal('✅ นำเข้าเรียบร้อย', `<p>งบปัจจุบัน: <b>${r.matched}</b> แถว · <b>${r.cellsCur}</b> ช่อง<br>งบต้นปี (ORIGINAL): <b>${r.cellsOrig}</b> ช่อง</p>${un}`, [{ label: 'ปิด', cls: 'primary-btn', onClick: cl => { cl(); App.render(); } }]);
+                const cr = r.created && r.created.rows ? `<p class="small" style="color:#0a7">＋ สร้างแถวใหม่ ${r.created.rows}${r.created.depts ? ` · แผนกใหม่ ${r.created.depts}` : ''}${r.created.ccts ? ` · CCT ใหม่ ${r.created.ccts}` : ''}</p>` : '';
+                const un = r.unmatched.length ? `<div class="warn-text" style="margin-top:8px">ไม่พบ/สร้างไม่ได้ ${r.unmatched.length} แถว:</div><div class="muted small" style="max-height:110px;overflow:auto">${r.unmatched.slice(0, 40).map(u => esc(String(u))).join(' · ')}</div>` : '<p style="color:#0ca30c;margin-top:8px">✓ นำเข้าครบทุกแถว</p>';
+                UI.modal('✅ นำเข้าเรียบร้อย', `<p>งบปัจจุบัน: <b>${r.matched}</b> แถว · <b>${r.cellsCur}</b> ช่อง<br>งบต้นปี (ORIGINAL): <b>${r.cellsOrig}</b> ช่อง</p>${cr}${un}`, [{ label: 'ปิด', cls: 'primary-btn', onClick: cl => { cl(); App.render(); } }]);
               } catch (err) { toast(err.message, 'err'); }
             } },
         ]);
@@ -1660,7 +1661,7 @@ const PagesAcc = (() => {
       if (!/^\d{6,7}$/.test(gl) || !codeA) continue;
       const original = [], current = [];
       for (let k = 0; k < 12; k++) { original.push(num(row[8 + k])); current.push(num(row[38 + k])); }
-      recs.push({ codeA, io: String(row[1] || '').trim(), cct: String(row[2] || '').trim(), deptCode: String(row[4] || '').trim(), glCode: gl, original, current });
+      recs.push({ codeA, io: String(row[1] || '').trim(), cct: String(row[2] || '').trim(), deptCode: String(row[4] || '').trim(), glCode: gl, cctName: String(row[3] || '').trim(), deptName: String(row[5] || '').trim(), glName: String(row[7] || '').trim(), original, current });
     }
     return recs;
   }
