@@ -252,6 +252,11 @@ a { color: var(--blue); }
 .budget-card.show-prev .prev-ghost { display: block; }
 .budget-card.show-prev .prev-ghost::before { content: 'ปีก่อน '; color: #b3bfd4; font-size: 9px; }
 .budget-card.revise-mode.show-prev .prev-ghost::before { content: 'งบเดิม '; }
+/* ดูงบต้นปี — สีส้มชัด แยกจากงบล่าสุด (สีดำในช่อง) */
+.budget-card.cmp-orig .prev-ghost { color: #b3760a; font-weight: 700; background: #fdf6e9; border-top: 1px solid #f2dcae; }
+.budget-card.cmp-orig .prev-ghost::before { content: '📌 ต้นปี '; color: #c07d0a; font-weight: 700; }
+.budget-card.cmp-orig .cell { background: #fff; }
+#viewOrigBtn.vo-on { background: #fdf3e2 !important; border-color: #e0a94b !important; color: #a9640a !important; font-weight: 700; }
 
 /* ---------- รอบ Revise ---------- */
 .revise-banner { background: #f3effc; border-color: #b7a6ec; color: #4a3492; }

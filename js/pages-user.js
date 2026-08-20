@@ -132,13 +132,13 @@ const PagesUser = (() => {
   function budget(user) {
     const c = ctx(user);
     const rvOn = c.revise.on, thru = c.revise.thru;
-    // เลือกงบที่จะเทียบใต้ช่อง (เวอร์ชัน snapshot) — ค่าว่าง = ปีก่อน/งบเดิมตามปกติ
-    const snaps = Store.snapshotsFor(c.year);
-    let cmpVer = localStorage.getItem('abp_cmp_ver') || '';
-    if (cmpVer && !Store.snapByLabel(c.year, cmpVer)) cmpVer = '';
-    // baseline: เวอร์ชันที่เลือก · หรือ รอบ Revise เทียบ "งบเดิม" · หรือ ปีก่อน
-    const baseLabel = cmpVer ? Store.SNAP_TITLE(cmpVer) : (rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`);
-    const basePrev = cmpVer ? Store.snapDeptTotal(c.year, cmpVer, c.deptId)
+    // ดูงบต้นปี (ORIGINAL) ใต้ช่อง — เปิด/ปิดผ่าน dropdown เดียว · มีเฉพาะเมื่อถูก Lock งบต้นปีไว้แล้ว
+    const hasOrig = !!Store.snapByLabel(c.year, 'ORIGINAL');
+    const viewOrig = hasOrig && localStorage.getItem('abp_view_orig') === '1';
+    const cmpVer = viewOrig ? 'ORIGINAL' : '';
+    // baseline คอลัมน์เทียบ: ดูงบต้นปี · หรือ รอบ Revise = งบเดิม · หรือ ปีก่อน
+    const baseLabel = viewOrig ? 'งบต้นปี' : (rvOn ? `งบเดิม ${c.year}` : `ปี ${c.prevYear}`);
+    const basePrev = viewOrig ? Store.snapDeptTotal(c.year, 'ORIGINAL', c.deptId)
       : (rvOn ? Store.originalDeptTotal(c.year, c.deptId) : Store.deptTotal(c.prevYear, c.deptId));
     const cur = Store.deptTotal(c.year, c.deptId), prev = basePrev;
     const cmp = Store.compare(cur, prev);
@@ -257,15 +257,11 @@ const PagesUser = (() => {
       + card('', `<div class="grid-toolbar">
           ${lockChip}
           <span class="grid-tools">
-            ${snaps.length ? `<select id="cmpVerSel" class="ghost-btn small cmp-ver-sel" title="เลือกเวอร์ชันงบที่จะแสดงเทียบใต้ช่อง">
-              <option value="">เทียบ: ${rvOn ? 'งบเดิม' : 'ปีก่อน'}</option>
-              ${snaps.map(s => `<option value="${esc(s.label)}" ${cmpVer === s.label ? 'selected' : ''}>เทียบ: ${esc(Store.SNAP_TITLE(s.label))}</option>`).join('')}
-            </select>` : ''}
-            <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขที่เทียบใต้ทุกช่อง (เดือนต่อเดือน)">🔀 ${cmpVer ? esc(Store.SNAP_TITLE(cmpVer)).slice(0, 12) : 'ปีก่อน'}</button>
+            ${hasOrig ? `<button id="viewOrigBtn" class="ghost-btn small ${viewOrig ? 'vo-on' : ''}" title="แสดงตัวเลขงบที่ตั้งไว้ต้นปี (อนุมัติ) ใต้ทุกช่อง — ดูอย่างเดียว แก้ไม่ได้">${viewOrig ? '✓ กำลังดูงบต้นปี' : '👁 ดูงบต้นปี'}</button>` : ''}
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
             <a class="ghost-btn small btn-review" href="#/review">✓ ตรวจสอบงบ</a>
           </span></div>
-        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') });
+        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' show-prev cmp-orig' : '') });
   }
 
   function budgetBind(user) {
@@ -388,30 +384,15 @@ const PagesUser = (() => {
       next?.focus();
     }
 
-    /* --- เลือกเวอร์ชันงบที่จะเทียบใต้ช่อง --- */
-    document.getElementById('cmpVerSel')?.addEventListener('change', e => {
-      localStorage.setItem('abp_cmp_ver', e.target.value);
-      localStorage.setItem('abp_show_prev', '1');   // เปิดโหมดเทียบให้อัตโนมัติ
+    /* --- ปุ่ม "ดูงบต้นปี" (toggle) — แสดงตัวเลขงบต้นปีใต้ช่อง (ดูอย่างเดียว) --- */
+    document.getElementById('viewOrigBtn')?.addEventListener('click', () => {
+      const on = localStorage.getItem('abp_view_orig') !== '1';
+      localStorage.setItem('abp_view_orig', on ? '1' : '0');
       App.render();
     });
-
-    /* --- เทียบปีก่อนเดือนต่อเดือน: โหมด ghost ทุกช่อง + ป้ายลอยตอน focus --- */
-    const SHOW_PREV_KEY = 'abp_show_prev';
     const bCard = document.querySelector('.budget-card');
-    const pBtn = document.getElementById('prevToggleBtn');
-    const applyPrevMode = on => {
-      bCard.classList.toggle('show-prev', on);
-      pBtn.classList.toggle('btn-purple', on);
-      pBtn.textContent = on ? '🔀 ปีก่อน: เปิด' : '🔀 ปีก่อน';
-    };
-    applyPrevMode(localStorage.getItem(SHOW_PREV_KEY) !== '0');   // default = เปิด (เห็นเทียบปีก่อนทุกช่อง) — กดปุ่มเพื่อซ่อนได้
-    pBtn?.addEventListener('click', () => {
-      const on = !(localStorage.getItem(SHOW_PREV_KEY) === '1');
-      localStorage.setItem(SHOW_PREV_KEY, on ? '1' : '0');
-      applyPrevMode(on);
-    });
 
-    // ป้ายลอย "ปีก่อน" เหนือช่องที่กำลังกรอก (เฉพาะตอนโหมด ghost ปิด)
+    // ป้ายลอยเหนือช่องที่กำลังกรอก (เฉพาะตอนโหมด ghost ปิด)
     let chip = document.getElementById('prevChip');
     if (!chip) { chip = document.createElement('div'); chip.id = 'prevChip'; chip.className = 'prev-chip'; document.body.appendChild(chip); }
     const hideChip = () => { chip.style.display = 'none'; };
