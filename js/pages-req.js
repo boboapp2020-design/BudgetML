@@ -84,7 +84,7 @@ const PagesReq = (() => {
       <div class="req-form">
         <div class="req-section">
           <div class="req-section-h">① ประเภทคำร้อง</div>
-          <label class="fld"><span>เลือกสิ่งที่ต้องการทำ</span>
+          <label class="fld"><span>เลือกสิ่งที่ต้องการทำ <b class="req-req">*</b></span>
             <select id="reqType"><option value="increase">➕ ขอเพิ่มงบ</option><option value="decrease">➖ ขอลดงบ</option><option value="transfer">🔄 ขอโยกงบ (ในหรือข้ามหน่วยงาน)</option></select></label>
         </div>
 
@@ -92,32 +92,32 @@ const PagesReq = (() => {
           <div class="req-section-h">② รายละเอียดการปรับงบ</div>
           <div id="reqSingle">
             <div class="req-grid3">
-              <label class="fld"><span>ช่องงบที่จะปรับ (GL)</span><select id="reqRow">${rowOpts}</select></label>
-              <label class="fld"><span>เดือน</span><select id="reqMonth">${monthOpts}</select></label>
-              <label class="fld"><span>จำนวนเงิน (กีบ)</span><input id="reqAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
+              <label class="fld"><span>ช่องงบที่จะปรับ (GL) <b class="req-req">*</b></span><select id="reqRow">${rowOpts}</select></label>
+              <label class="fld"><span>เดือน <b class="req-req">*</b></span><select id="reqMonth">${monthOpts}</select></label>
+              <label class="fld"><span>จำนวนเงิน (กีบ) <b class="req-req">*</b></span><input id="reqAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
             </div>
           </div>
 
           <div id="reqTransfer" style="display:none">
             <div class="req-tr">
               <div class="req-tr-side"><div class="req-tr-h">จาก (−)</div>
-                <label class="fld"><span>ช่องต้นทาง</span><select id="reqFromRow">${rowOpts}</select></label>
-                <label class="fld"><span>เดือน</span><select id="reqFromMonth">${monthOpts}</select></label></div>
+                <label class="fld"><span>ช่องต้นทาง <b class="req-req">*</b></span><select id="reqFromRow">${rowOpts}</select></label>
+                <label class="fld"><span>เดือน <b class="req-req">*</b></span><select id="reqFromMonth">${monthOpts}</select></label></div>
               <div class="req-tr-arrow">➜</div>
               <div class="req-tr-side"><div class="req-tr-h">ไป (+)</div>
-                <label class="fld"><span>หน่วยงานปลายทาง</span><select id="reqToDept">${deptOpts}</select></label>
-                <label class="fld"><span>ช่องปลายทาง</span><select id="reqToRow">${rowOpts}</select></label>
-                <label class="fld"><span>เดือน</span><select id="reqToMonth">${monthOpts}</select></label></div>
+                <label class="fld"><span>หน่วยงานปลายทาง <b class="req-req">*</b></span><select id="reqToDept">${deptOpts}</select></label>
+                <label class="fld"><span>ช่องปลายทาง <b class="req-req">*</b></span><select id="reqToRow">${rowOpts}</select></label>
+                <label class="fld"><span>เดือน <b class="req-req">*</b></span><select id="reqToMonth">${monthOpts}</select></label></div>
             </div>
-            <label class="fld"><span>จำนวนเงินที่โยก (กีบ)</span><input id="reqTAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
+            <label class="fld"><span>จำนวนเงินที่โยก (กีบ) <b class="req-req">*</b></span><input id="reqTAmount" inputmode="decimal" placeholder="เช่น 5000000"></label>
           </div>
         </div>
 
         <div class="req-section">
           <div class="req-section-h">③ เหตุผลและเอกสารประกอบ</div>
           <label class="fld"><span>เหตุผล / ความจำเป็น <b class="req-req">*</b></span><textarea id="reqReason" rows="2" placeholder="อธิบายเหตุผลของการปรับงบ"></textarea></label>
-          <label class="fld"><span>เลขที่ / อ้างอิง memo</span><input id="reqMemo" placeholder="เช่น memo เลขที่ ... / อ้างอิงเอกสาร"></label>
-          <label class="fld"><span>📎 แนบไฟล์ memo <small class="muted">(PDF หรือรูป · ไม่เกิน 10MB)</small></span>
+          <label class="fld"><span>เลขที่ / อ้างอิง memo <b class="req-req">*</b></span><input id="reqMemo" placeholder="เช่น memo เลขที่ ... / อ้างอิงเอกสาร"></label>
+          <label class="fld"><span>📎 แนบไฟล์ memo <b class="req-req">*</b> <small class="muted">(PDF หรือรูป · ไม่เกิน 10MB · ต้องเป็น memo ที่ลงนามแล้ว)</small></span>
             <input type="file" id="reqMemoFile" accept=".pdf,image/*"><small class="muted" id="reqFileHint"></small></label>
         </div>
 
@@ -232,6 +232,20 @@ const PagesReq = (() => {
         data.amount = document.getElementById('reqAmount').value;
       }
       const f = fileInp?.files?.[0];
+      // ตรวจครบทุกช่องที่บังคับ (*)
+      const need = (id, msg) => { const el = document.getElementById(id); if (el && !String(el.value).trim()) { UI.toast(msg, 'err'); el.focus(); throw 'skip'; } };
+      try {
+        if (t === 'transfer') {
+          need('reqFromRow', 'เลือกช่องต้นทาง'); need('reqFromMonth', 'เลือกเดือนต้นทาง');
+          need('reqToDept', 'เลือกหน่วยงานปลายทาง'); need('reqToRow', 'เลือกช่องปลายทาง'); need('reqToMonth', 'เลือกเดือนปลายทาง');
+          need('reqTAmount', 'กรอกจำนวนเงินที่โยก');
+        } else { need('reqRow', 'เลือกช่องงบที่จะปรับ'); need('reqMonth', 'เลือกเดือน'); need('reqAmount', 'กรอกจำนวนเงิน'); }
+        const amt = Number(String(data.amount).replace(/[,\s]/g, ''));
+        if (!isFinite(amt) || amt <= 0) { UI.toast('จำนวนเงินต้องเป็นตัวเลขมากกว่า 0', 'err'); throw 'skip'; }
+        need('reqReason', 'กรอกเหตุผล / ความจำเป็น');
+        need('reqMemo', 'กรอกเลขที่ / อ้างอิง memo');
+        if (!f) { UI.toast('ต้องแนบไฟล์ memo ที่ลงนามแล้ว', 'err'); fileInp?.focus(); throw 'skip'; }
+      } catch (v) { if (v === 'skip') return; throw v; }
       if (f && f.size > MAX) { UI.toast('ไฟล์ memo ใหญ่เกิน 10MB', 'err'); return; }
       const old = btn.innerHTML;
       try {
