@@ -237,19 +237,27 @@ const UI = (() => {
   }
 
   function bindShell(user) {
+    // ล้าง tooltip บทบาทที่อาจค้างจากรอบก่อน (กันลอยทับเนื้อหา)
+    const hideRoleTip = () => document.getElementById('roleTip')?.classList.remove('show');
+    hideRoleTip();
     document.getElementById('yearSel')?.addEventListener('change', e => { setYear(e.target.value); App.render(); });
     document.getElementById('logoutBtn')?.addEventListener('click', () => { sessionStorage.removeItem('abp_email'); sessionStorage.removeItem('abp_roleid'); Store.logout(); if (typeof Supa !== 'undefined') Supa.signOut(); location.hash = '#/login'; });
     // เมนูโปรไฟล์ (คลิกที่ user chip)
     const umBtn = document.getElementById('userMenuBtn'), umenu = document.getElementById('userMenu');
-    umBtn?.addEventListener('click', () => { umenu.hidden = !umenu.hidden; });
+    const closeMenu = () => { if (umenu) umenu.hidden = true; hideRoleTip(); };
+    umBtn?.addEventListener('click', () => { umenu.hidden = !umenu.hidden; if (umenu.hidden) hideRoleTip(); });
     document.addEventListener('click', e => {
-      if (umenu && !umenu.hidden && !umenu.contains(e.target) && !umBtn.contains(e.target)) umenu.hidden = true;
+      if (umenu && !umenu.hidden && !umenu.contains(e.target) && !umBtn.contains(e.target)) closeMenu();
     });
+    // เมาส์ออกจากเมนู หรือเลื่อนจอ → ซ่อน tooltip ทันที (ไม่ให้ค้างลอย)
+    umenu?.addEventListener('mouseleave', hideRoleTip);
+    if (!window.__roleTipScrollBound) { window.__roleTipScrollBound = true; window.addEventListener('scroll', () => document.getElementById('roleTip')?.classList.remove('show'), true); }
     // สลับบทบาททันทีจากในเมนู (ไม่ต้องออกจากระบบ)
-    document.querySelectorAll('[data-switch]').forEach(b => b.addEventListener('click', () => App.switchRole(b.dataset.switch)));
-    // hover ที่รายการบทบาท → tooltip บอกว่าบทบาทนี้คืออะไร (fixed — ไม่โดนกรอบ scroll ตัด)
+    document.querySelectorAll('[data-switch]').forEach(b => b.addEventListener('click', () => { hideRoleTip(); App.switchRole(b.dataset.switch); }));
+    // hover ที่รายการบทบาท → tooltip บอกว่าบทบาทนี้คืออะไร (วางชิดซ้ายของเมนู · fixed ไม่โดน scroll ตัด)
     document.querySelectorAll('[data-roletip]').forEach(b => {
       b.addEventListener('mouseenter', () => {
+        if (!umenu || umenu.hidden) return;                 // แสดงเฉพาะตอนเมนูเปิดจริง
         let tip = document.getElementById('roleTip');
         if (!tip) { tip = document.createElement('div'); tip.id = 'roleTip'; tip.className = 'role-tip'; document.body.appendChild(tip); }
         tip.textContent = b.dataset.roletip;
@@ -258,7 +266,7 @@ const UI = (() => {
         tip.style.left = (r.left - 10) + 'px';
         tip.classList.add('show');
       });
-      b.addEventListener('mouseleave', () => document.getElementById('roleTip')?.classList.remove('show'));
+      b.addEventListener('mouseleave', hideRoleTip);
     });
     // เปลี่ยนรหัสผ่าน (ผูกกับ key: อีเมลของผู้ใช้ หรือ __admin__ สำหรับแอดมิน)
     document.getElementById('changePwBtn')?.addEventListener('click', e => {
