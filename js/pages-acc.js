@@ -671,8 +671,9 @@ const PagesAcc = (() => {
     }).join('');
 
     return pageHead(esc(d.name), `งบปี ${year} เทียบปี ${prevYear} · ${UI.statusBadge(st.status)}`,
-        `${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}" title="ปลดล็อกเฉพาะแผนกนี้ — แผนกอื่นยังล็อกตามเดิม">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}
-         ${Store.period(year)?.status !== 'OPEN' && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="ghost-btn" data-lockdept="${deptId}">🔒 ล็อกคืน</button>` : ''}`)
+        `<button class="ghost-btn" data-drill-back title="กลับไปหน้าหน่วยงาน & Drill-down">← กลับ</button>
+         <span class="pa-right">${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}" title="ปลดล็อกเฉพาะแผนกนี้ — แผนกอื่นยังล็อกตามเดิม">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}
+         ${Store.period(year)?.status !== 'OPEN' && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="ghost-btn" data-lockdept="${deptId}">🔒 ล็อกคืน</button>` : ''}</span>`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <b>${esc(d.name)}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">
         ${kpi('ปี ' + year, fmt(cur) + ' <small>กีบ</small>')}
@@ -782,6 +783,7 @@ const PagesAcc = (() => {
     }
     document.getElementById('exportMLXlsx')?.addEventListener('click', () => exportML('xlsx').catch(e => toast(e.message, 'err')));
     document.getElementById('exportMLCsv')?.addEventListener('click', () => exportML('csv').catch(e => toast(e.message, 'err')));
+    document.querySelector('[data-drill-back]')?.addEventListener('click', () => { location.hash = '#/acc/departments'; });
     document.querySelectorAll('[data-revise]').forEach(btn => btn.addEventListener('click', () => {
       const deptId = btn.dataset.revise;
       UI.modal(`ตีกลับให้แก้ไข — ${esc(Store.dept(deptId).name)}`, `

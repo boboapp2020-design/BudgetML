@@ -1398,8 +1398,11 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 .lv-alt-toggle{display:block;text-align:center;margin-top:14px;cursor:pointer;font-size:14px}
 #unitLoginBox{margin-top:12px;padding-top:12px;border-top:1px dashed #cdd8ea}
 /* แถบตีกลับหลายแผนก + checkbox เลือกแผนก (หน้าตรวจสอบของแอดมิน) */
-.bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:#fbfcfe;font-size:13px}
-.bulk-bar select{font:inherit;font-size:12.5px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:8px;max-width:280px}
+.bulk-bar{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:#fbfcfe;font-size:13px;max-width:100%}
+.bulk-bar>b{flex:0 0 auto}
+.bulk-bar select{font:inherit;font-size:12.5px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:8px;flex:1 1 180px;min-width:130px;max-width:260px}
+/* หัวเพจ: ปุ่มกลับชิดซ้าย · ปุ่ม action ดันไปชิดขวา */
+.page-actions .pa-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .bulk-bar .danger-btn:disabled{opacity:.45;cursor:not-allowed}
 /* ปุ่มจัดการรายแผนก — ไอคอนกะทัดรัด กันล้นเพจ */
 .td-actions{white-space:nowrap;width:1%}
