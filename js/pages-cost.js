@@ -160,7 +160,7 @@ const PagesCost = (() => {
         `ตรงชีท "สรุป PPT รายฝ่าย" · จำนวนเงินรายหมวด <b>ดึง auto จาก GL ตามงบ</b> · /ตัน คำนวณอัตโนมัติ · กรอกมือเฉพาะ <b>ปริมาณผลิต (ตัวหาร)</b>`,
         roundChip)
       + submitBar + adminUnlock
-      + card(`📥 ปริมาณผลิต ปี ${year} (ตัวหาร) — บริการไร่: อ้อย · หม้อปั่น: น้ำตาลผลิต · การตลาด: Trading`, `
+      + card(`ต้นทุนการผลิต`, `
           ${!yearOpen && user.role !== 'ACCOUNTING' ? `<div class="lock-banner">🔒 ปีงบ ${year} ปิดรอบแล้ว — อ่านอย่างเดียว · ปลดล็อกที่ Budget Control ก่อน (แอดมินแก้ได้เสมอ)</div>` : ''}
           ${yearOpen ? `<div class="uc-hint-calc">🧮 ค่า <b>กีบ/ตัน</b> จะเริ่มคำนวณ <b>เมื่อแผนกที่รับผิดชอบกดปุ่ม "ส่งข้อมูล (Submit)"</b> เท่านั้น · /ตันอ้อย รอ <b>บริการไร่</b> ส่ง · /ตันน้ำตาล รอ <b>หม้อปั่น + การตลาด</b> ส่งครบ</div>` : ''}
           <div class="table-scroll"><table class="data-table small"><thead>
