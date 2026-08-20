@@ -982,6 +982,11 @@ const Store = (() => {
     const io = /^\d{2}$/.test(grp) ? mainCct.slice(0, 3) + '55' + mainCct.slice(3, 8) + grp : 'ไม่คุม';
     db.departmentRows.push({ departmentId: deptId, cct: mainCct, glId, io, codeA: mainCct + code + 'a' });
     db.departmentGL.push({ departmentId: deptId, glId });
+    // สร้างแถวงบว่างปีปัจจุบัน + ปีก่อน → โผล่ในตารางกรอกงบของแผนกทันที + ติดไป Excel export + persist ขึ้น Supabase
+    [db.meta.yearCurrent, db.meta.yearPrevious].forEach(y => {
+      if (y && !db.budgets.some(b => b.year === y && b.departmentId === deptId && b.glId === glId && b.cct === mainCct))
+        db.budgets.push({ year: y, departmentId: deptId, glId, cct: mainCct, months: Array(12).fill(null), mtp1: null, mtp2: null, updatedAt: null, updatedBy: actor.name });
+    });
     audit(actor, 'มอบหมาย GL ให้หน่วยงาน', { deptId, glCode: code, newValue: 'CCT ' + mainCct });
     save();
   }
