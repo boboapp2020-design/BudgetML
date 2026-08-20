@@ -67,7 +67,7 @@ const PagesReq = (() => {
     else body = userView(user, year, open, allowed);
 
     return UI.pageHead(`คำร้องปรับงบกลางปี ${year} 📝`,
-      `ขอเพิ่ม/ลด/โยกงบระหว่างปี · ยื่นได้ 2 ช่วง (เดือน 1-3 และ 5-12) · หน่วยงานยื่น → หัวหน้าฝ่ายอนุมัติ → บัญชีดำเนินการ`,
+      `ขอเพิ่ม/ลด/โยกงบระหว่างปี · ยื่นได้ 2 ช่วง (เดือน 1-3 และ 5-12) · หน่วยงานยื่นพร้อม memo ที่ลงนามแล้ว → แผนกบัญชีตอบรับ/ตีกลับ`,
       chip) + body;
   }
 
@@ -121,26 +121,26 @@ const PagesReq = (() => {
             <input type="file" id="reqMemoFile" accept=".pdf,image/*"><small class="muted" id="reqFileHint"></small></label>
         </div>
 
-        <div class="req-submit-wrap"><button class="primary-btn" id="reqSubmit">📨 ส่งคำร้อง (ไปหัวหน้าฝ่าย)</button></div>
+        <div class="req-submit-wrap"><button class="primary-btn" id="reqSubmit">📨 ส่งคำร้อง (ไปแผนกบัญชี)</button></div>
       </div>`) : card('', `<div class="lock-banner">🔒 ยังไม่เปิดหน้าต่างปรับงบปี ${year} — ยื่นคำร้องไม่ได้ (รอแผนกบัญชีเปิดช่วงเดือน 1-3 หรือ 5-12)</div>`);
 
     const list = mine.length
-      ? mine.map(r => reqCard(r, r.status === 'PENDING_MGR'
+      ? mine.map(r => reqCard(r, ['PENDING_MGR', 'PENDING_ACC'].includes(r.status)
           ? `<div class="req-actions"><button class="ghost-btn small" data-req-cancel="${r.id}">✕ ยกเลิกคำร้อง</button></div>` : '')).join('')
       : `<p class="muted" style="padding:10px">ยังไม่มีคำร้องปรับงบปีนี้</p>`;
 
     return form + card(`📋 คำร้องของฉัน ปี ${year} (${mine.length})`, list);
   }
 
-  /* ---------- MANAGER: อนุมัติคำร้องในสายงาน ---------- */
+  /* ---------- MANAGER: ติดตามคำร้องในสายงาน (อ่านอย่างเดียว — คำร้องมี memo ลงนามแล้ว ส่งตรงบัญชี) ---------- */
   function mgrView(user, year) {
-    const pending = Store.requestsForMgr(user).filter(r => r.year === year);
-    const body = pending.length
-      ? pending.map(r => reqCard(r, `<div class="req-actions">
-          <button class="primary-btn small" data-req-mgr-ok="${r.id}">✅ อนุมัติ (ส่งต่อบัญชี)</button>
-          <button class="ghost-btn small" data-req-mgr-no="${r.id}">↩ ตีกลับ</button></div>`)).join('')
-      : `<p class="muted" style="padding:10px">ไม่มีคำร้องรออนุมัติในฝ่ายที่ท่านดูแล</p>`;
-    return card(`🔎 คำร้องรออนุมัติ (หัวหน้าฝ่าย) ปี ${year} (${pending.length})`, body);
+    const codes = Store.subtreeDeptCodes(user.orgUnit);
+    const list = (Store.db.changeRequests || [])
+      .filter(r => r.year === year && codes.includes(Store.dept(r.deptId)?.code));
+    const body = list.length
+      ? list.map(r => reqCard(r, '')).join('')
+      : `<p class="muted" style="padding:10px">ยังไม่มีคำร้องปรับงบของแผนกในฝ่ายที่ท่านดูแลปีนี้</p>`;
+    return card(`🔎 คำร้องปรับงบในสายงานของท่าน ปี ${year} (${list.length}) — คำร้องแนบ memo ลงนามแล้ว ส่งตรงแผนกบัญชี`, body);
   }
 
   /* ---------- ACCOUNTING: คุมหน้าต่าง + ดำเนินการ ---------- */
@@ -241,7 +241,7 @@ const PagesReq = (() => {
           data.memoFile = await Supa.uploadMemo(f, `${year}/${dcode}`);
         }
         Store.createChangeRequest(user, data);
-        UI.toast('ส่งคำร้องแล้ว — รอหัวหน้าฝ่ายอนุมัติ'); App.render();
+        UI.toast('ส่งคำร้องแล้ว — รอแผนกบัญชีดำเนินการ'); App.render();
       } catch (e) { btn.disabled = false; btn.innerHTML = old; UI.toast(e.message, 'err'); }
     });
     document.querySelectorAll('[data-req-cancel]').forEach(b => b.addEventListener('click', () => {

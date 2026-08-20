@@ -1468,13 +1468,14 @@ const Store = (() => {
       deptId: actor.departmentId, createdBy: actor.name, createdAt: new Date().toISOString(),
       reason: String(data.reason).trim(), memoNote: String(data.memoNote || '').trim(),
       memoFile: data.memoFile || null,
-      items, toDeptId: crossTo, status: 'PENDING_MGR',
+      // มี memo ที่ลงนามแล้วแนบมา → ไม่ต้องผ่านหัวหน้าฝ่าย ส่งตรงแผนกบัญชี (แอดมิน) ตอบรับ/ตีกลับ
+      items, toDeptId: crossTo, status: 'PENDING_ACC',
       mgrBy: null, mgrAt: null, mgrNote: null, accBy: null, accAt: null, accNote: null, appliedAt: null,
     };
     if (!db.changeRequests) db.changeRequests = [];
     db.changeRequests.unshift(req);
     audit(actor, 'ยื่นคำร้องปรับงบ', { deptId: actor.departmentId, newValue: `${reqTypeLabel(type)} ปี ${year}` });
-    notify({ role: 'MANAGER' }, `${dept(actor.departmentId).name} ยื่นคำร้องปรับงบปี ${year} (${reqTypeLabel(type)}) — รอหัวหน้าฝ่ายอนุมัติ`);
+    notify({ role: 'ACCOUNTING' }, `${dept(actor.departmentId).name} ยื่นคำร้องปรับงบปี ${year} (${reqTypeLabel(type)}) — รอแผนกบัญชีดำเนินการ`);
     save();
     return req;
   }
@@ -1504,7 +1505,7 @@ const Store = (() => {
   function accApproveRequest(actor, id) {
     assertAccounting(actor);
     const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
-    if (req.status !== 'PENDING_ACC') throw new Error('คำร้องนี้ยังไม่ผ่านหัวหน้าฝ่าย หรือดำเนินการไปแล้ว');
+    if (req.status !== 'PENDING_ACC') throw new Error('คำร้องนี้ดำเนินการไปแล้ว');
     req.items.forEach(it => {
       const row = ensureRow(req.year, it.deptId, it.glId + '@' + it.cct);
       const i = it.month - 1, old = row.months[i] || 0;
@@ -1561,7 +1562,7 @@ const Store = (() => {
   function cancelChangeRequest(actor, id) {
     const req = requestById(id); if (!req) throw new Error('ไม่พบคำร้อง');
     if (actor.role !== 'USER' || req.deptId !== actor.departmentId) throw new Error('ยกเลิกได้เฉพาะคำร้องของหน่วยงานตนเอง');
-    if (req.status !== 'PENDING_MGR') throw new Error('ยกเลิกได้เฉพาะคำร้องที่ยังรอหัวหน้าฝ่าย');
+    if (!['PENDING_ACC', 'PENDING_MGR'].includes(req.status)) throw new Error('ยกเลิกได้เฉพาะคำร้องที่ยังรอดำเนินการ');
     req.status = 'CANCELLED';
     audit(actor, 'ยกเลิกคำร้องปรับงบ', { deptId: req.deptId, newValue: req.id });
     save();

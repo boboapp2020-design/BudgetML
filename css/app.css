@@ -143,6 +143,12 @@ a { color: var(--blue); }
 .umr-nm { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .umr-nm em { font-style: normal; opacity: .6; font-weight: 800 }
 .umr-cur { font-size: 10.5px; font-weight: 800; color: #1c7c33; white-space: nowrap }
+/* tooltip อธิบายบทบาท (โผล่ซ้ายของเมนูโปรไฟล์) */
+.role-tip { position: fixed; z-index: 200; transform: translate(-100%, -50%); max-width: 280px;
+  background: #0d366b; color: #fff; font-size: 12.5px; font-weight: 600; line-height: 1.45;
+  padding: 8px 12px; border-radius: 9px; box-shadow: 0 8px 24px rgba(11,31,77,.3);
+  opacity: 0; pointer-events: none; transition: opacity .12s ease; }
+.role-tip.show { opacity: 1; }
 .noti-head { padding: 10px 14px; font-weight: 700; border-bottom: 1px solid var(--border); }
 .noti-item { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .noti-item.unread { background: #eef4fc; }

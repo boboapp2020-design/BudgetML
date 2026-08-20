@@ -177,9 +177,10 @@ const UI = (() => {
               // รายการสลับบทบาท (เฉพาะคนหลายบทบาท)
               let switcher = '';
               if (asg.length > 1) {
+                const TIP = { fill: '📝 ผู้กรอกงบ — กรอกงบประมาณของแผนกนี้', div: '✅ ผู้ตรวจสอบงบ (หัวหน้าฝ่าย) — ทวนสอบ/อนุมัติงบของแผนกใต้ฝ่าย', area: '🏭 ผู้ดูระดับสังกัด — ดูภาพรวมงบทั้งสังกัด', co: '🏛 ผู้ดูภาพรวมบริษัท (กจก.) — ดูงบทั้งบริษัท' };
                 const item = a => { const isCur = String(a.id) === curId;
                   const t = a.role === 'filler' ? 'fill' : (a.id === 'MGR:co' ? 'co' : /area/.test(a.id) ? 'area' : 'div');
-                  return `<button class="um-swrole ${isCur ? 'cur' : ''}" data-switch="${esc(String(a.id))}" ${isCur ? 'disabled' : ''}>
+                  return `<button class="um-swrole ${isCur ? 'cur' : ''}" data-switch="${esc(String(a.id))}" data-roletip="${esc(TIP[t])}" ${isCur ? 'disabled' : ''}>
                     ${roleBadge(t)}<span class="umr-nm">${esc(a.name)}${a.role === 'filler' ? ` <em>${a.id}</em>` : ''}</span>${isCur ? '<span class="umr-cur">● อยู่นี่</span>' : ''}</button>`; };
                 switcher = `<div class="um-switch"><div class="um-switch-h">🔄 สลับบทบาท (${asg.length})</div><div class="um-switch-list">${asg.map(item).join('')}</div></div>`;
               }
@@ -223,6 +224,19 @@ const UI = (() => {
     });
     // สลับบทบาททันทีจากในเมนู (ไม่ต้องออกจากระบบ)
     document.querySelectorAll('[data-switch]').forEach(b => b.addEventListener('click', () => App.switchRole(b.dataset.switch)));
+    // hover ที่รายการบทบาท → tooltip บอกว่าบทบาทนี้คืออะไร (fixed — ไม่โดนกรอบ scroll ตัด)
+    document.querySelectorAll('[data-roletip]').forEach(b => {
+      b.addEventListener('mouseenter', () => {
+        let tip = document.getElementById('roleTip');
+        if (!tip) { tip = document.createElement('div'); tip.id = 'roleTip'; tip.className = 'role-tip'; document.body.appendChild(tip); }
+        tip.textContent = b.dataset.roletip;
+        const r = b.getBoundingClientRect();
+        tip.style.top = (r.top + r.height / 2) + 'px';
+        tip.style.left = (r.left - 10) + 'px';
+        tip.classList.add('show');
+      });
+      b.addEventListener('mouseleave', () => document.getElementById('roleTip')?.classList.remove('show'));
+    });
     // เปลี่ยนรหัสผ่าน (ผูกกับ key: อีเมลของผู้ใช้ หรือ __admin__ สำหรับแอดมิน)
     document.getElementById('changePwBtn')?.addEventListener('click', e => {
       const email = e.currentTarget.dataset.pwkey || sessionStorage.getItem('abp_email');
