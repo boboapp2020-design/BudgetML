@@ -225,9 +225,16 @@ const Store = (() => {
     const rows = deptRows(deptId);
     if (!rows.length) return { filled: 0, total: 0, pct: 0 };
     let filled = 0;
-    const total = rows.length * 12;
-    rows.forEach(r => rowMonths(year, deptId, r.key).forEach(v => { if (v !== null && v !== undefined) filled++; }));
-    return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
+    const total = rows.length * 14;   // 12 เดือน + MTP 2 ปี (นับ MTP ด้วย)
+    rows.forEach(r => {
+      rowMonths(year, deptId, r.key).forEach(v => { if (v !== null && v !== undefined) filled++; });
+      const row = rowByKey(year, deptId, r.key);
+      if (row && row.mtp1 !== null && row.mtp1 !== undefined) filled++;
+      if (row && row.mtp2 !== null && row.mtp2 !== undefined) filled++;
+    });
+    // ยังกรอกไม่ครบ → ไม่ปัดขึ้นเป็น 100 (floor); ครบจริงเท่านั้นถึงจะ 100
+    const pct = total ? (filled >= total ? 100 : Math.floor(filled / total * 100)) : 0;
+    return { filled, total, pct };
   }
 
   /* ---------- รอบ Revise: งบเดิม (snapshot) + เกิดจริง ---------- */
