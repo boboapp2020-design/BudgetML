@@ -94,20 +94,6 @@ const App = (() => {
 
           <button class="primary-btn big lv-submit" id="deptLoginBtn">🔒 เข้าสู่ระบบ</button>
 
-          <a class="lv-forgot lv-alt-toggle" id="unitLoginLink">เข้าแบบเลือกหน่วยงาน (แบบเดิม) ▾</a>
-          <div id="unitLoginBox" hidden>
-            <label class="fld"><span>เลือกหน่วยงาน / ฝ่ายของคุณ</span>
-              <select id="deptSel">
-                <option value="">🏢 — เลือกหน่วยงาน หรือ ฝ่าย —</option>
-                <optgroup label="ผู้ดูแล / ผู้บริหาร">
-                  <option value="accounting">👑 ผู้ดูแลระบบ — แผนกบัญชี</option>
-                  ${mgrOpts}
-                </optgroup>
-                ${deptOpts}
-              </select></label>
-            <button class="ghost-btn" id="unitLoginBtn" style="width:100%">เข้าด้วยหน่วยงานที่เลือก</button>
-          </div>
-
           <div class="lv-secure">🛡️ ระบบปลอดภัยด้วยมาตรฐานระดับองค์กร</div>
         </div>
       </div>
@@ -205,21 +191,6 @@ const App = (() => {
       if (e2 && !e2.dataset.touched) e2.value = '';
     }, 120);
     ['loginEmail', 'deptPin'].forEach(id => document.getElementById(id)?.addEventListener('input', e => { e.target.dataset.touched = '1'; }));
-
-    // ทางสำรอง: เข้าแบบเลือกหน่วยงาน (dropdown เดิม)
-    document.getElementById('unitLoginLink').addEventListener('click', () => {
-      const box = document.getElementById('unitLoginBox');
-      box.hidden = !box.hidden;
-    });
-    document.getElementById('unitLoginBtn').addEventListener('click', () => {
-      const code = document.getElementById('deptSel').value;
-      if (!code) { UI.toast('กรุณาเลือกหน่วยงานก่อน', 'err'); return; }
-      const pw = document.getElementById('deptPin').value;
-      if (authOn()) return authLogin(code, pw, document.getElementById('unitLoginBtn'));
-      // ทางสำรอง: admin ใช้ 1234 · ที่เหลือใช้รหัสกลาง 'a'
-      if (code === 'accounting' ? pw !== '1234' : pw !== 'a') { UI.toast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
-      loginAs(code, null);
-    });
 
     document.getElementById('pwEye').addEventListener('click', () => {
       const inp = document.getElementById('deptPin');
