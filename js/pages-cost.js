@@ -161,7 +161,6 @@ const PagesCost = (() => {
         roundChip)
       + submitBar + adminUnlock
       + card(`ต้นทุนการผลิต`, `
-          ${!yearOpen && user.role !== 'ACCOUNTING' ? `<div class="lock-banner">🔒 ปีงบ ${year} ปิดรอบแล้ว — อ่านอย่างเดียว · ปลดล็อกที่ Budget Control ก่อน (แอดมินแก้ได้เสมอ)</div>` : ''}
           ${yearOpen ? `<div class="uc-hint-calc">🧮 ค่า <b>กีบ/ตัน</b> จะเริ่มคำนวณ <b>เมื่อแผนกที่รับผิดชอบกดปุ่ม "ส่งข้อมูล (Submit)"</b> เท่านั้น · /ตันอ้อย รอ <b>บริการไร่</b> ส่ง · /ตันน้ำตาล รอ <b>หม้อปั่น + การตลาด</b> ส่งครบ</div>` : ''}
           <div class="table-scroll"><table class="data-table small"><thead>
             <tr><th>ปริมาณ ปี ${year}</th><th class="num">ตามแผน/งบ (ตัน)</th><th class="num">เกิดจริง (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
