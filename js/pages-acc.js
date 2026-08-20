@@ -1750,7 +1750,13 @@ const PagesAcc = (() => {
     return { cls: 'div', ic: '✅', tag: 'ผู้อนุมัติ (ฝ่าย)', pg: esc(r.name), sub: 'ทวนสอบ/อนุมัติงบของแผนกใต้ฝ่าย' };
   }
   const roleTypeOf = r => r.kind === 'filler' ? 'fill' : (r.id === 'MGR:co' ? 'co' : /^MGR:area_/.test(r.id) ? 'area' : 'div');
-  const RT_LB = { fill: 'กรอก', div: 'อนุมัติ', area: 'สังกัด', co: 'บริษัท' };
+  const RT_LB = { fill: 'กรอก', div: 'อนุมัติ', area: 'สังกัด', co: 'ภาพรวมบริษัท' };
+  // ตัวเลือกบทบาท (ใช้ทั้งฟอร์มเพิ่มผู้ใช้ + popup จัดการ)
+  function roleOpts(firstLabel) {
+    return `<option value="">${firstLabel}</option>
+      <optgroup label="ผู้กรอกงบ (แผนก)">${Store.activeDepartments().map(d => `<option value="filler|${d.code}">${esc(d.name)} (${d.code})</option>`).join('')}</optgroup>
+      <optgroup label="ผู้อนุมัติ / ผู้ดู">${(Store.db.oversight || []).filter(n => n.id === 'co' || /^area_/.test(n.id) || n.approver).map(n => `<option value="viewer|MGR:${n.id}">${esc(n.name)}${n.id === 'co' ? ' (ภาพรวมบริษัท)' : /^area_/.test(n.id) ? ' (สังกัด)' : ' (ฝ่าย)'}</option>`).join('')}</optgroup>`;
+  }
   function users(user) {
     const dir = Store.directory().slice().sort((a, b) => (b.roles.length - a.roles.length) || a.email.localeCompare(b.email));
     const nFill = dir.filter(a => a.roles.some(r => r.kind === 'filler')).length;
@@ -1758,86 +1764,110 @@ const PagesAcc = (() => {
     const nMulti = dir.filter(a => a.roles.length > 1).length;
     const custom = (Store.db.userAccounts || []).length > 0;
     const stat = (n, lb) => `<div class="stat"><b>${n}</b><span>${lb}</span></div>`;
-    const addSel = email => `<select class="ud-addsel" data-email="${esc(email)}">
-        <option value="">+ เพิ่มบทบาท…</option>
-        <optgroup label="ผู้กรอกงบ (แผนก)">${Store.activeDepartments().map(d => `<option value="filler|${d.code}">📝 ${esc(d.name)} (${d.code})</option>`).join('')}</optgroup>
-        <optgroup label="ผู้อนุมัติ / ผู้ดู">${(Store.db.oversight || []).filter(n => n.id === 'co' || /^area_/.test(n.id) || n.approver).map(n => `<option value="viewer|MGR:${n.id}">${n.id === 'co' ? '🏢' : /^area_/.test(n.id) ? '🏭' : '✅'} ${esc(n.name)}${n.id === 'co' ? ' (บริษัท)' : /^area_/.test(n.id) ? ' (สังกัด)' : ' (ฝ่าย)'}</option>`).join('')}</optgroup>
-      </select>`;
     const rows = dir.map(a => {
-      // สรุปนับบทบาทตามชนิด (แสดงตอนหุบ)
       const c = { fill: 0, div: 0, area: 0, co: 0 };
       a.roles.forEach(r => c[roleTypeOf(r)]++);
       const sum = ['fill', 'div', 'area', 'co'].filter(t => c[t]).map(t =>
-        `<span class="rt ${t}">${UI.roleBadge(t)} ${RT_LB[t]}${t === 'co' ? '' : ' ' + c[t]}</span>`).join('') || '<span class="rt none">— ยังไม่มีบทบาท</span>';
-      // pill รายบทบาท (แสดงตอนกาง)
-      const pills = a.roles.map(r => { const t = roleTypeOf(r);
-        return `<span class="rp ${t}">${UI.roleBadge(t)}<span class="rp-nm">${esc(r.name)}${r.kind === 'filler' ? ` <em>${r.id}</em>` : ''}</span>
-          <button class="rp-x" title="ลบบทบาท" data-delrole="${esc(a.email)}|${r.kind}|${esc(String(r.id))}">✕</button></span>`; }).join('')
-        || '<span class="muted small">ยังไม่มีบทบาท — เพิ่มด้านล่าง</span>';
-      return `<div class="ur" data-email="${esc(a.email)}" data-rn="${a.roles.length}">
-        <div class="ur-head">
-          <div class="av">${esc(a.email[0].toUpperCase())}</div>
-          <div class="ur-main"><div class="ur-em">${esc(a.email)}</div><div class="ur-sum">${sum}</div></div>
-          <span class="ur-badge">${a.roles.length}</span>
-          <span class="ur-caret">▾</span>
-        </div>
-        <div class="ur-body">
-          <div class="ur-roles">${pills}</div>
-          <div class="ur-actions">${addSel(a.email)}
-            <button class="ghost-btn small" data-resetpw="${esc(a.email)}" title="รีเซ็ตรหัสผ่านเป็น a">🔑 รีเซ็ตรหัส</button>
-            <button class="ghost-btn small btn-clear" data-deluser="${esc(a.email)}">🗑 ลบผู้ใช้</button></div>
-        </div></div>`;
+        `${RT_LB[t]}${t === 'co' ? '' : ' ' + c[t]}`).join(' · ') || 'ยังไม่มีบทบาท';
+      return `<div class="ur2" data-email="${esc(a.email)}" data-rn="${a.roles.length}" tabindex="0">
+        <div class="ur2-em">${esc(a.email)}</div>
+        <div class="ur2-sum">${sum}</div>
+        <span class="ur2-badge">${a.roles.length}</span>
+        <span class="ur2-go">จัดการ ›</span></div>`;
     }).join('');
-    return pageHead('จัดการผู้ใช้', `${dir.length} อีเมล · คลิกที่แถวเพื่อจัดการบทบาท · รหัสเริ่มต้นทุกคน = a`,
+    return pageHead('จัดการผู้ใช้', `${dir.length} อีเมล · คลิกที่รายชื่อเพื่อจัดการบทบาท · รหัสเริ่มต้นทุกคน = a`,
         '<a class="ghost-btn" href="#/acc/dashboard">← กลับ</a>')
       + `<div class="stats-row">${stat(dir.length, '👥 ผู้ใช้ (อีเมล)')}${stat(nFill, '📝 มีบทบาทผู้กรอก')}${stat(nApp, '✅ มีบทบาทผู้อนุมัติ/ผู้ดู')}${stat(nMulti, '🎭 หลายบทบาท')}</div>`
       + (custom ? '' : `<div class="lock-banner" style="background:#eef4fc;border-color:#cfe0f5;color:#2b3654">ℹ️ กำลังใช้รายชื่อค่าเริ่มต้นจากระบบ — เมื่อแก้ครั้งแรกจะบันทึกทั้งชุด (ต้องรัน <b>supabase/user-accounts.sql</b>)</div>`)
-      + `<div class="ud-bar">
+      + `<div class="ud-bar2">
           <input id="udSearch" placeholder="🔍 ค้นหา อีเมล / หน่วยงาน / รหัส…" autocomplete="off">
           <select id="udSort" title="เรียงลำดับ">
-            <option value="role-desc">▾ บทบาทมาก→น้อย</option>
-            <option value="role-asc">▴ บทบาทน้อย→มาก</option>
-            <option value="email-asc">A→Z อีเมล</option>
-            <option value="email-desc">Z→A อีเมล</option>
+            <option value="role-desc">เรียง: บทบาทมาก→น้อย</option>
+            <option value="role-asc">เรียง: บทบาทน้อย→มาก</option>
+            <option value="email-asc">เรียง: A→Z อีเมล</option>
+            <option value="email-desc">เรียง: Z→A อีเมล</option>
           </select>
-          <span class="ud-sep"></span>
-          <input id="newUserEmail" placeholder="+ อีเมลผู้ใช้ใหม่" autocomplete="off">
-          <button class="primary-btn" id="addUserBtn">เพิ่มผู้ใช้</button>
           <span class="count" id="udCount"></span>
+        </div>`
+      + `<div class="ud-add">
+          <b>➕ เพิ่มผู้ใช้ใหม่</b>
+          <input id="newUserEmail" placeholder="อีเมล เช่น name@mitrphol.com" autocomplete="off">
+          <select id="newUserRole">${roleOpts('เลือกบทบาทแรก (ไม่บังคับ)')}</select>
+          <button class="primary-btn" id="addUserBtn">เพิ่มผู้ใช้</button>
         </div>`
       + `<div class="ur-list" id="udGrid">${rows}</div>`;
   }
-  function usersBind(user) {
-    const reload = () => App.render();
-    document.getElementById('addUserBtn')?.addEventListener('click', () => {
-      const el = document.getElementById('newUserEmail');
-      try { Store.addUserAccount(user, el.value.trim()); toast('เพิ่มผู้ใช้แล้ว'); reload(); }
-      catch (e) { toast(e.message, 'err'); }
+  // popup จัดการผู้ใช้รายคน — เพิ่ม/ลบบทบาท · รีเซ็ตรหัส · ลบผู้ใช้ (อัปเดตในตัว)
+  function openUserModal(actor, email) {
+    const ov = document.createElement('div');
+    ov.className = 'umodal-ov';
+    ov.innerHTML = `<div class="umodal" role="dialog">
+      <div class="umodal-h"><div class="umodal-av">${esc(email[0].toUpperCase())}</div>
+        <div class="umodal-hi"><div class="umodal-em">${esc(email)}</div><div class="umodal-sub" id="umSub"></div></div>
+        <button class="umodal-x" id="umClose" title="ปิด">✕</button></div>
+      <div class="umodal-b">
+        <div class="umodal-sec">บทบาทของผู้ใช้</div>
+        <div class="umodal-roles" id="umRoles"></div>
+        <div class="umodal-sec">เพิ่มบทบาท</div>
+        <select class="umodal-addsel" id="umAdd">${roleOpts('+ เลือกบทบาทเพื่อเพิ่ม…')}</select>
+      </div>
+      <div class="umodal-f">
+        <button class="ghost-btn small" id="umReset">🔑 รีเซ็ตรหัสผ่าน</button>
+        <button class="ghost-btn small btn-clear" id="umDel">🗑 ลบผู้ใช้</button>
+        <button class="primary-btn small" id="umDone">เสร็จ</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    document.body.classList.add('no-scroll');
+    const close = () => { ov.remove(); document.body.classList.remove('no-scroll'); App.render(); };
+    const renderRoles = () => {
+      const a = Store.directoryAccount(email) || { roles: [] };
+      document.getElementById('umSub').textContent = a.roles.length + ' บทบาท';
+      const box = document.getElementById('umRoles');
+      box.innerHTML = a.roles.length ? a.roles.map(r => { const t = roleTypeOf(r);
+        return `<div class="umr-row"><span class="umr-tag ${t}">${RT_LB[t]}</span><span class="umr-name">${esc(r.name)}${r.kind === 'filler' ? ` <em>${r.id}</em>` : ''}</span>
+          <button class="umr-del" data-rm="${r.kind}|${esc(String(r.id))}" title="ลบบทบาทนี้">✕</button></div>`; }).join('')
+        : '<div class="muted" style="padding:6px 2px">ยังไม่มีบทบาท — เลือกด้านล่างเพื่อเพิ่ม</div>';
+      box.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
+        const [k, id] = b.dataset.rm.split('|');
+        try { Store.removeUserRole(actor, email, k, id); renderRoles(); } catch (e) { toast(e.message, 'err'); }
+      }));
+    };
+    renderRoles();
+    document.getElementById('umAdd').addEventListener('change', e => {
+      if (!e.target.value) return;
+      const [k, id] = e.target.value.split('|');
+      try { Store.addUserRole(actor, email, k, id); renderRoles(); } catch (er) { toast(er.message, 'err'); }
+      e.target.value = '';
     });
-    document.querySelectorAll('.ud-addsel').forEach(sel => sel.addEventListener('change', () => {
-      if (!sel.value) return;
-      const [kind, id] = sel.value.split('|');
-      try { Store.addUserRole(user, sel.dataset.email, kind, id); toast('เพิ่มบทบาทแล้ว'); reload(); }
-      catch (e) { toast(e.message, 'err'); sel.value = ''; }
-    }));
-    document.querySelectorAll('[data-delrole]').forEach(b => b.addEventListener('click', () => {
-      const [email, kind, id] = b.dataset.delrole.split('|');
-      try { Store.removeUserRole(user, email, kind, id); reload(); } catch (e) { toast(e.message, 'err'); }
-    }));
-    document.querySelectorAll('[data-deluser]').forEach(b => b.addEventListener('click', () => {
-      const email = b.dataset.deluser;
+    document.getElementById('umReset').addEventListener('click', () => {
+      try { Store.resetUserPassword(actor, email); toast(`รีเซ็ตรหัสผ่าน ${email} เป็น 'a' แล้ว`); } catch (e) { toast(e.message, 'err'); }
+    });
+    document.getElementById('umDel').addEventListener('click', () => {
       UI.confirm2(`ลบผู้ใช้ ${email}?`, 'ผู้ใช้นี้จะเข้าระบบไม่ได้อีก (ข้อมูลงบที่กรอกไว้ไม่ถูกลบ)', 'ลบออกจากสมุดผู้ใช้',
-        () => { try { Store.removeUserAccount(user, email); toast('ลบผู้ใช้แล้ว'); reload(); } catch (e) { toast(e.message, 'err'); } });
-    }));
-    document.querySelectorAll('[data-resetpw]').forEach(b => b.addEventListener('click', () => {
-      const email = b.dataset.resetpw;
-      UI.confirm2(`รีเซ็ตรหัสผ่าน ${email}?`, `รหัสจะกลับเป็นค่าเริ่มต้น 'a'`, 'ผู้ใช้ใช้ a เข้าระบบแล้วเปลี่ยนใหม่ได้',
-        () => { try { Store.resetUserPassword(user, email); toast('รีเซ็ตรหัสผ่านแล้ว'); } catch (e) { toast(e.message, 'err'); } });
-    }));
-    // กด/ปิด แถวเพื่อจัดการบทบาท (ไม่สลับเมื่อกดปุ่ม/dropdown ข้างใน)
-    document.querySelectorAll('.ur-head').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
+        () => { try { Store.removeUserAccount(actor, email); toast('ลบผู้ใช้แล้ว'); close(); } catch (e) { toast(e.message, 'err'); } });
+    });
+    document.getElementById('umClose').addEventListener('click', close);
+    document.getElementById('umDone').addEventListener('click', close);
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  }
+  function usersBind(user) {
+    document.getElementById('addUserBtn')?.addEventListener('click', () => {
+      const el = document.getElementById('newUserEmail'), rl = document.getElementById('newUserRole');
+      const email = el.value.trim();
+      try {
+        Store.addUserAccount(user, email);
+        if (rl.value) { const [k, id] = rl.value.split('|'); Store.addUserRole(user, email, k, id); }
+        toast('เพิ่มผู้ใช้แล้ว'); el.value = ''; rl.value = ''; openUserModal(user, email);
+      } catch (e) { toast(e.message, 'err'); }
+    });
+    document.querySelectorAll('.ur2').forEach(row => {
+      const open = () => openUserModal(user, row.dataset.email);
+      row.addEventListener('click', open);
+      row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
     const q = document.getElementById('udSearch'), grid = document.getElementById('udGrid'), cnt = document.getElementById('udCount'), sortSel = document.getElementById('udSort');
-    const rows = [...grid.querySelectorAll('.ur')];
+    const rows = [...grid.querySelectorAll('.ur2')];
     const filt = () => {
       const f = (q.value || '').trim().toLowerCase();
       let n = 0;
