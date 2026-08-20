@@ -1540,8 +1540,8 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 }
 body{background:var(--bg)}
 
-/* ---------- Sidebar: ขาวสะอาด ---------- */
-.sidebar{background:#fff !important;color:var(--ink);border-right:1px solid var(--border);box-shadow:0 0 0 rgba(0,0,0,0) !important}
+/* ---------- Sidebar: ขาวสะอาด + ขอบขวาชัดเพื่อแบ่ง layout ---------- */
+.sidebar{background:#fff !important;color:var(--ink);border-right:1px solid var(--border-strong);box-shadow:1px 0 0 var(--border), 4px 0 16px rgba(31,43,67,.05) !important}
 .brand{border-bottom:1px solid var(--border)}
 .brand-name{color:var(--ink)}
 .brand-sub{color:var(--muted)}
@@ -1562,7 +1562,7 @@ body{background:var(--bg)}
 .pc-fill{background:var(--blue)}
 
 /* ---------- Topbar: ขาวแบน เงาจาง ---------- */
-.topbar{background:#fff !important;border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(31,43,67,.03) !important;backdrop-filter:none}
+.topbar{background:#fff !important;border-bottom:1px solid var(--border-strong);box-shadow:0 1px 8px rgba(31,43,67,.05) !important;backdrop-filter:none}
 .icon-btn{background:#fff;border:1px solid var(--border-strong);border-radius:11px;box-shadow:none}
 .icon-btn:hover{transform:none;background:#f2f6fd;box-shadow:none}
 .user-chip{box-shadow:none}
