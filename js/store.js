@@ -640,6 +640,48 @@ const Store = (() => {
     return (db.actuals || []).some(a => a.year === Number(year) && a.departmentId === deptId && a.months.some(v => v !== null && v !== undefined));
   }
 
+  // ---- นำเข้าจากไฟล์ต้นฉบับ 2 ชุด: current (AM-AX) → db.budgets (งบปัจจุบัน) · original (I-T) → ORIGINAL (งบต้นปี freeze) ----
+  // records = [{io,codeA,cct,glCode, current:[12], original:[12]}]
+  function importDualBudget(actor, year, records) {
+    assertAccounting(actor);
+    const y = Number(year);
+    const R = v => (v === null || v === undefined || !isFinite(v)) ? null : Math.round(v);
+    let matched = 0, cellsCur = 0; const unmatched = [];
+    const origMap = {};
+    // แมทช์ด้วย code a เป็นหลัก (unique · เลี่ยง io ที่ซ้ำข้ามแถว) → fallback actualRowRef
+    const byCodeA = {}; (db.departmentRows || []).forEach(r => { if (r.codeA) byCodeA[r.codeA] = r; });
+    const matchRow = rec => (rec.codeA && byCodeA[rec.codeA]) ? byCodeA[rec.codeA] : actualRowRef(rec);
+    records.forEach(rec => {
+      const ref = matchRow(rec);
+      if (!ref) { unmatched.push(rec.codeA || ((rec.cct || '') + '/' + (rec.glCode || '')) || '?'); return; }
+      const key = ref.glId + '@' + ref.cct;
+      const row = ensureRow(y, ref.departmentId, key);
+      const cur = rec.current || [];
+      for (let i = 0; i < 12; i++) { const v = R(cur[i]); row.months[i] = (v === null ? 0 : v); if (v) cellsCur++; }
+      row.updatedAt = new Date().toISOString(); row.updatedBy = actor.name + ' (นำเข้าไฟล์ต้นฉบับ)';
+      origMap[ref.departmentId + '|' + ref.glId + '|' + ref.cct] = (rec.original || []).map(R);
+      matched++;
+    });
+    // สร้าง ORIGINAL ใหม่ = I-T · แถวที่ไม่มีในไฟล์ = คงค่า ORIGINAL เดิม (ถ้ามี) ไม่งั้น 0
+    const oldOrig = snapByLabel(y, 'ORIGINAL'); const oldMap = {};
+    if (oldOrig) oldOrig.rows.forEach(r => { oldMap[r.departmentId + '|' + r.glId + '|' + r.cct] = r.months; });
+    db.budgetSnapshots = (db.budgetSnapshots || []).filter(s => !(s.year === y && s.label === 'ORIGINAL'));
+    let cellsOrig = 0;
+    const origRows = db.budgets.filter(b => b.year === y).map(b => {
+      const k = b.departmentId + '|' + b.glId + '|' + b.cct;
+      const om = origMap[k];
+      let months;
+      if (om) { months = om.map(v => v === null ? 0 : v); om.forEach(v => { if (v) cellsOrig++; }); }
+      else if (oldMap[k]) months = oldMap[k].slice();
+      else months = Array(12).fill(0);
+      return { departmentId: b.departmentId, glId: b.glId, cct: b.cct, months, mtp1: b.mtp1, mtp2: b.mtp2 };
+    });
+    db.budgetSnapshots.push({ year: y, label: 'ORIGINAL', takenAt: new Date().toISOString(), createdAt: new Date().toISOString(), takenBy: actor.name + ' (นำเข้าไฟล์ต้นฉบับ)', rows: origRows });
+    audit(actor, 'นำเข้างบจากไฟล์ต้นฉบับ (AM-AX→ปัจจุบัน · I-T→ต้นปี)', { newValue: `ปี ${y}: ${matched} แถว · ปัจจุบัน ${cellsCur} ช่อง · ต้นปี ${cellsOrig} ช่อง` });
+    save();
+    return { matched, unmatched, cellsCur, cellsOrig };
+  }
+
   // นำเข้า "งบ Revise" จากไฟล์ Excel: ตั้งค่างบ 12 เดือน (+MTP) ให้แถวที่จับคู่ได้ (authoritative)
   // records = [{io,codeA,cct,glCode,glName,deptCode,deptName,cctName, months:[12], mtp1, mtp2}]
   // opts.autoCreate = true → สร้างแผนก/GL/CCT/แถว ที่ยังไม่มีอัตโนมัติ (0 จับคู่ไม่ได้)
@@ -1773,7 +1815,7 @@ const Store = (() => {
     originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
-    postActuals, postActualsPaste, hasPostedActuals,
+    postActuals, postActualsPaste, hasPostedActuals, importDualBudget,
     canEdit, setCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,

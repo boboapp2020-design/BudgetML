@@ -1045,6 +1045,13 @@ const PagesAcc = (() => {
             <button class="primary-btn" id="postActPasteBtn" style="margin-top:8px">📥 โพสต์เกิดจริง (ทับงบ)</button>
           </div>
           <p class="warn-text small" style="margin-top:8px">⚠ เขียนทับตัวเลขที่แผนกกรอกในเดือนที่ตรงกัน (บันทึก audit log ว่ามาจากไฟล์เกิดจริง) — ถอยกลับได้จากเวอร์ชันงบ 📸 ที่บันทึกไว้</p>`)
+      + card('📗 นำเข้าจากไฟล์ต้นฉบับ (I–T → งบต้นปี · AM–AX → งบปัจจุบัน)', `
+          <p class="muted small">อัปโหลดไฟล์ <b>ML งบค่าใช้จ่าย</b> (โครง code a · IO · CCT · GL · เดือน) — ระบบจับคู่ด้วย <b>code a</b> แล้ว<br>
+          • คอลัมน์ <b>I–T</b> (งบต้นปี) → บันทึกเป็น <b>งบต้นปี (ORIGINAL)</b><br>
+          • คอลัมน์ <b>AM–AX</b> (เกิดจริงสะสม) → เขียนลง <b>ตารางงบปัจจุบัน</b></p>
+          <input type="file" id="dualFile" accept=".xlsx,.xls,.csv" style="font:inherit">
+          <span id="dualMsg" class="muted small" style="margin-left:10px"></span>
+          <p class="warn-text small" style="margin-top:8px">⚠ เขียนทับงบปัจจุบัน + งบต้นปี ทั้งปี — <b>ควรกด "⬇ ดาวน์โหลดสำรอง" ด้านล่างก่อนทุกครั้ง</b></p>`)
       + card('🔍 ตรวจกระทบยอดกับไฟล์ (Reconciliation)', `
           <p class="muted small">อัปโหลดไฟล์งบ (Excel/CSV) เพื่อ<b>เทียบกับงบปี ${year} ในระบบ</b> — ดูว่าตรง/ต่าง/ขาดแถวไหน (จับคู่ด้วย code a / IO / CCT+GL) โดย<b>ไม่แก้ไขข้อมูล</b></p>
           <input type="file" id="reconFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
@@ -1271,6 +1278,36 @@ const PagesAcc = (() => {
       UI.modal('✅ โพสต์เกิดจริงแล้ว', `<p>ทับงบ <b>${r.matched}</b> แถว · <b>${r.cells}</b> ช่อง${srcTxt ? ` <span class="muted small">(${esc(srcTxt)})</span>` : ''}<br><span class="muted small">ช่องที่ทับถูกล็อกในตารางผู้กรอกแล้ว</span></p>${unTxt}`,
         [{ label: 'ปิด', cls: 'primary-btn', onClick: cl => { cl(); App.render(); } }]);
     };
+    // ---- นำเข้าจากไฟล์ต้นฉบับ: I-T → งบต้นปี (ORIGINAL) · AM-AX → งบปัจจุบัน ----
+    document.getElementById('dualFile')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const msg = document.getElementById('dualMsg'); msg.textContent = 'กำลังอ่านไฟล์…';
+      try {
+        const grid = await fileToGrid(file);
+        const recs = gridToDualRecords(grid);
+        if (!recs.length) throw new Error('ไม่พบแถวข้อมูล (ต้องมีหัวตาราง code a)');
+        const byCodeA = {}; (Store.db.departmentRows || []).forEach(r => { if (r.codeA) byCodeA[r.codeA] = 1; });
+        const willMatch = recs.filter(r => r.codeA && byCodeA[r.codeA]).length;
+        const sumIT = recs.reduce((s, r) => s + r.original.reduce((a, b) => a + b, 0), 0);
+        const sumAM = recs.reduce((s, r) => s + r.current.reduce((a, b) => a + b, 0), 0);
+        msg.textContent = `พบ ${recs.length} แถว · จับคู่ได้ ${willMatch}`;
+        UI.modal('📗 นำเข้าจากไฟล์ต้นฉบับ', `
+          <p>ไฟล์: <b>${esc(file.name)}</b></p>
+          <p>พบ <b>${recs.length}</b> แถว · จับคู่ด้วย code a ได้ <b>${willMatch}</b> แถว${recs.length - willMatch ? ` · ไม่พบในระบบ ${recs.length - willMatch} แถว (ข้าม)` : ''}</p>
+          <p class="small">งบต้นปี (I–T) รวม: <b>${fmt(Math.round(sumIT))}</b> กีบ<br>งบปัจจุบัน/เกิดจริง (AM–AX) รวม: <b>${fmt(Math.round(sumAM))}</b> กีบ</p>
+          <p class="warn-text">⚠ เขียนทับ <b>งบปัจจุบัน = AM–AX</b> และ <b>งบต้นปี (ORIGINAL) = I–T</b> ทั้งปี ${UI.year()} — ทำสำรองแล้วใช่ไหม?</p>`, [
+          { label: 'ยกเลิก', cls: 'ghost-btn', onClick: close => { close(); e.target.value = ''; msg.textContent = ''; } },
+          { label: '📗 นำเข้า (ทับข้อมูล)', cls: 'danger-btn', onClick: close => {
+              try {
+                const r = Store.importDualBudget(user, UI.year(), recs);
+                close(); e.target.value = ''; msg.textContent = '';
+                const un = r.unmatched.length ? `<div class="warn-text" style="margin-top:8px">ไม่พบในระบบ ${r.unmatched.length} แถว:</div><div class="muted small" style="max-height:110px;overflow:auto">${r.unmatched.slice(0, 40).map(u => esc(String(u))).join(' · ')}</div>` : '<p style="color:#0ca30c;margin-top:8px">✓ นำเข้าครบทุกแถวที่มีในระบบ</p>';
+                UI.modal('✅ นำเข้าเรียบร้อย', `<p>งบปัจจุบัน: <b>${r.matched}</b> แถว · <b>${r.cellsCur}</b> ช่อง<br>งบต้นปี (ORIGINAL): <b>${r.cellsOrig}</b> ช่อง</p>${un}`, [{ label: 'ปิด', cls: 'primary-btn', onClick: cl => { cl(); App.render(); } }]);
+              } catch (err) { toast(err.message, 'err'); }
+            } },
+        ]);
+      } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); e.target.value = ''; }
+    });
     document.getElementById('postActFile')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
       const msg = document.getElementById('postActMsg'); msg.textContent = 'กำลังอ่านไฟล์…';
@@ -1606,6 +1643,26 @@ const PagesAcc = (() => {
     let best = wb.SheetNames[0], bestN = -1;
     wb.SheetNames.forEach(n => { const g = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '' }); if (g.length > bestN) { bestN = g.length; best = n; } });
     return XLSX.utils.sheet_to_json(wb.Sheets[best], { header: 1, raw: true, defval: '' });
+  }
+  // แปลง grid ไฟล์ ML → records สำหรับนำเข้า 2 ชุด (I-T งบต้นปี + AM-AX เกิดจริง) จับด้วย code a
+  // โครง ML คงที่: code a=0 · IO=1 · CCT=2 · รหัสแผนก=4 · GL=6 · I-T=8..19 · AM-AX=38..49
+  function gridToDualRecords(grid) {
+    let hi = -1;
+    for (let i = 0; i < Math.min(grid.length, 25); i++) {
+      if ((grid[i] || []).some(c => /code\s*a/i.test(String(c)))) { hi = i; break; }
+    }
+    if (hi < 0) throw new Error('ไม่พบหัวตาราง (code a) — ต้องเป็นไฟล์ ML งบค่าใช้จ่าย');
+    const num = v => { if (v === '' || v == null) return 0; const n = Number(String(v).replace(/[, ]/g, '')); return isFinite(n) ? n : 0; };
+    const recs = [];
+    for (let r = hi + 1; r < grid.length; r++) {
+      const row = grid[r]; if (!row) continue;
+      const gl = String(row[6] || '').trim(); const codeA = String(row[0] || '').trim();
+      if (!/^\d{6,7}$/.test(gl) || !codeA) continue;
+      const original = [], current = [];
+      for (let k = 0; k < 12; k++) { original.push(num(row[8 + k])); current.push(num(row[38 + k])); }
+      recs.push({ codeA, io: String(row[1] || '').trim(), cct: String(row[2] || '').trim(), deptCode: String(row[4] || '').trim(), glCode: gl, original, current });
+    }
+    return recs;
   }
   function gridToRecords(grid) {
     let hi = -1;
