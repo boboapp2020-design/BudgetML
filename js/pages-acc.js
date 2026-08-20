@@ -572,7 +572,10 @@ const PagesAcc = (() => {
       const m2 = mIdx[key] ? (typeof mIdx[key].mtp2 === 'number' ? mIdx[key].mtp2 : 0) : 0;
       row[75] = m1; row[76] = m1 - sum(live); row[77] = sum(live) ? (m1 - sum(live)) / sum(live) : 0;
       row[80] = m2; row[81] = 0; row[82] = m1; row[83] = m2; row[84] = 0; row[85] = m1; row[86] = m2; row[87] = 0;
-      row[98] = ''; row[99] = '';                           // PL/โสหุ้ย, Cost structure (ไม่มีในระบบ)
+      // PL/โสหุ้ย + Cost structure Name — ยึดจาก GL (pptCode → หมวดต้นทุน)
+      const _ppt = Number(g.pptCode) || 0;
+      row[98] = _ppt ? ((_ppt >= 1 && _ppt <= 22) ? 'PL' : 'โสหุ้ย') : '';   // 1-22 = ต้นทุนการผลิต (PL) · ที่เหลือ = โสหุ้ย
+      row[99] = (db.meta.pptCategories || {})[_ppt] || g.glGroupSap || '';    // ชื่อหมวดต้นทุน (Cost structure)
       out.push(row);
     });
     return out;
