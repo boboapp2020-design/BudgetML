@@ -297,6 +297,17 @@ body.no-scroll { overflow: hidden; }
 .cell-changed { background: #fff9e8; border-color: var(--warn-bd); }
 .cell-err { background: var(--crit-bg) !important; border-color: var(--up) !important; box-shadow: 0 0 0 2px rgba(208,59,59,.25); }
 .cell-mtp { background: #f2f6fc; }
+/* คอลัมน์งบสมมติฐาน 3 เคส (Base=ฟ้า · Best=เขียว · Worst=ส้ม) ตามฟอร์ม Excel */
+.budget-table th.th-sc { background: linear-gradient(180deg, #2f6bd0 0%, #234f9c 100%); }
+.budget-table th.th-sc.sc-best  { background: linear-gradient(180deg, #3f9d5a 0%, #2e7a44 100%); }
+.budget-table th.th-sc.sc-worst { background: linear-gradient(180deg, #e08a3c 0%, #c26a1f 100%); }
+.th-sc { border-left: 2px solid rgba(255,255,255,.35); }
+.sc-cell { background: #f4f8fe; }
+.sc-cell.sc-best  { background: #f2faf3; }
+.sc-cell.sc-worst { background: #fdf5ec; }
+.sc-cell .cell { background: transparent; }
+.sc-cell .cell:focus { background: #fff; }
+.sc-cell { border-left: 1px solid var(--border); }
 .cell-wrap { position: relative; }
 .cell-wrap .cell { padding-left: 20px; }
 .cell-detail-btn {

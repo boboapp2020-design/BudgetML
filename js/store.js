@@ -625,6 +625,42 @@ const Store = (() => {
       ? null : rows.reduce((s, r) => s + r[which], 0);
     return { mtp1: agg('mtp1'), mtp2: agg('mtp2') };
   }
+
+  /* ---------- งบสมมติฐาน 3 เคส (Base / Best / Worst) — แยกจาก MTP เดิม ----------
+   * offs = จำนวนปีนับจากปีงบ (year+off): Base = +2,+3 · Best/Worst = +1,+2,+3
+   * เก็บใน budget row: row.sc = { base:[..], best:[..], worst:[..] } (อาเรย์เรียงตาม offs) */
+  const SCEN_DEF = [
+    { key: 'base',  label: 'Base Case',  offs: [2, 3] },
+    { key: 'best',  label: 'Best Case',  offs: [1, 2, 3] },
+    { key: 'worst', label: 'Worst Case', offs: [1, 2, 3] },
+  ];
+  const scenDef = scKey => SCEN_DEF.find(s => s.key === scKey);
+  function scenarioVal(year, deptId, rowKey, scKey, off) {
+    const row = rowByKey(year, deptId, rowKey);
+    const def = scenDef(scKey);
+    if (!row || !row.sc || !row.sc[scKey] || !def) return null;
+    const idx = def.offs.indexOf(off);
+    return idx >= 0 && row.sc[scKey][idx] != null ? row.sc[scKey][idx] : null;
+  }
+  function setScenario(actor, year, deptId, rowKey, scKey, off, value) {
+    assertUserCanEdit(actor, year, deptId);
+    if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
+    const def = scenDef(scKey);
+    const idx = def ? def.offs.indexOf(off) : -1;
+    if (idx < 0) throw new Error('สมมติฐานไม่ถูกต้อง');
+    const row = ensureRow(year, deptId, rowKey);
+    if (row.notUsed) throw new Error('แถวนี้ถูกทำเครื่องหมาย "ไม่ได้ใช้" — กดปุ่ม ↩ เพื่อกลับมากรอกก่อน');
+    if (!row.sc) row.sc = {};
+    if (!row.sc[scKey]) row.sc[scKey] = def.offs.map(() => null);
+    const old = row.sc[scKey][idx] ?? null;
+    if (old === value) return false;
+    row.sc[scKey][idx] = value;
+    row.updatedAt = new Date().toISOString();
+    row.updatedBy = actor.name;
+    audit(actor, `แก้ไขงบสมมติฐาน ${def.label} ปี ${Number(year) + off}`, { deptId, glCode: auditRowRef(rowKey).glCode, oldValue: old, newValue: value });
+    save();
+    return true;
+  }
   /* ---------- รายละเอียดค่าใช้จ่ายรายช่อง (breakdown ต่อ GL×เดือน) ----------
    * เก็บถาวรใน db.cellDetails — ตรวจย้อนหลังได้แม้งบถูก Lock แล้ว */
   function cellDetail(year, deptId, rowKey, monthIdx) {
@@ -1408,7 +1444,7 @@ const Store = (() => {
     revisePhase, snapshotFor, originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
-    canEdit, setCell, setMtp, mtp, setNote, submit, glNotUsed, setGlNotUsed,
+    canEdit, setCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,

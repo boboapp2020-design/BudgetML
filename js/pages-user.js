@@ -154,7 +154,9 @@ const PagesUser = (() => {
       <th class="th-delta">%Δ</th>
       <th class="num th-mtp">ปี ${c.year + 1}<div class="th-yr">MTP</div></th>
       <th class="num th-mtp">ปี ${c.year + 2}<div class="th-yr">MTP</div></th>
-      <th class="th-note">เหตุผล/สมมติฐาน</th></tr>`;
+      <th class="th-note">เหตุผล/สมมติฐาน</th>
+      ${Store.SCEN_DEF.map(s => s.offs.map(o => `<th class="num th-sc sc-${s.key}">ปี ${c.year + o}<div class="th-yr">${s.label}</div></th>`).join('')).join('')}</tr>`;
+    const scCols = Store.SCEN_DEF.reduce((n, s) => n + s.offs.length, 0);   // = 8 ช่องสมมติฐาน
 
     // การปรับงบจากคำร้องที่อนุมัติแล้ว (ติดหมายเหตุ 🔄 ราย GL/ช่องเดือน)
     const adjMap = Store.reqAdjustmentsFor(c.year, c.deptId);
@@ -210,6 +212,10 @@ const PagesUser = (() => {
           <button class="nu-btn ${notUsed ? 'active' : ''}" data-nu="${r.key}" ${c.editable ? '' : 'disabled'}
             title="${notUsed ? 'กลับมากรอกแถวนี้' : 'ไม่ได้ใช้แถวนี้ (ตั้งเป็น 0 ทั้งแถว)'}">${notUsed ? '↩' : '🚫'}</button>
           <button class="note-btn ${hasNote ? 'has-note' : ''}" data-note="${r.key}">${hasNote ? '📝 มีข้อมูล' : '＋ เพิ่ม'}</button></td>
+        ${Store.SCEN_DEF.map(s => s.offs.map(o => {
+          const sv = Store.scenarioVal(c.year, c.deptId, r.key, s.key, o);
+          return `<td class="num cell-td sc-cell sc-${s.key}"><input class="cell cell-sc" data-row="${r.key}" data-sc="${s.key}" data-off="${o}" inputmode="decimal" placeholder="กรอก" value="${sv === null ? '' : fmt(sv)}" ${dis}></td>`;
+        }).join('')).join('')}
       </tr>`;
     }).join('');
 
@@ -221,11 +227,11 @@ const PagesUser = (() => {
         <td class="num td-total" data-gsum><b>${fmt(cur)}</b></td>
         <td class="num td-prev">${fmt(prev)}</td>
         <td class="td-delta">${deltaBadge(cmp.diff, cmp.pct)}</td>
-        <td></td><td></td><td></td></tr>
+        <td></td><td></td><td></td>${'<td></td>'.repeat(scCols)}</tr>
         <tr class="tr-pct"><td class="sticky-col td-gl muted">เทียบกับ${rvOn ? 'งบเดิม' : 'ปีก่อน'} (รายเดือน)</td>
         ${mm.map((v, i) => { const cp = Store.compare(v, pm[i]); return `<td class="num" data-mpct="${i}">${deltaBadge(cp.diff, cp.pct)}</td>`; }).join('')}
         <td class="num" data-gpct>${deltaBadge(cmp.diff, cmp.pct)}</td>
-        <td></td><td></td><td></td><td></td><td></td></tr>`;
+        <td></td><td></td><td></td><td></td><td></td>${'<td></td>'.repeat(scCols)}</tr>`;
     })();
 
     return pageHead(`กรอกงบประมาณปี ${c.year} 👋`, `${esc(c.dept.name)} · GL เป็นแถว เดือนเป็นคอลัมน์ · หน่วย: กีบ (LAK) · บันทึกอัตโนมัติ`,
@@ -298,7 +304,8 @@ const PagesUser = (() => {
       input.classList.remove('cell-err');
       try {
         let changed;
-        if (input.dataset.mtp) changed = Store.setMtp(user, c.year, c.deptId, key, Number(input.dataset.mtp), v);
+        if (input.dataset.sc) changed = Store.setScenario(user, c.year, c.deptId, key, input.dataset.sc, Number(input.dataset.off), v);
+        else if (input.dataset.mtp) changed = Store.setMtp(user, c.year, c.deptId, key, Number(input.dataset.mtp), v);
         else changed = Store.setCell(user, c.year, c.deptId, key, Number(input.dataset.m), v);
         if (changed) { input.classList.add('cell-changed'); markSaved(); }
         input.value = v === null ? '' : fmt(v);
