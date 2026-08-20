@@ -365,11 +365,11 @@ body.no-scroll { overflow: hidden; }
 .card-flush .grid-toolbar { margin: 0; }
 .budget-card.fullscreen .grid-toolbar { flex-shrink: 0; }
 /* ปุ่มตรวจสอบงบ — ธีมใหม่ (ไล่สีม่วง-คราม เด่นแยกจากปุ่มเขียว) */
-.btn-review {
-  background: linear-gradient(135deg, #6366f1, #4f46e5); border: none !important;
+.grid-tools .btn-review, a.btn-review {
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important; border: none !important;
   color: #fff !important; font-weight: 600; box-shadow: 0 2px 8px rgba(79,70,229,.28);
 }
-.btn-review:hover { color: #fff !important; filter: brightness(1.06); box-shadow: 0 5px 14px rgba(79,70,229,.36); }
+.grid-tools .btn-review:hover, a.btn-review:hover { color: #fff !important; filter: brightness(1.06); box-shadow: 0 5px 14px rgba(79,70,229,.36); }
 .lock-banner {
   background: var(--warn-bg); border: 1px solid var(--warn-bd); border-radius: 8px;
   padding: 10px 14px; margin-bottom: 14px; font-weight: 600;
