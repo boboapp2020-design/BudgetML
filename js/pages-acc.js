@@ -1602,7 +1602,7 @@ const PagesAcc = (() => {
     const grpRows = Object.keys(budByGrp).map(grp => ({ grp, name: grpName(grp), bud: budByGrp[grp], act: actByGrp[grp] || 0 }))
       .sort((a, b) => b.bud - a.bud).map(x => {
         const rem = x.bud - x.act, pct = x.bud > 0 ? x.act / x.bud * 100 : 0, f = flag(x.act, x.bud);
-        return `<tr><td data-v="${esc(x.name || x.grp)}" title="${esc(x.name || 'กลุ่ม ' + x.grp)}"><span class="grp-code">${esc(x.grp)}</span> <b>${esc(x.name || 'กลุ่ม ' + x.grp)}</b></td>
+        return `<tr><td data-v="${esc(x.name || x.grp)}" class="grp-cell" data-tip="${esc('กลุ่มบัญชี ' + x.grp + ' — ' + (x.name || 'ไม่ระบุชื่อ'))}"><span class="grp-code">${esc(x.grp)}</span> <b>${esc(x.name || 'กลุ่ม ' + x.grp)}</b></td>
           <td class="num" data-v="${x.bud}">${fmt(x.bud)}</td><td class="num" data-v="${x.act}">${fmt(x.act)}</td>
           <td class="num" data-v="${rem}" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
           <td data-v="${pct}">${pct.toFixed(1)}%</td><td data-v="${pct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
