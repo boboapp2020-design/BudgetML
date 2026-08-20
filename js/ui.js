@@ -180,7 +180,7 @@ const UI = (() => {
           <div class="topbar-legend" title="ความหมายของสีไอคอนบทบาท">
             <span><i class="rl-dot ri-fill"></i>ผู้กรอกงบประมาณ</span>
             <span><i class="rl-dot ri-div"></i>ผู้ตรวจสอบงบประมาณ</span>
-            <span><i class="rl-dot ri-area"></i>ผู้รีวิวงบประมาณ</span>
+            <span><i class="rl-dot ri-area"></i>ผู้ดูงบประมาณ</span>
           </div>
           <div class="topbar-right">
             <button id="notiBtn" class="icon-btn" title="การแจ้งเตือน">🔔${unread ? `<span class="noti-dot">${unread}</span>` : ''}</button>
