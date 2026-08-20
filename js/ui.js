@@ -36,6 +36,11 @@ const UI = (() => {
     const s = STATUS_TH[st] || STATUS_TH.DRAFT;
     return `<span class="status-badge ${s.cls}">${s.label} · ${s.th}</span>`;
   };
+  // ธงชาติประจำสกุลเงิน (ไฟล์ในโฟลเดอร์ Flags)
+  const FLAG_IMG = { THB: 'Thai.png', USD: 'USA.png', CNY: 'China.png', EUR: 'EROU.png' };
+  const currencyFlag = cur => FLAG_IMG[cur]
+    ? `<img class="flag-img" src="Flags/${FLAG_IMG[cur]}" alt="${cur}">`
+    : '<span class="flag">💱</span>';
   // ชื่อชนิดน้ำมัน — แสดงไทย / ลาว (คง key เดิมไว้ใช้แก้ไข/lookup)
   const fuelLabel = ft => {
     const k = String(ft || '').trim().toLowerCase();
@@ -257,6 +262,6 @@ const UI = (() => {
     ths.forEach((th, idx) => { if (th.classList.contains('sortable')) th.addEventListener('click', () => doSort(idx)); });
   }
 
-  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, fuelLabel, STATUS_TH, deptIcon, enableSort,
+  return { APP_LOGO, fmt, fmtShort, fmtPct, fmtDT, deltaBadge, esc, statusBadge, fuelLabel, currencyFlag, STATUS_TH, deptIcon, enableSort,
            shell, bindShell, year, setYear, kpi, card, pageHead, asOf, toast, modal, confirm2 };
 })();

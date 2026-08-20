@@ -1204,14 +1204,18 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 @keyframes bsr{to{transform:rotate(360deg)}}
 
 /* ฟอร์มเพิ่ม GL (แถวงบ) — 8 ฟิลด์ */
-.glrow-form{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 12px}
-.glrow-form label{display:flex;flex-direction:column;justify-content:flex-end;font-size:12px;color:#5a6b85;gap:3px}
+.glrow-form{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 14px}
+.glrow-form label{display:flex;flex-direction:column;justify-content:flex-end;font-size:13px;font-weight:600;color:#33425c;gap:5px}
 .glrow-form label>span,.glrow-form label{line-height:1.35}
-.glrow-form input{font:inherit;font-size:13px;padding:7px 9px;border:1px solid #d7deea;border-radius:8px;color:#16233a}
-.glrow-form input:focus{outline:none;border-color:#2b5cf0;box-shadow:0 0 0 3px rgba(43,92,240,.12)}
+.glrow-form input{font:inherit;font-size:14px;font-weight:400;padding:9px 11px;border:1.5px solid #cdd6e6;border-radius:8px;color:#16233a}
+.glrow-form input::placeholder{color:#9aa6bb;font-weight:400}
+.glrow-form input:focus{outline:none;border-color:#2b5cf0;box-shadow:0 0 0 3px rgba(43,92,240,.14)}
 @media(max-width:860px){.glrow-form{grid-template-columns:repeat(2,1fr)}}
-.glrow-form label.opt{opacity:.72}
-.glrow-form label small{color:#c2820a;font-weight:600}
+.glrow-form label.opt{opacity:1;color:#54617a}
+.glrow-form label small{color:#b3760a;font-weight:700}
+/* สกุลเงิน + ธง ในตาราง Exchange Rate */
+.cur-cell{display:inline-flex;align-items:center;gap:8px}
+.cur-cell b{font-size:14px;color:var(--ink);letter-spacing:.02em}
 
 /* ===== หน้า ต้นทุนต่อหน่วย (unit cost) ===== */
 .uc-table td.uc-ton{color:#3556a8;background:#fafcff}

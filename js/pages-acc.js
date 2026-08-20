@@ -903,7 +903,7 @@ const PagesAcc = (() => {
           <span id="grMsg" class="muted small" style="margin-left:10px">* จำเป็นเฉพาะรหัส GL · ช่องสีจาง = กรอกเมื่อจะมอบหมายเลย</span></div>`)
       + card(`Budget Exchange Rate ปี ${year} (Reference Rate ทางการ)`, `
           <div class="table-scroll"><table class="data-table small"><thead><tr><th>สกุลเงิน</th><th class="num">กีบ / 1 หน่วย</th><th></th></tr></thead><tbody>
-          ${rates.map(r => `<tr><td>${r.currency}</td><td class="num">${fmt(r.rateToLAK)}</td>
+          ${rates.map(r => `<tr><td><span class="cur-cell">${UI.currencyFlag(r.currency)}<b>${r.currency}</b></span></td><td class="num">${fmt(r.rateToLAK)}</td>
             <td><button class="ghost-btn small" data-editrate="${r.currency}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>`)
       + card(`⛽ ราคากลางน้ำมัน ปี ${year}`, `
