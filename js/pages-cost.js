@@ -152,8 +152,7 @@ const PagesCost = (() => {
     const mySubmitted = dcode && Store.pptSubmitted(year, dcode);
     const submits = Store.pptSubmitsFor(year);
     // สถานะล็อกแบบแข็ง (เฉพาะกรณีรอบปิดแล้วยังส่งค้าง) — ปุ่ม Submit/Edit จริงอยู่ในการ์ดกรอก
-    const submitBar = (isFiller && mySubmitted && !yearOpen)
-      ? `<div class="lock-banner">🔒 ส่งปริมาณปี ${year} แล้ว · รอบปีปิด — ให้แอดมินปลดล็อกก่อนจึงแก้ได้อีก</div>` : '';
+    const submitBar = '';   // เอาป้ายสถานะ "ล็อก/ส่งแล้ว" ออกตามที่ผู้ใช้ต้องการ
     // แถบปุ่ม Submit / Edit ในส่วนกรอก — โผล่ทุกคนที่กรอกช่องได้ (ผู้กรอกปริมาณ หรือ แอดมิน)
     const isAdmin = user.role === 'ACCOUNTING';
     // filler ที่ส่งแล้วก็ยังเห็นแถบ (ไว้กด Edit ปลดล็อกเอง) — canEditVolume จะ false หลังส่ง

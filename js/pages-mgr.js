@@ -245,7 +245,7 @@ const PagesMgr = (() => {
         <td class="num"><b>${fmt(tot)}</b></td></tr>`;
     }).join('');
 
-    return pageHead(`${UI.deptIcon(d)} ${esc(d.name)}`, `รายย่อยงบปี ${year} · 🔒 อ่านอย่างเดียว · ${asOf()}`,
+    return pageHead(`${UI.deptIcon(d)} ${esc(d.name)}`, `รายย่อยงบปี ${year} · ${asOf()}`,
         `<a class="ghost-btn" href="#/mgr/dashboard">← กลับภาพรวมฝ่าย</a>`)
       + `<div class="breadcrumb"><a href="#/mgr/dashboard">← กลับภาพรวม${esc(unitName)}</a> › <b>${esc(d.name)}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">

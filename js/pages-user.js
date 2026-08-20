@@ -153,8 +153,7 @@ const PagesUser = (() => {
     // เกิดจริงที่บัญชีอัปโหลด (นอกรอบ Revise) — ช่องไฮไลต์ = ล็อก
     const postedMsg = '';
     // ป้ายล็อกแบบกะทัดรัด — ย้ายไปอยู่ในแถบเครื่องมือข้างปุ่ม (แทน banner เต็มความกว้าง)
-    const lockChip = !c.editable
-      ? `<span class="lock-chip">🔒 ${['SUBMITTED'].includes(c.state.status) ? 'ส่งแล้ว — แก้ได้เมื่อถูกตีกลับ' : 'รอบงบถูก Lock — อ่านอย่างเดียว'}</span>` : '';
+    const lockChip = '';   // เอาป้ายสถานะ "อ่านอย่างเดียว/Lock" ออกตามที่ผู้ใช้ต้องการ (เซลล์ถูก disable บอกอยู่แล้ว)
 
     const head = `<tr>
       <th class="sticky-col th-gl">GL / บัญชี</th>
@@ -532,7 +531,6 @@ const PagesUser = (() => {
         <div class="dt-head"><span class="gl-code">${g.code}</span> ${esc(g.name)}
           <span class="dt-month">เดือน ${Store.MONTH_TH[mi]} ${c.year}</span></div>
         ${rowInfo ? `<div class="muted small" style="margin:-6px 0 10px">🏷 ${esc(rowInfo.cctName)} (CCT ${rowInfo.cct}) · IO ${rowInfo.io || '—'}</div>` : ''}
-        ${editable ? '' : '<div class="lock-banner" style="margin:0 0 10px">🔒 อ่านอย่างเดียว — ' + (notUsed ? 'GL นี้ทำเครื่องหมายไม่ได้ใช้' : 'ส่งข้อมูล/ปิดรอบแล้ว') + '</div>'}
         <div id="dtRows">${rows.map(rowHtml).join('')}</div>
         ${editable ? '<button class="ghost-btn" id="dtAdd" style="width:100%">＋ เพิ่มรายการ</button>' : ''}
         <div class="dt-total">รวม <b id="dtTotal">0</b> กีบ</div>
