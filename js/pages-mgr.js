@@ -163,10 +163,12 @@ const PagesMgr = (() => {
     document.querySelectorAll('[data-mgr-return]').forEach(b => b.addEventListener('click', () => {
       const deptId = b.dataset.mgrReturn;
       UI.modal(`↩ ตีกลับให้แก้ไข — ${UI.esc(Store.dept(deptId).name)}`,
-        `<p>ระบุเหตุผลที่ต้องแก้ไข (แจ้งไปยังแผนก):</p><textarea id="mgrRetNote" rows="3" placeholder="เช่น ค่าใช้จ่ายเดินทางสูงผิดปกติ กรุณาทบทวน"></textarea>`, [
+        `<p>ระบุเหตุผลที่ต้องแก้ไข <b style="color:#c0392b">*</b> (บังคับ · แจ้งไปยังแผนก):</p><textarea id="mgrRetNote" rows="3" placeholder="เช่น ค่าใช้จ่ายเดินทางสูงผิดปกติ กรุณาทบทวน"></textarea>`, [
         { label: 'ยกเลิก', cls: 'ghost-btn' },
         { label: '↩ ยืนยันตีกลับ', cls: 'danger-btn', onClick: close => {
-            try { Store.mgrReturn(user, year, deptId, document.getElementById('mgrRetNote').value.trim()); UI.toast('ตีกลับให้แผนกแก้ไขแล้ว'); close(); App.render(); }
+            const note = document.getElementById('mgrRetNote').value.trim();
+            if (!note) { UI.toast('กรุณาระบุเหตุผลก่อนตีกลับ', 'err'); document.getElementById('mgrRetNote').focus(); return; }
+            try { Store.mgrReturn(user, year, deptId, note); UI.toast('ตีกลับให้แผนกแก้ไขแล้ว'); close(); App.render(); }
             catch (e) { UI.toast(e.message, 'err'); }
           } },
       ]);

@@ -788,11 +788,13 @@ const PagesAcc = (() => {
       const deptId = btn.dataset.tlock, name = esc(Store.dept(deptId).name);
       if (btn.dataset.locked === '1') {
         UI.modal(`🔓 ปลดล็อกให้แก้ไข — ${name}`, `
-          <p>ปลดล็อก<b>เฉพาะแผนกนี้</b>ให้กลับมาแก้ไขได้ (แผนกอื่นยังล็อกตามเดิม) · ระบุเหตุผล (ถ้ามี — จะแจ้งไปยังหน่วยงาน):</p>
+          <p>ปลดล็อก<b>เฉพาะแผนกนี้</b>ให้กลับมาแก้ไขได้ (แผนกอื่นยังล็อกตามเดิม) · ระบุเหตุผล <b style="color:#c0392b">*</b> (บังคับ · จะแจ้งไปยังหน่วยงาน):</p>
           <textarea id="tlockNote" rows="3" placeholder="เช่น เปิดให้ปรับตัวเลขตามที่ตกลง"></textarea>`, [
           { label: 'ยกเลิก', cls: 'ghost-btn' },
           { label: '🔓 ปลดล็อกแผนกนี้', cls: 'primary-btn', onClick: close => {
-              try { Store.needRevision(user, UI.year(), deptId, document.getElementById('tlockNote').value.trim()); toast('ปลดล็อกแผนกนี้แล้ว — แก้ไขได้'); close(); App.render(); }
+              const note = document.getElementById('tlockNote').value.trim();
+              if (!note) { toast('กรุณาระบุเหตุผลก่อนปลดล็อก', 'err'); document.getElementById('tlockNote').focus(); return; }
+              try { Store.needRevision(user, UI.year(), deptId, note); toast('ปลดล็อกแผนกนี้แล้ว — แก้ไขได้'); close(); App.render(); }
               catch (e) { toast(e.message, 'err'); }
             } },
         ]);
@@ -805,12 +807,14 @@ const PagesAcc = (() => {
     document.querySelectorAll('[data-revise]').forEach(btn => btn.addEventListener('click', () => {
       const deptId = btn.dataset.revise;
       UI.modal(`ตีกลับให้แก้ไข — ${esc(Store.dept(deptId).name)}`, `
-        <p>ระบุเหตุผลที่ต้องแก้ไข (จะแจ้งเตือนไปยังหน่วยงาน):</p>
+        <p>ระบุเหตุผลที่ต้องแก้ไข <b style="color:#c0392b">*</b> (บังคับ · จะแจ้งเตือนไปยังหน่วยงาน):</p>
         <textarea id="revNote" rows="3" placeholder="เช่น GL 635202 เดือนตุลาคม สูงผิดปกติ กรุณาตรวจสอบและระบุสมมติฐานเพิ่มเติม"></textarea>`, [
         { label: 'ยกเลิก', cls: 'ghost-btn' },
         { label: 'ยืนยันตีกลับ', cls: 'danger-btn', onClick: close => {
+            const note = document.getElementById('revNote').value.trim();
+            if (!note) { toast('กรุณาระบุเหตุผลก่อนตีกลับ', 'err'); document.getElementById('revNote').focus(); return; }
             try {
-              Store.needRevision(user, UI.year(), deptId, document.getElementById('revNote').value.trim());
+              Store.needRevision(user, UI.year(), deptId, note);
               toast('ตีกลับให้หน่วยงานแก้ไขแล้ว'); close(); App.render();
             } catch (e) { toast(e.message, 'err'); }
           } },
@@ -848,12 +852,14 @@ const PagesAcc = (() => {
           + (names.length > 12 ? `<li>… และอีก ${names.length - 12} แผนก</li>` : '');
         UI.modal(`ตีกลับ ${deptIds.length} แผนกพร้อมกัน`, `
           <ul class="err-list" style="max-height:180px;overflow:auto">${listHtml}</ul>
-          <p style="margin-top:8px">เหตุผล (ใช้กับทุกแผนกที่เลือก · จะแจ้งเตือนทุกแผนก):</p>
+          <p style="margin-top:8px">เหตุผล <b style="color:#c0392b">*</b> (บังคับ · ใช้กับทุกแผนกที่เลือก · จะแจ้งเตือนทุกแผนก):</p>
           <textarea id="bulkRevNote" rows="3" placeholder="เช่น กรุณาทบทวนค่าซ่อมบำรุงตามนโยบายลด 10%"></textarea>`, [
           { label: 'ยกเลิก', cls: 'ghost-btn' },
           { label: `ยืนยันตีกลับ ${deptIds.length} แผนก`, cls: 'danger-btn', onClick: close => {
+              const note = document.getElementById('bulkRevNote').value.trim();
+              if (!note) { toast('กรุณาระบุเหตุผลก่อนตีกลับ', 'err'); document.getElementById('bulkRevNote').focus(); return; }
               try {
-                const n = Store.needRevisionBulk(user, UI.year(), deptIds, document.getElementById('bulkRevNote').value.trim());
+                const n = Store.needRevisionBulk(user, UI.year(), deptIds, note);
                 toast(`ตีกลับแล้ว ${n} แผนก`); close(); App.render();
               } catch (e) { toast(e.message, 'err'); }
             } },
