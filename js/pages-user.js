@@ -634,7 +634,7 @@ const PagesUser = (() => {
         ${kpi('สถานะ', UI.statusBadge(c.state.status), c.state.revisionNote ? '⚠ ' + esc(c.state.revisionNote) : '')}
       </div>`
       + (v.errors.length ? card(`รายการที่ยังไม่ครบ (${v.errors.length})`,
-          `<ul class="err-list">${v.errors.slice(0, 30).map(e2 => `<li>${esc(e2)}</li>`).join('')}${v.errors.length > 30 ? `<li>… และอีก ${v.errors.length - 30} รายการ</li>` : ''}</ul>
+          `<ul class="err-list">${v.errors.slice(0, 30).map(e2 => `<li>${esc(e2)}</li>`).join('')}</ul>${v.errors.length > 30 ? `<details class="err-more"><summary>… และอีก ${v.errors.length - 30} รายการ (คลิกเพื่อดูทั้งหมด)</summary><ul class="err-list">${v.errors.slice(30).map(e2 => `<li>${esc(e2)}</li>`).join('')}</ul></details>` : ''}
            <a class="primary-btn" href="#/budget">ไปกรอกให้ครบ</a>`) : '')
       + (v.warnings.length ? card(`ข้อสังเกต (${v.warnings.length}) — ไม่บล็อกการส่ง แต่ควรระบุเหตุผล`,
           `<ul class="warn-list">${v.warnings.map(w => `<li>⚠ ${esc(w)}</li>`).join('')}</ul>`) : '')
