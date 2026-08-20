@@ -420,7 +420,7 @@ const PagesAcc = (() => {
     const totCur = depts.reduce((s, d) => s + Store.deptTotal(year, d.id), 0);
     const totPrev = depts.reduce((s, d) => s + Store.deptTotal(prevYear, d.id), 0);
     const totCmp = Store.compare(totCur, totPrev);
-    const deptTotalRow = `<tr class="tr-sum"><td><b>รวมทั้งบริษัท · ${depts.length} หน่วยงาน</b></td><td class="num"><b>${fmt(totPrev)}</b></td><td class="num"><b>${fmt(totCur)}</b></td><td class="num"><b>${(totCmp.diff >= 0 ? '+' : '') + fmt(totCmp.diff)}</b></td><td>${deltaBadge(totCmp.diff, totCmp.pct)}</td><td></td><td></td><td></td></tr>`;
+    const deptTotalRow = `<tr class="tr-sum"><td></td><td><b>รวมทั้งบริษัท · ${depts.length} หน่วยงาน</b></td><td class="num"><b>${fmt(totPrev)}</b></td><td class="num"><b>${fmt(totCur)}</b></td><td class="num"><b>${(totCmp.diff >= 0 ? '+' : '') + fmt(totCmp.diff)}</b></td><td>${deltaBadge(totCmp.diff, totCmp.pct)}</td><td></td><td></td><td></td></tr>`;
     let lastSide = null;
     const rows = depts.map(d => {
       const cur = Store.deptTotal(year, d.id), prev = Store.deptTotal(prevYear, d.id);
@@ -432,9 +432,11 @@ const PagesAcc = (() => {
       if (side !== lastSide) {
         lastSide = side;
         const n = depts.filter(x => (x.side || (x.code || '')[0]) === side).length;
-        head = `<tr class="side-row"><td colspan="8">${esc(sides[side] || 'อื่นๆ')} · ${n} หน่วยงาน</td></tr>`;
+        head = `<tr class="side-row"><td colspan="9">${esc(sides[side] || 'อื่นๆ')} · ${n} หน่วยงาน</td></tr>`;
       }
+      const yearClosed = Store.period(year)?.status !== 'OPEN';
       return `${head}<tr>
+        <td class="chk-col"><input type="checkbox" class="dsel" value="${d.id}"></td>
         <td><a class="link" href="#/acc/departments?d=${d.id}"><b>${esc(d.name)}</b></a><div class="muted small">${d.code}</div></td>
         <td class="num">${fmt(prev)}</td><td class="num">${fmt(cur)}</td>
         <td class="num ${cmp.diff > 0 ? 'txt-up' : cmp.diff < 0 ? 'txt-down' : ''}">${(cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff)}</td>
@@ -443,17 +445,29 @@ const PagesAcc = (() => {
         <td>${UI.statusBadge(st.status)}</td>
         <td class="td-actions">
           <a class="link" href="#/acc/departments?d=${d.id}" title="Drill-down">ดู →</a>
-          ${['SUBMITTED'].includes(st.status) ? `<button class="ghost-btn small" data-revise="${d.id}" title="ตีกลับให้แก้ไข (Need Revision)">↩ ตีกลับ</button>` : ''}
+          ${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="ghost-btn small" data-revise="${d.id}" title="ตีกลับให้แก้ไข — ปลดล็อกเฉพาะแผนกนี้ (แผนกอื่นยังล็อกตามเดิม)">↩ ตีกลับ</button>` : ''}
+          ${yearClosed && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="ghost-btn small btn-lockback" data-lockdept="${d.id}" title="ตรวจงบที่แก้ไขแล้ว — ล็อกแผนกนี้คืน">🔒 ล็อกคืน</button>` : ''}
         </td></tr>`;
     }).join('');
+    // ตัวเลือกฝ่าย (ชั้นผู้อนุมัติ) สำหรับตีกลับยกฝ่าย — แสดงเฉพาะฝ่ายที่มีแผนกใต้สังกัด
+    const divOpts = (Store.db.oversight || []).filter(n => n.approver)
+      .map(n => ({ n, codes: Store.subtreeDeptCodes(n.id) })).filter(x => x.codes.length)
+      .map(x => `<option value="${x.n.id}">${esc(x.n.name)} · ${x.codes.length} แผนก</option>`).join('');
+    const bulkBar = `<div class="bulk-bar">
+        <b>↩ ตีกลับหลายแผนก:</b>
+        <button id="bulkReviseBtn" class="danger-btn small" disabled>ตีกลับที่เลือก (<span id="bulkCount">0</span>)</button>
+        <span class="muted small">หรือยกฝ่าย:</span>
+        <select id="bulkDivSel"><option value="">— เลือกฝ่าย —</option>${divOpts}</select>
+        <button id="bulkDivBtn" class="ghost-btn small">↩ ตีกลับยกฝ่าย</button>
+      </div>`;
 
     return pageHead(`หน่วยงานทั้งหมด — งบปี ${year}`, `Company → Department → GL → รายเดือน → เหตุผล · ${asOf()}`,
         `<button class="ghost-btn btn-green" id="exportMLXlsx" title="ไฟล์ Excel โครงคอลัมน์ A→CT ตรงตามไฟล์ ML_งบค่าใช้จ่าย (งบต้นปี/ล่าสุด/เกิดจริง + จำแนกครบ)">⬇ Excel (ML Form)</button>
          <button class="ghost-btn" id="exportMLCsv" title="CSV โครงเดียวกับไฟล์ ML">⬇ CSV (ML Form)</button>
          <button class="ghost-btn" onclick="Store.exportDeptSummary(${year})" title="สรุปยอดรายหน่วยงานแบบย่อ">⬇ CSV สรุป</button>`)
       + `<div class="breadcrumb"><b>ทุกหน่วยงาน</b></div>`
-      + card('', `<div class="table-scroll"><table class="data-table">
-        <thead><tr><th>หน่วยงาน</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th>
+      + card('', `${bulkBar}<div class="table-scroll"><table class="data-table">
+        <thead><tr><th class="chk-col"><input type="checkbox" id="dselAll" title="เลือก/ยกเลิกทั้งหมด"></th><th>หน่วยงาน</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">ปี ${year} (กีบ)</th>
         <th class="num">ผลต่าง (กีบ)</th><th>%</th><th>ความครบถ้วน</th><th>สถานะ</th><th></th></tr></thead>
         <tbody>${rows}${deptTotalRow}</tbody></table></div>`, { cls: 'card-flush' });
   }
@@ -657,7 +671,8 @@ const PagesAcc = (() => {
     }).join('');
 
     return pageHead(esc(d.name), `งบปี ${year} เทียบปี ${prevYear} · ${UI.statusBadge(st.status)}`,
-        `${['SUBMITTED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}`)
+        `${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}" title="ปลดล็อกเฉพาะแผนกนี้ — แผนกอื่นยังล็อกตามเดิม">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}
+         ${Store.period(year)?.status !== 'OPEN' && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="ghost-btn" data-lockdept="${deptId}">🔒 ล็อกคืน</button>` : ''}`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <b>${esc(d.name)}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">
         ${kpi('ปี ' + year, fmt(cur) + ' <small>กีบ</small>')}
@@ -781,6 +796,57 @@ const PagesAcc = (() => {
           } },
       ]);
     }));
+    // ล็อกคืนรายแผนก (หลังแผนกที่ถูกตีกลับแก้ไข + ส่งใหม่แล้ว)
+    document.querySelectorAll('[data-lockdept]').forEach(btn => btn.addEventListener('click', () => {
+      const deptId = btn.dataset.lockdept;
+      UI.confirm2(`ล็อกคืน — ${esc(Store.dept(deptId).name)}`,
+        `ตรวจงบที่แก้ไขแล้วเรียบร้อย ล็อกแผนกนี้กลับเป็นปิดรอบ?`,
+        'แผนกจะแก้ไขไม่ได้อีก จนกว่าจะถูกตีกลับใหม่',
+        () => {
+          try { Store.lockDept(user, UI.year(), deptId); toast('ล็อกคืนแล้ว'); App.render(); }
+          catch (e) { toast(e.message, 'err'); }
+        });
+    }));
+    // ตีกลับหลายแผนก: checkbox + ยกฝ่าย
+    const dsels = [...document.querySelectorAll('.dsel')];
+    if (dsels.length) {
+      const cntEl = document.getElementById('bulkCount');
+      const bulkBtn = document.getElementById('bulkReviseBtn');
+      const refresh = () => {
+        const n = dsels.filter(cb => cb.checked).length;
+        if (cntEl) cntEl.textContent = n;
+        if (bulkBtn) bulkBtn.disabled = !n;
+      };
+      dsels.forEach(cb => cb.addEventListener('change', refresh));
+      document.getElementById('dselAll')?.addEventListener('change', e => {
+        dsels.forEach(cb => { cb.checked = e.target.checked; }); refresh();
+      });
+      const bulkModal = deptIds => {
+        if (!deptIds.length) { toast('ไม่มีแผนกที่เลือก', 'err'); return; }
+        const names = deptIds.map(id => Store.dept(id)?.name || id);
+        const listHtml = names.slice(0, 12).map(n => `<li>${esc(n)}</li>`).join('')
+          + (names.length > 12 ? `<li>… และอีก ${names.length - 12} แผนก</li>` : '');
+        UI.modal(`ตีกลับ ${deptIds.length} แผนกพร้อมกัน`, `
+          <ul class="err-list" style="max-height:180px;overflow:auto">${listHtml}</ul>
+          <p style="margin-top:8px">เหตุผล (ใช้กับทุกแผนกที่เลือก · จะแจ้งเตือนทุกแผนก):</p>
+          <textarea id="bulkRevNote" rows="3" placeholder="เช่น กรุณาทบทวนค่าซ่อมบำรุงตามนโยบายลด 10%"></textarea>`, [
+          { label: 'ยกเลิก', cls: 'ghost-btn' },
+          { label: `ยืนยันตีกลับ ${deptIds.length} แผนก`, cls: 'danger-btn', onClick: close => {
+              try {
+                const n = Store.needRevisionBulk(user, UI.year(), deptIds, document.getElementById('bulkRevNote').value.trim());
+                toast(`ตีกลับแล้ว ${n} แผนก`); close(); App.render();
+              } catch (e) { toast(e.message, 'err'); }
+            } },
+        ]);
+      };
+      bulkBtn?.addEventListener('click', () => bulkModal(dsels.filter(cb => cb.checked).map(cb => cb.value)));
+      document.getElementById('bulkDivBtn')?.addEventListener('click', () => {
+        const unit = document.getElementById('bulkDivSel')?.value;
+        if (!unit) { toast('เลือกฝ่ายก่อน', 'err'); return; }
+        const ids = Store.subtreeDepartments(unit).map(d => d.id);
+        bulkModal(ids);
+      });
+    }
   }
 
   /* ============ Analysis ============ */

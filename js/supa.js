@@ -250,6 +250,11 @@ const Supa = (() => {
         mgrBy: r.mgr_by, mgrAt: r.mgr_at, mgrNote: r.mgr_note,
         accBy: r.acc_by, accAt: r.acc_at, accNote: r.acc_note, appliedAt: r.applied_at }),
     },
+    { name: 'user_emails', pk: ['code'], assign: 'userEmails', optional: true, // อีเมลราย code (รหัสแผนก/ROLE) — ใช้กับ EmailBridge
+      list: db => db.userEmails || [],
+      toRow: u => ({ code: u.code, emails: u.emails || [] }),
+      fromRow: r => ({ code: r.code, emails: r.emails || [] }),
+    },
     { name: 'snapshot_rows', pk: ['year', 'label', 'department_id', 'gl_id', 'cct'],
       list: db => (db.budgetSnapshots || []).flatMap(s => (s.rows || []).map(r =>
         ({ year: s.year, label: s.label, department_id: r.departmentId, gl_id: r.glId, cct: r.cct, months: r.months }))),
@@ -372,6 +377,18 @@ const Supa = (() => {
     return { path, name: file.name, type: file.type || '', size: file.size || 0, url: publicUrl('memos', path) };
   }
 
+  /* ---------- อีเมลแจ้งเตือน (Edge Function: send-email → Resend) ---------- */
+  // ต้อง deploy function + ตั้ง RESEND_API_KEY ก่อน (ดู supabase/EMAIL-SETUP.md) — ก่อนหน้านั้นจะคืน error เงียบๆ
+  async function sendEmail(to, subject, html) {
+    const res = await fetch(base() + '/functions/v1/send-email', {
+      method: 'POST',
+      headers: { apikey: key(), Authorization: 'Bearer ' + key(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, html }),
+    });
+    if (!res.ok) throw new Error('ส่งอีเมลไม่สำเร็จ (' + res.status + '): ' + (await res.text()).slice(0, 160));
+    return res.json();
+  }
+
   /* ลบทั้งปี แบบ bulk (filter year เดียว = 1 request/ตาราง แทนลบรายแถว) + ล้าง baseline ของปีนั้น
      → เร็ว/เชื่อถือได้ · ไม่มี FK year→budget_periods จึงลบลำดับใดก็ได้ */
   async function deleteYear(year) {
@@ -386,7 +403,7 @@ const Supa = (() => {
   }
 
   return { enabled, setConfig, url: base, hasKey: () => !!key(), ping, loadAll, pushDiff, primeBaseline, deleteYear,
-    uploadMemo, publicUrl,
+    uploadMemo, publicUrl, sendEmail,
     signIn, signOut, refresh, authed, myProfile, authRequired: () => AUTH_REQUIRED };
 })();
 

@@ -1213,6 +1213,14 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 @media(max-width:860px){.glrow-form{grid-template-columns:repeat(2,1fr)}}
 .glrow-form label.opt{opacity:1;color:#54617a}
 .glrow-form label small{color:#b3760a;font-weight:700}
+/* แถบตีกลับหลายแผนก + checkbox เลือกแผนก (หน้าตรวจสอบของแอดมิน) */
+.bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:#fbfcfe;font-size:13px}
+.bulk-bar select{font:inherit;font-size:12.5px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:8px;max-width:280px}
+.bulk-bar .danger-btn:disabled{opacity:.45;cursor:not-allowed}
+.chk-col{width:34px;text-align:center !important}
+.chk-col input{width:15px;height:15px;cursor:pointer;accent-color:#2563eb}
+.btn-lockback{border-color:#b7d3a8 !important;color:#2e7a44 !important}
+.btn-lockback:hover{background:#f2faf3 !important}
 /* สกุลเงิน + ธง ในตาราง Exchange Rate */
 .cur-cell{display:inline-flex;align-items:center;gap:8px}
 .cur-cell b{font-size:14px;color:var(--ink);letter-spacing:.02em}

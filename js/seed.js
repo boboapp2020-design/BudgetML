@@ -216,6 +216,7 @@ const SEED = (() => {
     ],
     changeRequests: [],   // คำร้องปรับงบกลางปี (ขอเพิ่ม/ลด/โยก) — sync ตาราง change_requests
     changeWindows: [],    // สถานะเปิด/ปิดหน้าต่างปรับงบ ราย ปี×ช่วง — sync ตาราง change_windows
+    userEmails: [],       // อีเมลแจ้งเตือนราย code (รหัสแผนก/ROLE) — sync ตาราง user_emails (ใช้กับ EmailBridge)
     exchangeRates, fuelPrices, auditLogs, notifications,
   };
 })();

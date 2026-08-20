@@ -108,6 +108,8 @@ const Store = (() => {
       ts: new Date().toISOString(),
       targetRole: target.role ?? null, targetDeptId: target.deptId ?? null, message, read: false,
     });
+    // ยิงอีเมลคู่ขนาน (best-effort — ทำงานเมื่อตั้งค่า Edge Function + user_emails แล้ว, ดู supabase/EMAIL-SETUP.md)
+    try { if (typeof EmailBridge !== 'undefined') EmailBridge.dispatch(target, message); } catch (e) { /* เงียบ */ }
   }
   function myNotifications(user) {
     return db.notifications.filter(n =>
@@ -544,8 +546,9 @@ const Store = (() => {
     if (actor.role !== 'USER') throw new Error('Accounting/Admin ไม่มีสิทธิ์แก้ไขตัวเลขงบประมาณของหน่วยงาน — หากข้อมูลผิดให้ตีกลับสถานะ Need Revision เพื่อให้หน่วยงานแก้ไขเอง');
     if (actor.departmentId !== deptId) throw new Error('แก้ไขได้เฉพาะข้อมูลของหน่วยงานตนเองเท่านั้น');
     const p = period(year);
-    if (!p || p.status !== 'OPEN') throw new Error(`รอบงบประมาณปี ${year} ปิดแล้ว ไม่สามารถแก้ไขได้`);
     const st = deptState(year, deptId).status;
+    // ถูกตีกลับ (NEED_REVISION) = ปลดล็อก "เฉพาะหน่วยงานนี้" แม้รอบทั้งปีปิด/Lock แล้ว — หน่วยงานอื่นยังล็อกตามเดิม
+    if (!p || (p.status !== 'OPEN' && st !== 'NEED_REVISION')) throw new Error(`รอบงบประมาณปี ${year} ปิดแล้ว ไม่สามารถแก้ไขได้`);
     if (st === 'SUBMITTED') throw new Error('ส่งข้อมูลให้แผนกบัญชีแล้ว — แก้ไขได้เมื่อถูกตีกลับ (Need Revision) เท่านั้น');
     if (st === 'LOCKED') throw new Error('งบประมาณถูก Lock แล้ว ไม่สามารถแก้ไขได้');
   }
@@ -820,6 +823,28 @@ const Store = (() => {
     setStatusInternal(year, deptId, 'NEED_REVISION', { revisionNote: noteMsg || null });
     audit(actor, 'ตีกลับให้แก้ไข (Need Revision)', { deptId, newValue: noteMsg });
     notify({ deptId }, `งบประมาณปี ${year} ถูกส่งกลับให้แก้ไข${noteMsg ? ' — ' + noteMsg : ''}`);
+    save();
+  }
+  // ตีกลับหลายแผนกพร้อมกัน (เลือกเอง หรือยกฝ่าย) — เหตุผลเดียวใช้กับทุกแผนกที่เลือก
+  function needRevisionBulk(actor, year, deptIds, noteMsg) {
+    assertAccounting(actor);
+    const y = Number(year);
+    const ids = [...new Set(deptIds)].filter(id => dept(id));
+    if (!ids.length) throw new Error('ไม่มีแผนกที่เลือก');
+    ids.forEach(id => {
+      setStatusInternal(y, id, 'NEED_REVISION', { revisionNote: noteMsg || null });
+      notify({ deptId: id }, `งบประมาณปี ${y} ถูกส่งกลับให้แก้ไข${noteMsg ? ' — ' + noteMsg : ''}`);
+    });
+    audit(actor, 'ตีกลับหลายแผนกพร้อมกัน', { newValue: `ปี ${y} · ${ids.length} แผนก: ${ids.map(id => dept(id)?.code).join(', ')}${noteMsg ? ' — ' + noteMsg : ''}` });
+    save();
+    return ids.length;
+  }
+  // ล็อกคืน "รายแผนก" หลังแผนกที่ถูกตีกลับแก้ไขและส่งใหม่แล้ว (รอบทั้งปียังปิดตามเดิม)
+  function lockDept(actor, year, deptId) {
+    assertAccounting(actor);
+    setStatusInternal(year, deptId, 'LOCKED');
+    audit(actor, 'ล็อกหน่วยงานคืน (หลังแก้ไข)', { deptId, newValue: `ปี ${year}` });
+    notify({ deptId }, `งบประมาณปี ${year} ผ่านการตรวจแล้ว — ล็อกเรียบร้อย`);
     save();
   }
   // ---- สายอนุมัติผู้จัดการฝ่าย (SoD): รับรอง / ตีกลับ เฉพาะแผนกใน subtree ตน ----
@@ -1451,7 +1476,7 @@ const Store = (() => {
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
     canEdit, setCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
-    needRevision, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
+    needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt,
