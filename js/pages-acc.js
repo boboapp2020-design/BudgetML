@@ -682,7 +682,8 @@ const PagesAcc = (() => {
 
     return pageHead(esc(d.name), `งบปี ${year} เทียบปี ${prevYear} · ${UI.statusBadge(st.status)}`,
         `<button class="ghost-btn" data-drill-back title="กลับไปหน้าหน่วยงาน & Drill-down">← กลับ</button>
-         <span class="pa-right">${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}" title="ปลดล็อกเฉพาะแผนกนี้ — แผนกอื่นยังล็อกตามเดิม">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}
+         <span class="pa-right"><a class="primary-btn" href="#/acc/departments?d=${deptId}&edit=1" title="โหมดแอดมิน — แก้งบรายเดือนของหน่วยงานนี้ได้ทุกช่อง (บันทึก Audit Log)">✏️ แก้ไขงบรายเดือน</a>
+         ${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}" title="ปลดล็อกเฉพาะแผนกนี้ — แผนกอื่นยังล็อกตามเดิม">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}
          ${Store.period(year)?.status !== 'OPEN' && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="ghost-btn" data-lockdept="${deptId}">🔒 ล็อกคืน</button>` : ''}</span>`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <b>${esc(d.name)}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">
@@ -744,8 +745,7 @@ const PagesAcc = (() => {
     }).join('');
 
     return pageHead(`GL ${g.code} — ${esc(g.name)}`, `${esc(d.name)} · งบปี ${year} เทียบปี ${prevYear}`,
-        `<a class="ghost-btn" href="#/acc/departments?d=${deptId}" title="กลับไปหน้าหน่วยงานนี้">← กลับ</a>
-         <span class="pa-right"><a class="primary-btn" href="#/acc/departments?d=${deptId}&edit=1" title="โหมดแอดมิน — แก้งบรายเดือนของหน่วยงานนี้ได้ทุกช่อง (บันทึก Audit Log)">✏️ แก้ไขงบรายเดือน</a></span>`)
+        `<a class="ghost-btn" href="#/acc/departments?d=${deptId}" title="กลับไปหน้าหน่วยงานนี้">← กลับ</a>`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <a href="#/acc/departments?d=${deptId}">${esc(d.name)}</a> › <b>GL ${g.code}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">
         ${kpi('ปี ' + year, fmt(cur) + ' <small>กีบ</small>')}
