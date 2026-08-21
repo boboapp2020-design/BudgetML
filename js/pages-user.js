@@ -268,7 +268,7 @@ const PagesUser = (() => {
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
           </span></div>
         <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') + (hideEmpty ? ' hide-empty' : '') })
-      + (c.editable ? `<button id="submitFab" class="submit-fab" title="ตรวจสอบสรุปงบแล้วส่งให้แผนกบัญชี">📤 ส่งงบประมาณ</button>` : '');
+      + `<button id="submitFab" class="submit-fab${c.editable ? '' : ' locked'}" title="${c.editable ? 'ตรวจสอบสรุปงบแล้วส่งให้แผนกบัญชี' : 'ดูสรุป/สถานะงบ (ส่งแล้ว/ล็อกอยู่ — แก้ไม่ได้จนแอดมินตีกลับ)'}">${c.editable ? '📤 ส่งงบประมาณ' : '🔒 สถานะ/สรุปงบ'}</button>`;
   }
 
   /* ===== Pop-up เต็มจอ: เทียบงบปัจจุบัน ↔ งบต้นปี (อนุมัติ) + งบคงเหลือ ===== */
@@ -323,8 +323,8 @@ const PagesUser = (() => {
         <div class="cmp-kpis">
           <div class="cmp-kpi"><span>งบต้นปี (อนุมัติ)</span><b>${fmt(oTot)}</b></div>
           <div class="cmp-kpi"><span>งบปัจจุบัน</span><b>${fmt(cTot)}</b></div>
-          <div class="cmp-kpi ${dTot >= 0 ? 'up' : 'down'}"><span>เปลี่ยนแปลงจากต้นปี</span><b>${(dTot >= 0 ? '+' : '') + fmt(dTot)}${dPct != null ? ` · ${(dPct >= 0 ? '+' : '') + dPct.toFixed(1)}%` : ''}</b></div>
-          ${hasAct ? `<div class="cmp-kpi"><span>เกิดจริงสะสม</span><b>${fmt(aTot)}</b></div><div class="cmp-kpi ${remain < 0 ? 'up' : 'down'}"><span>งบคงเหลือ (ต้นปี − เกิดจริง)</span><b>${fmt(remain)}${remPct != null ? ` · ${remPct.toFixed(1)}%` : ''}</b></div>` : ''}
+          <div class="cmp-kpi ${dTot >= 0 ? 'up' : 'down'}"><span>เปลี่ยนแปลงจากต้นปี</span><b>${(dTot >= 0 ? '+' : '') + fmt(dTot)}${dPct != null ? `<span class="cmp-pct">${(dPct >= 0 ? '+' : '') + dPct.toFixed(1)}%</span>` : ''}</b></div>
+          ${hasAct ? `<div class="cmp-kpi"><span>เกิดจริงสะสม</span><b>${fmt(aTot)}</b></div><div class="cmp-kpi ${remain < 0 ? 'up' : 'down'}"><span>งบคงเหลือ (ต้นปี − เกิดจริง)</span><b>${fmt(remain)}${remPct != null ? `<span class="cmp-pct">${remPct.toFixed(1)}%</span>` : ''}</b></div>` : ''}
         </div>
         <div class="cmp-tabs">
           <button class="cmp-tab active" data-cmp-view="month">📅 รายเดือน (รวมหน่วยงาน)</button>
@@ -368,7 +368,9 @@ const PagesUser = (() => {
       return `<tr><td><span class="gl-code">${g.code}</span> ${esc(g.name)}</td><td class="num">${fmt(gp)}</td><td class="num">${fmt(gc)}</td><td class="num">${deltaBadge(gcmp.diff, gcmp.pct)}</td><td>${an ? `<span class="anomaly ${an.level}">⚠ ${an.tag}</span>` : ''}</td></tr>`;
     }).join('');
 
-    const missCard = v.ok
+    const missCard = !c.editable
+      ? `<div class="sub-status locked"><b>🔒 งบนี้ส่ง/ล็อกแล้ว (${UI.statusBadge(c.state.status)})</b> — แก้ไขไม่ได้จนกว่าแผนกบัญชีจะตีกลับ (Need Revision)${c.state.revisionNote ? `<br>หมายเหตุ: ${esc(c.state.revisionNote)}` : ''}</div>`
+      : v.ok
       ? `<div class="sub-status ok"><b>✓ กรอกครบถ้วน 100%</b> — พร้อมส่งให้แผนกบัญชี</div>`
       : `<div class="sub-status miss"><b>⚠ ยังกรอกไม่ครบ ${v.errors.length} รายการ</b> — ต้องกรอกให้ครบก่อนจึงจะส่งได้
           <ul class="err-list" style="max-height:150px;overflow:auto;margin:8px 0 0">${v.errors.slice(0, 40).map(e2 => `<li>${esc(e2)}</li>`).join('')}${v.errors.length > 40 ? `<li>… และอีก ${v.errors.length - 40} รายการ</li>` : ''}</ul></div>`;
@@ -387,7 +389,7 @@ const PagesUser = (() => {
         <div class="cmp-kpis">
           <div class="cmp-kpi"><span>ความครบถ้วน</span><b class="${v.ok ? '' : 'up'}">${comp.pct}%</b></div>
           <div class="cmp-kpi"><span>ยอดรวมปี ${c.year}</span><b>${fmt(cur)}</b></div>
-          <div class="cmp-kpi ${cmp.diff >= 0 ? 'up' : 'down'}"><span>เทียบภาพรวมปี ${c.prevYear}</span><b>${(cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff)}${cmp.pct != null ? ` · ${(cmp.pct >= 0 ? '+' : '') + cmp.pct.toFixed(1)}%` : ''}</b></div>
+          <div class="cmp-kpi ${cmp.diff >= 0 ? 'up' : 'down'}"><span>เทียบภาพรวมปี ${c.prevYear}</span><b>${(cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff)}${cmp.pct != null ? `<span class="cmp-pct">${(cmp.pct >= 0 ? '+' : '') + cmp.pct.toFixed(1)}%</span>` : ''}</b></div>
         </div>
         ${missCard}${warnCard}
         <div style="font-size:13px;font-weight:700;margin:14px 0 6px">สรุปราย GL เทียบปี ${c.prevYear}</div>

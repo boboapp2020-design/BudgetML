@@ -398,6 +398,8 @@ body.edit-fs-lock { overflow: hidden; }
 .cmp-kpi b { font-size: 18px; font-weight: 700; }
 .cmp-kpi.up b { color: #c0392b; }
 .cmp-kpi.down b { color: #1d9e75; }
+/* % ในการ์ด — เล็กลง + คนละสี (เทา) แยกจากตัวเลขเงิน */
+.cmp-kpi .cmp-pct { font-size: 13px; font-weight: 600; color: #64748b; margin-left: 6px; }
 .cmp-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .cmp-tab { background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 7px 15px; font-size: 13px; cursor: pointer; color: var(--ink-2, #556); }
 .cmp-tab.active { background: #1f3a5f; color: #fff; border-color: #1f3a5f; }
@@ -424,11 +426,15 @@ body.edit-fs-lock { overflow: hidden; }
   box-shadow: 0 8px 22px rgba(37,99,235,.4); display: inline-flex; align-items: center; gap: 8px; }
 .submit-fab:hover { background: #1d4fd7; box-shadow: 0 10px 26px rgba(37,99,235,.5); }
 .submit-fab:active { transform: translateY(1px); }
+/* ล็อกอยู่ (ส่งแล้ว/รอบปิด) — ปุ่มจางๆ สีเทา + กุญแจ */
+.submit-fab.locked { background: #e5e8ec; color: #7a828c; box-shadow: 0 4px 12px rgba(0,0,0,.12); font-weight: 600; }
+.submit-fab.locked:hover { background: #dbdfe4; box-shadow: 0 6px 16px rgba(0,0,0,.16); }
 /* การ์ดสถานะในป๊อปอัพส่งงบ */
 .sub-status { border-radius: 10px; padding: 11px 14px; margin: 12px 0 0; font-size: 13.5px; }
 .sub-status.ok { background: #e6f7ee; color: #0b7d52; border: 1px solid #9fe1cb; }
 .sub-status.miss { background: #fdeceb; color: #a3251d; border: 1px solid #f0997b; }
 .sub-status.warn { background: #fff7e6; color: #7a5405; border: 1px solid #eda100; }
+.sub-status.locked { background: #eef1f4; color: #4a5568; border: 1px solid #cbd2da; }
 .sub-status .err-list li, .sub-status .warn-list li { font-size: 12.5px; }
 .sub-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
 .sub-foot .primary-btn[disabled] { opacity: .5; cursor: not-allowed; }
