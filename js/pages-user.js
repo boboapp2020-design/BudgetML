@@ -266,9 +266,10 @@ const PagesUser = (() => {
             ${hasOrig ? `<button id="cmpOrigBtn" class="ghost-btn small btn-blue" title="เปิดหน้าต่างเต็มจอ เทียบงบปัจจุบัน ↔ งบต้นปี (อนุมัติ) เดือนต่อเดือน พร้อมงบคงเหลือ">⚖ เทียบงบต้นปี</button>` : ''}
             ${emptyCount ? `<button id="hideEmptyBtn" class="ghost-btn small ${hideEmpty ? 'he-on' : ''}" title="ซ่อน/แสดง GL ที่ยอดรวมทั้งปี = 0 (ยังไม่ได้ใช้) เพื่อดูเฉพาะที่มีตัวเลข">${hideEmpty ? `👁 แสดง GL ที่ไม่ได้ใช้ (${emptyCount})` : `🙈 ซ่อน GL ที่ไม่ได้ใช้ (${emptyCount})`}</button>` : ''}
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
+            ${c.editable ? `<button id="clearDataBtn" class="ghost-btn small btn-clear" title="ล้างข้อมูลที่กรอกทั้งปีของหน่วยงานนี้ — เริ่มใหม่ (ย้อนกลับไม่ได้)">🗑 ล้างข้อมูล</button>` : ''}
+            <button id="submitFab" class="tool-submit${c.editable ? '' : ' locked'}" title="${c.editable ? 'ตรวจสอบสรุปงบแล้วส่งให้แผนกบัญชี' : 'ดูสรุป/สถานะงบ (ส่งแล้ว/ล็อกอยู่ — แก้ไม่ได้จนแอดมินตีกลับ)'}">${c.editable ? '📤 ส่งงบประมาณ' : '🔒 สถานะ/สรุปงบ'}</button>
           </span></div>
-        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') + (hideEmpty ? ' hide-empty' : '') })
-      + `<button id="submitFab" class="submit-fab${c.editable ? '' : ' locked'}" title="${c.editable ? 'ตรวจสอบสรุปงบแล้วส่งให้แผนกบัญชี' : 'ดูสรุป/สถานะงบ (ส่งแล้ว/ล็อกอยู่ — แก้ไม่ได้จนแอดมินตีกลับ)'}">${c.editable ? '📤 ส่งงบประมาณ' : '🔒 สถานะ/สรุปงบ'}</button>`;
+        <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') + (hideEmpty ? ' hide-empty' : '') });
   }
 
   /* ===== Pop-up เต็มจอ: เทียบงบปัจจุบัน ↔ งบต้นปี (อนุมัติ) + งบคงเหลือ ===== */
@@ -555,8 +556,18 @@ const PagesUser = (() => {
 
     /* --- ปุ่ม "⚖ เทียบงบต้นปี" — เปิด Pop-up เต็มจอ เทียบปัจจุบัน↔ต้นปี + งบคงเหลือ --- */
     document.getElementById('cmpOrigBtn')?.addEventListener('click', () => openCompareOrig(c));
-    /* --- ปุ่ม "📤 ส่งงบประมาณ" (มุมขวาล่าง) — สรุปแล้วยืนยันส่ง --- */
+    /* --- ปุ่ม "📤 ส่งงบประมาณ" — สรุปแล้วยืนยันส่ง --- */
     document.getElementById('submitFab')?.addEventListener('click', () => openSubmitDialog(c, user));
+    /* --- ปุ่ม "🗑 ล้างข้อมูล" — ยืนยันก่อนล้างงบทั้งปีของหน่วยงาน --- */
+    document.getElementById('clearDataBtn')?.addEventListener('click', () => {
+      UI.confirm2('🗑 ล้างข้อมูลงบประมาณ',
+        `จะล้างตัวเลขที่กรอกทั้งปีของ <b>${esc(c.dept.name)}</b> (ทุกเดือน + MTP + เหตุผล/รายละเอียด) กลับเป็นฟอร์มเปล่า`,
+        'ย้อนกลับไม่ได้ — ต้องกรอกใหม่ทั้งหมด',
+        () => {
+          try { Store.clearDeptYear(user, c.year, c.deptId); toast('ล้างข้อมูลเรียบร้อยแล้ว'); App.render(); }
+          catch (e) { toast(e.message, 'err'); }
+        });
+    });
 
     /* --- เทียบปีก่อนเดือนต่อเดือน: ghost ทุกช่อง (toggle) --- */
     const SHOW_PREV_KEY = 'abp_show_prev';

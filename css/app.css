@@ -420,15 +420,18 @@ body.edit-fs-lock { overflow: hidden; }
 .cmp-detail > td { padding: 4px 10px 10px !important; background: #f7f9fc; }
 .txt-warn { color: #c0392b; }
 @media (max-width: 720px){ .cmp-overlay { padding: 8px; } .cmp-inner-wrap { padding: 14px; } }
-/* ปุ่มลอย "ส่งงบประมาณ" มุมขวาล่าง */
-.submit-fab { position: fixed; right: 26px; bottom: 26px; z-index: 1100; background: #2563eb; color: #fff; border: none;
-  border-radius: 999px; padding: 14px 26px; font-size: 15px; font-weight: 700; cursor: pointer;
-  box-shadow: 0 8px 22px rgba(37,99,235,.4); display: inline-flex; align-items: center; gap: 8px; }
-.submit-fab:hover { background: #1d4fd7; box-shadow: 0 10px 26px rgba(37,99,235,.5); }
-.submit-fab:active { transform: translateY(1px); }
-/* ล็อกอยู่ (ส่งแล้ว/รอบปิด) — ปุ่มจางๆ สีเทา + กุญแจ */
-.submit-fab.locked { background: #e5e8ec; color: #7a828c; box-shadow: 0 4px 12px rgba(0,0,0,.12); font-weight: 600; }
-.submit-fab.locked:hover { background: #dbdfe4; box-shadow: 0 6px 16px rgba(0,0,0,.16); }
+/* ปุ่ม "ส่งงบประมาณ" ในแถบเครื่องมือ — เล็ก โมเดิร์น เด่น */
+.tool-submit { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 0 2px 7px rgba(37,99,235,.32); transition: background .15s, box-shadow .15s, transform .05s; white-space: nowrap; }
+.tool-submit:hover { background: #1d4fd7; box-shadow: 0 4px 12px rgba(37,99,235,.42); }
+.tool-submit:active { transform: translateY(1px); }
+/* ล็อกอยู่ (ส่งแล้ว/รอบปิด) — จางๆ สีเทา + กุญแจ */
+.tool-submit.locked { background: #eef1f4; color: #7a828c; box-shadow: none; font-weight: 600; }
+.tool-submit.locked:hover { background: #e4e8ec; box-shadow: none; }
+/* ปุ่มล้างข้อมูล — โทนแดงอ่อน */
+.btn-clear { color: #c0392b !important; border-color: #f0c0b8 !important; }
+.btn-clear:hover { background: #fdeceb !important; }
 /* การ์ดสถานะในป๊อปอัพส่งงบ */
 .sub-status { border-radius: 10px; padding: 11px 14px; margin: 12px 0 0; font-size: 13.5px; }
 .sub-status.ok { background: #e6f7ee; color: #0b7d52; border: 1px solid #9fe1cb; }
