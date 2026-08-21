@@ -971,6 +971,20 @@ const Store = (() => {
     save();
     return true;
   }
+  // แอดมินแก้งบรายเดือนของหน่วยงานใดก็ได้ (ข้ามการล็อก/สถานะ) — บันทึก Audit Log ทุกครั้ง
+  function adminSetCell(actor, year, deptId, rowKey, monthIdx, value) {
+    assertAccounting(actor);
+    if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
+    const row = ensureRow(year, deptId, rowKey);
+    const old = row.months[monthIdx];
+    if (old === value) return false;
+    row.months[monthIdx] = value;
+    row.updatedAt = new Date().toISOString();
+    row.updatedBy = actor.name + ' (แอดมินแก้)';
+    audit(actor, 'แอดมินแก้งบประมาณ', { deptId, glCode: auditRowRef(rowKey).glCode, month: monthIdx + 1, oldValue: old, newValue: value });
+    save();
+    return true;
+  }
   function setMtp(actor, year, deptId, rowKey, which, value) { // which: 1 | 2
     assertUserCanEdit(actor, year, deptId);
     if (value !== null && (typeof value !== 'number' || !isFinite(value))) throw new Error('ค่าไม่ถูกต้อง');
@@ -1894,7 +1908,7 @@ const Store = (() => {
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
     postActuals, postActualsPaste, hasPostedActuals, importDualBudget, importV7Data,
-    canEdit, setCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
+    canEdit, setCell, adminSetCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,

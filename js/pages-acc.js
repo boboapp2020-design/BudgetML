@@ -418,6 +418,7 @@ const PagesAcc = (() => {
     const year = UI.year(), prevYear = year - 1;
     const qs = parseQS();
     if (qs.d && qs.gl) return drillGL(user, qs.d, qs.gl);
+    if (qs.d && qs.edit) return drillDeptEdit(user, qs.d);
     if (qs.d) return drillDept(user, qs.d);
 
     const sides = Store.db.meta.sides || {};
@@ -681,7 +682,8 @@ const PagesAcc = (() => {
 
     return pageHead(esc(d.name), `งบปี ${year} เทียบปี ${prevYear} · ${UI.statusBadge(st.status)}`,
         `<button class="ghost-btn" data-drill-back title="กลับไปหน้าหน่วยงาน & Drill-down">← กลับ</button>
-         <span class="pa-right">${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}" title="ปลดล็อกเฉพาะแผนกนี้ — แผนกอื่นยังล็อกตามเดิม">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}
+         <span class="pa-right"><a class="primary-btn" href="#/acc/departments?d=${deptId}&edit=1" title="โหมดแอดมิน — แก้งบรายเดือนของหน่วยงานนี้ได้ทุกช่อง (บันทึก Audit Log)">✏️ แก้ไขงบรายเดือน</a>
+         ${['SUBMITTED', 'ENDORSED', 'LOCKED'].includes(st.status) ? `<button class="danger-btn" data-revise="${deptId}" title="ปลดล็อกเฉพาะแผนกนี้ — แผนกอื่นยังล็อกตามเดิม">↩ ตีกลับให้แก้ไข (Need Revision)</button>` : ''}
          ${Store.period(year)?.status !== 'OPEN' && ['SUBMITTED', 'ENDORSED', 'COMPLETED'].includes(st.status) ? `<button class="ghost-btn" data-lockdept="${deptId}">🔒 ล็อกคืน</button>` : ''}</span>`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <b>${esc(d.name)}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">
@@ -694,6 +696,28 @@ const PagesAcc = (() => {
       + card(`GL ทั้งหมดของหน่วยงาน — คลิกเพื่อดูรายเดือน${rv.on ? ' · 🔁 รอบ Revise (เทียบงบเดิม)' : ''}`, `<div class="table-scroll"><table class="data-table">
         <thead><tr><th>GL</th><th class="num">ปี ${prevYear} (กีบ)</th><th class="num">${rv.on ? 'Revise' : 'ปี'} ${year} (กีบ)</th>${rv.on ? `<th class="num">งบเดิม ${year}</th><th>Δ เดิม</th>` : ''}<th>%ปีก่อน</th><th>ตรวจสอบ</th><th>สาเหตุ (ย่อ)</th><th></th></tr></thead>
         <tbody>${rows}<tr class="tr-sum"><td><b>รวมทั้งหน่วยงาน</b></td><td class="num"><b>${fmt(prev)}</b></td><td class="num"><b>${fmt(cur)}</b></td>${rv.on ? `<td class="num"><b>${fmt(Store.originalDeptTotal(year, deptId))}</b></td><td></td>` : ''}<td></td><td></td><td></td><td></td></tr></tbody></table></div>`, { cls: 'card-flush' });
+  }
+
+  // โหมดแอดมิน — แก้งบรายเดือนของหน่วยงานใดก็ได้ (grid แก้ไข) · บันทึก Audit Log
+  function drillDeptEdit(user, deptId) {
+    const year = UI.year();
+    const d = Store.dept(deptId);
+    if (!d) return UI.card('ไม่พบหน่วยงาน', '<a class="link" href="#/acc/departments">← กลับ</a>');
+    const rows = Store.deptRows(deptId);
+    const body = rows.map(r => {
+      const m = Store.rowMonths(year, deptId, r.key);
+      const tot = m.reduce((s, v) => s + (v ?? 0), 0);
+      const cells = m.map((v, i) => `<td class="num cell-td"><input class="cell adm-cell${v && v !== 0 ? ' has-val' : ''}" data-key="${r.key}" data-m="${i}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" placeholder="0"></td>`).join('');
+      return `<tr data-gl-row="${r.key}"><td class="sticky-col td-gl" title="CCT ${r.cct} ${esc(r.cctName)} · IO ${r.io || '—'}"><div class="gl-name-wrap"><span class="gl-code">${r.gl.code}</span><span class="gl-nm" title="${esc(r.gl.name)}">${esc(r.gl.name)}</span></div>${r.multiCct ? `<div class="cct-tag">↳ ${esc(r.cctName)}</div>` : ''}</td>${cells}<td class="num td-total" data-tot="${r.key}">${fmt(tot)}</td></tr>`;
+    }).join('');
+    const mm = Store.deptMonthly(year, deptId);
+    const foot = `<tr class="tr-sum"><td class="sticky-col td-gl"><b>รวมทั้งหน่วยงาน</b></td>${mm.map(v => `<td class="num"><b>${fmt(v)}</b></td>`).join('')}<td class="num" data-foot-total><b>${fmt(mm.reduce((s, v) => s + (v || 0), 0))}</b></td></tr>`;
+    const head = `<tr><th class="sticky-col th-gl">GL / บัญชี</th>${Store.MONTH_S.map(mo => `<th class="num th-m">${mo}<div class="th-yr">${year}</div></th>`).join('')}<th class="num th-total">รวมปี</th></tr>`;
+    return pageHead(`✏️ แก้ไขงบ — ${esc(d.name)}`, `โหมดแอดมิน · แก้งบรายเดือนได้ทุกช่อง · บันทึก Audit Log ทุกครั้ง · ปีงบ ${year}`,
+        `<button class="ghost-btn" data-drill-back-dept="${deptId}">← กลับหน้าหน่วยงาน</button>`)
+      + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <a href="#/acc/departments?d=${deptId}">${esc(d.name)}</a> › <b>แก้ไขงบ</b></div>`
+      + `<div class="lock-banner" style="background:#fff7e6;border-color:#eda100;color:#7a5405;margin-bottom:12px">⚠ โหมดแอดมิน — แก้งบของ <b>${esc(d.name)}</b> ได้ทุกช่อง (ข้ามการล็อก) · พิมพ์แล้วออกจากช่อง = บันทึกอัตโนมัติ + ลง Audit Log</div>`
+      + card('', `<div class="table-scroll budget-scroll"><table class="budget-table" style="min-width:1500px"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' });
   }
 
   function drillGL(user, deptId, glId) {
@@ -777,6 +801,32 @@ const PagesAcc = (() => {
 
   function departmentsBind(user) {
     const qs = parseQS();
+    // โหมดแอดมินแก้งบรายเดือน — ผูก input แต่ละช่อง → adminSetCell (+ audit)
+    if (qs.d && qs.edit) {
+      const year = UI.year(), deptId = qs.d;
+      const parseNum = s => { s = String(s).replace(/[,\s]/g, '').trim(); if (s === '') return null; const v = Number(s); return isFinite(v) ? v : NaN; };
+      const refreshTotals = key => {
+        const tot = Store.rowMonths(year, deptId, key).reduce((s, v) => s + (v ?? 0), 0);
+        const tc = document.querySelector(`[data-tot="${CSS.escape(key)}"]`); if (tc) tc.textContent = UI.fmt(tot);
+        const mm = Store.deptMonthly(year, deptId);
+        const ft = document.querySelector('[data-foot-total]'); if (ft) ft.innerHTML = '<b>' + UI.fmt(mm.reduce((s, x) => s + (x || 0), 0)) + '</b>';
+      };
+      document.querySelectorAll('.adm-cell').forEach(inp => {
+        inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
+        inp.addEventListener('blur', () => {
+          const v = parseNum(inp.value);
+          if (Number.isNaN(v)) { toast('รูปแบบตัวเลขไม่ถูกต้อง', 'err'); return; }
+          try {
+            const changed = Store.adminSetCell(user, year, deptId, inp.dataset.key, Number(inp.dataset.m), v);
+            inp.value = v === null ? '' : UI.fmt(v);
+            inp.classList.toggle('has-val', !!v);
+            if (changed) { inp.classList.add('cell-changed'); refreshTotals(inp.dataset.key); }
+          } catch (e) { toast(e.message, 'err'); }
+        });
+      });
+      document.querySelector('[data-drill-back-dept]')?.addEventListener('click', e => { location.hash = '#/acc/departments?d=' + e.currentTarget.dataset.drillBackDept; });
+      return;
+    }
     if (qs.d && qs.gl && document.getElementById('chGLMonthly')) {
       const year = UI.year();
       Charts.groupedBar(document.getElementById('chGLMonthly'), Store.MONTH_S, [
