@@ -1810,3 +1810,9 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 #asFsClose.show { opacity:.5; transform:translate(-50%,0); pointer-events:auto; }
 #asFsClose.show:hover { opacity:1; background:rgba(22,70,111,.95); }
 #asFsClose .fs-x { font-size:15px; line-height:1; } #asFsClose kbd { background:rgba(255,255,255,.22); border-radius:5px; padding:1px 6px; font-size:11px; font-family:inherit; }
+
+/* Assumption: ปุ่ม Edit เปิด + ช่องสูตรที่แก้ได้ในโหมด Edit */
+.ghost-btn.as-edit-on { background:#e7ecff; color:#26379a; border-color:#9db0f5; font-weight:700; }
+.as-table td.as-fcell .as-cell { background:#eef1f6; color:#334; }
+.as-table td.as-fcell .as-cell:hover { background:#e3e8f0; }
+.as-table td.as-fcell .as-cell:focus { background:#fff; outline:2px solid #7a889a; }

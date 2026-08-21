@@ -6,6 +6,7 @@
 const PagesAssum = (() => {
   const { esc, card, pageHead } = UI;
   let pending = {};   // ค่าที่แก้แต่ยังไม่ Submit (staged) — key 'i_j' → number หรือ null(=คืนค่าเดิม)
+  let editAll = false; // โหมด Edit — แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)
 
   /* ---------- Formula engine (รองรับ ref/range, + - * /, IFERROR, SUM, SUBTOTAL, COUNTIFS) ---------- */
   const colIdx = s => { let n = 0; for (const ch of s.toUpperCase()) if (ch >= 'A' && ch <= 'Z') n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
@@ -88,9 +89,11 @@ const PagesAssum = (() => {
     function get(i, j) {
       if (i < 0 || i >= R || j < 0 || j >= C) return 0;
       if (cache[i][j] !== undefined) return cache[i][j];
+      const ek = i + '_' + j;
+      if (ek in ov) { const n = +ov[ek]; cache[i][j] = n; return n; }   // ค่าที่แก้มือ (override) — ทับสูตร/ค่าเดิมเสมอ
       const f = F[i] && F[i][j];
-      // ช่องกรอก หรือ สูตรลิงก์ไฟล์ภายนอก (มี '!') → ใช้ค่าที่กรอก/ที่ Excel เก็บไว้ (คำนวณเองไม่ได้)
-      if (!f || f.indexOf('!') >= 0) { const ek = i + '_' + j; const n = (ek in ov) ? +ov[ek] : baseVal(V, i, j); cache[i][j] = n; return n; }
+      // ช่องกรอก หรือ สูตรลิงก์ไฟล์ภายนอก (มี '!') → ใช้ค่าที่ Excel เก็บไว้ (คำนวณเองไม่ได้)
+      if (!f || f.indexOf('!') >= 0) { const n = baseVal(V, i, j); cache[i][j] = n; return n; }
       const key = i + '|' + j; if (busy.has(key)) return 0; busy.add(key);
       let r; try { r = evalBody(f.slice(1), get, isBlank); } catch (e) { r = 0; } busy.delete(key);
       if (!isFinite(r)) r = 0; cache[i][j] = r; return r;
@@ -139,10 +142,11 @@ const PagesAssum = (() => {
       const isMain = order != null && /^\d+$/.test(String(order));
       const cells = COLS.map(c => {
         const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
-        if (f && !ext) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="${esc(f)}">${fmt(val)}</td>`;
-        // ช่องกรอก (รวมช่องลิงก์ไฟล์ภายนอก = แก้ได้ เพราะดึงสดไม่ได้)
+        const isFormula = f && !ext;
+        // โหมดปกติ: ช่องสูตร = อ่านอย่างเดียว · โหมด Edit (editAll): แก้ได้ทุกช่อง (พิมพ์ทับสูตร)
+        if (isFormula && !editAll) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="${esc(f)}">${fmt(val)}</td>`;
         const edited = (i + '_' + j) in committed;
-        return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}"><input class="as-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"></td>`;
+        return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}${isFormula ? ' as-fcell' : ''}"><input class="as-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"${isFormula ? ` title="สูตร: ${esc(f)}"` : ''}></td>`;
       }).join('');
       body += `<tr class="${isMain ? 'as-main' : 'as-sub'}">
         <td class="as-note">${esc(note ?? '')}</td>
@@ -156,8 +160,9 @@ const PagesAssum = (() => {
         <th class="as-note" rowspan="2">Note</th><th class="as-ord" rowspan="2">ลำดับ</th>
         <th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>
         ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
-    return pageHead('Assumption MTP 2027–2029', 'ตารางสมมติฐาน (คัดจาก Template Assumption) · ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ',
+    return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
+         <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit'}</button>
          <span class="pa-right">
            <button data-as-cancel class="ghost-btn small" disabled title="ยกเลิกการแก้ที่ยังไม่ Submit">↺ ยกเลิก</button>
            <button data-as-clear class="danger-btn small" title="ล้างค่าที่แก้ทั้งหมด กลับเป็นค่าต้นทาง">🗑 Clear</button>
@@ -223,6 +228,7 @@ const PagesAssum = (() => {
       if (on) { document.addEventListener('mousemove', onMove); setTimeout(() => { if (wrap.classList.contains('as-fs')) fsClose.classList.remove('show'); }, 1800); }
       else document.removeEventListener('mousemove', onMove);
     };
+    document.querySelector('[data-as-edit]')?.addEventListener('click', () => { editAll = !editAll; pending = {}; App.render(); });
     expBtn?.addEventListener('click', () => setFs(!wrap.classList.contains('as-fs')));
     fsClose.addEventListener('click', () => setFs(false));
     document.addEventListener('keydown', function esc(ev) { if (ev.key === 'Escape' && wrap && wrap.classList.contains('as-fs')) setFs(false); });
