@@ -1456,18 +1456,19 @@ const Store = (() => {
     save();
     return { code, name, deptId };
   }
-  // ---- Assumption (MTP) — ค่าที่แก้ (override) ราย cell r,c → ซิงค์ Supabase ----
-  function assumEdits() { const m = {}; (db.assumptionCells || []).forEach(a => { m[a.r + '_' + a.c] = a.v; }); return m; }
-  function assumSet(actor, r, c, v) {
+  // ---- Assumption (MTP) — ค่าที่แก้ (override) ราย ปี×cell (year,r,c) → ซิงค์ Supabase ----
+  function assumEdits(year) { const y = Number(year); const m = {}; (db.assumptionCells || []).forEach(a => { if (a.year === y) m[a.r + '_' + a.c] = a.v; }); return m; }
+  function assumSet(actor, year, r, c, v) {
     assertAccounting(actor);
+    const y = Number(year);
     db.assumptionCells = db.assumptionCells || [];
-    const i = db.assumptionCells.findIndex(a => a.r === r && a.c === c);
+    const i = db.assumptionCells.findIndex(a => a.year === y && a.r === r && a.c === c);
     const blank = (v === null || v === undefined || v === '' || (typeof v === 'number' && !isFinite(v)));
     if (blank) { if (i >= 0) db.assumptionCells.splice(i, 1); else return; }
-    else { const row = { r, c, v: Number(v), updatedAt: new Date().toISOString(), updatedBy: actor.name }; if (i >= 0) db.assumptionCells[i] = row; else db.assumptionCells.push(row); }
+    else { const row = { year: y, r, c, v: Number(v), updatedAt: new Date().toISOString(), updatedBy: actor.name }; if (i >= 0) db.assumptionCells[i] = row; else db.assumptionCells.push(row); }
     save();
   }
-  function assumClear(actor) { assertAccounting(actor); if (!(db.assumptionCells || []).length) return; db.assumptionCells = []; save(); }
+  function assumClear(actor, year) { assertAccounting(actor); const y = Number(year); const n = (db.assumptionCells || []).length; db.assumptionCells = (db.assumptionCells || []).filter(a => a.year !== y); if (db.assumptionCells.length !== n) save(); }
   function addGL(actor, code, name, glGroup, ioGroup) {
     assertAccounting(actor);
     if (db.glAccounts.some(g => g.code === code)) throw new Error('รหัส GL ซ้ำ');

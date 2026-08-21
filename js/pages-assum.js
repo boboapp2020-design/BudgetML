@@ -75,8 +75,8 @@ const PagesAssum = (() => {
   }
 
   /* ---------- โหลด grid + คำนวณ ---------- */
-  // override ที่ commit แล้ว (Supabase) + pending (ยังไม่ submit); pending=null → คืนค่าเดิม
-  function edits() { const m = Object.assign({}, Store.assumEdits()); for (const k in pending) { if (pending[k] == null) delete m[k]; else m[k] = pending[k]; } return m; }
+  // override ที่ commit แล้ว (Supabase, รายปี) + pending (ยังไม่ submit); pending=null → คืนค่าเดิม
+  function edits() { const m = Object.assign({}, Store.assumEdits(UI.year())); for (const k in pending) { if (pending[k] == null) delete m[k]; else m[k] = pending[k]; } return m; }
   function baseVal(V, i, j) { const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); }
 
   // คำนวณทั้งกริด → คืน number[][] (memoized + กัน circular)
@@ -103,17 +103,18 @@ const PagesAssum = (() => {
   }
 
   /* ---------- คำนิยามคอลัมน์ 25 ช่อง (j = 4..28) ---------- */
+  // yo = ปีสัมพัทธ์จากปีงบที่เลือก (เกิดจริง=ปีก่อน, งบต้นปี/Revise/คาดการณ์=ปีนั้น, งบ MTP=+1/+2/+3) · null=ไม่มีปี
   const COLS = [
-    { j: 4, grp: 'เกิดจริง', yr: '2568', sc: '' },
-    { j: 5, grp: 'งบต้นปี', yr: '2569', sc: 'O' }, { j: 6, grp: 'งบต้นปี', yr: '2569', sc: 'R' }, { j: 7, grp: 'งบต้นปี', yr: '2569', sc: 'P' },
-    { j: 8, grp: 'งบ Revise', yr: '2569', sc: 'O' }, { j: 9, grp: 'งบ Revise', yr: '2569', sc: 'R' }, { j: 10, grp: 'งบ Revise', yr: '2569', sc: 'P' },
-    { j: 11, grp: 'เกิดจริง ม.ค-ส.ค', yr: '2569', sc: '' },
-    { j: 12, grp: 'คาดการณ์ ก.ย-ธ.ค', yr: '2569', sc: 'O' }, { j: 13, grp: 'คาดการณ์ ก.ย-ธ.ค', yr: '2569', sc: 'R' }, { j: 14, grp: 'คาดการณ์ ก.ย-ธ.ค', yr: '2569', sc: 'P' },
-    { j: 15, grp: 'เกิดจริง+คาดการณ์', yr: '2569', sc: 'O' }, { j: 16, grp: 'เกิดจริง+คาดการณ์', yr: '2569', sc: 'R' }, { j: 17, grp: 'เกิดจริง+คาดการณ์', yr: '2569', sc: 'P' },
-    { j: 18, grp: 'งบประมาณ', yr: '2570', sc: 'O' }, { j: 19, grp: 'งบประมาณ', yr: '2570', sc: 'R' }, { j: 20, grp: 'งบประมาณ', yr: '2570', sc: 'P' },
-    { j: 21, grp: 'ผลต่าง', yr: '', sc: '' }, { j: 22, grp: '%Growth', yr: '', sc: '' },
-    { j: 23, grp: 'งบประมาณ', yr: '2571', sc: 'O' }, { j: 24, grp: 'งบประมาณ', yr: '2571', sc: 'R' }, { j: 25, grp: 'งบประมาณ', yr: '2571', sc: 'P' },
-    { j: 26, grp: 'งบประมาณ', yr: '2572', sc: 'O' }, { j: 27, grp: 'งบประมาณ', yr: '2572', sc: 'R' }, { j: 28, grp: 'งบประมาณ', yr: '2572', sc: 'P' },
+    { j: 4, grp: 'เกิดจริง', yo: -1, sc: '' },
+    { j: 5, grp: 'งบต้นปี', yo: 0, sc: 'O' }, { j: 6, grp: 'งบต้นปี', yo: 0, sc: 'R' }, { j: 7, grp: 'งบต้นปี', yo: 0, sc: 'P' },
+    { j: 8, grp: 'งบ Revise', yo: 0, sc: 'O' }, { j: 9, grp: 'งบ Revise', yo: 0, sc: 'R' }, { j: 10, grp: 'งบ Revise', yo: 0, sc: 'P' },
+    { j: 11, grp: 'เกิดจริง ม.ค-ส.ค', yo: 0, sc: '' },
+    { j: 12, grp: 'คาดการณ์ ก.ย-ธ.ค', yo: 0, sc: 'O' }, { j: 13, grp: 'คาดการณ์ ก.ย-ธ.ค', yo: 0, sc: 'R' }, { j: 14, grp: 'คาดการณ์ ก.ย-ธ.ค', yo: 0, sc: 'P' },
+    { j: 15, grp: 'เกิดจริง+คาดการณ์', yo: 0, sc: 'O' }, { j: 16, grp: 'เกิดจริง+คาดการณ์', yo: 0, sc: 'R' }, { j: 17, grp: 'เกิดจริง+คาดการณ์', yo: 0, sc: 'P' },
+    { j: 18, grp: 'งบประมาณ', yo: 1, sc: 'O' }, { j: 19, grp: 'งบประมาณ', yo: 1, sc: 'R' }, { j: 20, grp: 'งบประมาณ', yo: 1, sc: 'P' },
+    { j: 21, grp: 'ผลต่าง', yo: null, sc: '' }, { j: 22, grp: '%Growth', yo: null, sc: '' },
+    { j: 23, grp: 'งบประมาณ', yo: 2, sc: 'O' }, { j: 24, grp: 'งบประมาณ', yo: 2, sc: 'R' }, { j: 25, grp: 'งบประมาณ', yo: 2, sc: 'P' },
+    { j: 26, grp: 'งบประมาณ', yo: 3, sc: 'O' }, { j: 27, grp: 'งบประมาณ', yo: 3, sc: 'R' }, { j: 28, grp: 'งบประมาณ', yo: 3, sc: 'P' },
   ];
   const REMARK_J = 29;
   const R0 = 6, R1 = 188; // แถวข้อมูล (sheet row 7..189) → index 6..188
@@ -128,12 +129,14 @@ const PagesAssum = (() => {
 
   function page(user) {
     pending = {};   // เริ่มหน้าใหม่ = ไม่มีค้าง
+    const year = UI.year();                       // ปีงบที่เลือก (ค.ศ.)
+    const thaiYr = yo => yo == null ? '' : (year + yo + 543);   // ปี พ.ศ. ตาม offset
     const { V, F, out } = compute();
-    const committed = Store.assumEdits();
+    const committed = Store.assumEdits(year);
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
-    // หัวตาราง 2 แถว
-    const head1 = COLS.map(c => `<th class="num as-h1 ${scCls(c.sc)}">${esc(c.grp)}${c.yr ? `<div class="as-yr">${c.yr}</div>` : ''}</th>`).join('');
+    // หัวตาราง 2 แถว — ปีคำนวณจากปีงบที่เลือก
+    const head1 = COLS.map(c => `<th class="num as-h1 ${scCls(c.sc)}">${esc(c.grp)}${c.yo != null ? `<div class="as-yr">${thaiYr(c.yo)}</div>` : ''}</th>`).join('');
     const head2 = COLS.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
     let body = '', subN = 0;
     for (let i = R0; i <= R1; i++) {
@@ -183,7 +186,8 @@ const PagesAssum = (() => {
 
   function bind(user) {
     pending = {};
-    const committed = Store.assumEdits();
+    const year = UI.year();
+    const committed = Store.assumEdits(year);
     const subBtn = document.querySelector('[data-as-submit]'), canBtn = document.querySelector('[data-as-cancel]');
     const baseNum = (i, j) => { const V = window.ASSUMPTION_MTP.v; const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); };
     const updateBtns = () => { const n = Object.keys(pending).length; if (subBtn) { subBtn.disabled = !n; subBtn.textContent = n ? `✔ Submit (${n})` : '✔ Submit'; } if (canBtn) canBtn.disabled = !n; };
@@ -207,14 +211,14 @@ const PagesAssum = (() => {
     subBtn?.addEventListener('click', () => {
       const n = Object.keys(pending).length; if (!n) return;
       UI.confirm2(`Submit ค่าที่แก้ ${n} ช่อง`, 'บันทึกค่าที่แก้ขึ้นระบบ (Supabase) — มีผลกับสมมติฐานที่ใช้คำนวณ', 'ค่าเดิมจะถูกทับ', () => {
-        let ok = 0; try { for (const k in pending) { const [i, j] = k.split('_').map(Number); Store.assumSet(user, i, j, pending[k]); ok++; } } catch (e) { UI.toast(e.message, 'err'); return; }
+        let ok = 0; try { for (const k in pending) { const [i, j] = k.split('_').map(Number); Store.assumSet(user, year, i, j, pending[k]); ok++; } } catch (e) { UI.toast(e.message, 'err'); return; }
         pending = {}; UI.toast(`บันทึกแล้ว ${ok} ช่อง`); App.render();
       });
     });
     canBtn?.addEventListener('click', () => { if (!Object.keys(pending).length) return; pending = {}; App.render(); });
     document.querySelector('[data-as-clear]')?.addEventListener('click', () => {
       UI.confirm2('ล้างค่าที่แก้ทั้งหมด', 'ลบค่าที่แก้ทั้งหมด (ที่ Submit แล้ว) กลับเป็นค่าต้นทางจากไฟล์ Assumption', 'ย้อนกลับไม่ได้', () => {
-        try { pending = {}; Store.assumClear(user); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+        try { pending = {}; Store.assumClear(user, year); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
       });
     });
 
