@@ -138,14 +138,11 @@ const PagesCost = (() => {
       if (!arr.length) return '';
       return metricSubmitted(key) ? ' <span class="uc-st uc-st-ok">✅ ส่งแล้ว</span>' : ' <span class="uc-st uc-st-wait">⏳ ยังไม่ส่ง</span>';
     };
+    // อ่านอย่างเดียว — ปริมาณดึงจาก Assumption (ตัวหาร) / เกิดจริงแสดงค่าที่มี · ไม่กรอกในหน้านี้แล้ว
     const volRows = Store.VOLUME_METRICS.map(m => {
       const v = Store.volume(year, m.key), pv = Store.volume(year - 1, m.key);
-      const canM = Store.canEditVolume(user, m.key, year);
-      const inp = f => canM
-        ? `<input class="uc-vol" data-vol="${m.key}" data-field="${f}" inputmode="decimal" value="${v[f] ?? ''}" placeholder="กรอก">`
-        : `<b>${v[f] == null ? '—' : fmt(v[f])}</b>`;
-      return `<tr><td>${esc(m.label)}${fillerHint(m.key)}${statusChip(m.key)}</td>
-        <td class="num">${inp('actual')}</td>
+      return `<tr><td>${esc(m.label)}</td>
+        <td class="num"><b>${v.actual == null ? '—' : fmt(v.actual)}</b></td>
         <td class="num muted">${(pv.actual ?? pv.plan) == null ? '—' : fmt(pv.actual ?? pv.plan)}</td></tr>`;
     }).join('');
     const vPlan = m => Store.volume(year, m).plan || 0;
@@ -166,11 +163,7 @@ const PagesCost = (() => {
     // สถานะ "ส่งแล้ว": filler=แผนกตนส่ง · admin=ทุกแผนกรับผิดชอบส่งครบ
     const allSubmitted = Store.VOLUME_METRICS.every(m => metricSubmitted(m.key));
     const finalized = isAdmin ? allSubmitted : mySubmitted;
-    const fillFoot = canFill
-      ? (finalized
-        ? `<div class="uc-fill-foot done"><span class="uc-st uc-st-ok">✅ ส่งข้อมูลแล้ว — ค่าถูกส่งไปคำนวณ/ตันเรียบร้อย</span><button class="ghost-btn" id="pptEditBtn">✏️ แก้ไข (Edit)</button></div>`
-        : `<div class="uc-fill-foot"><span class="muted">กรอกปริมาณครบแล้วกดส่งเพื่อคำนวณ/ตัน · ส่งแล้วยังกด "แก้ไข" ได้</span><button class="primary-btn" id="pptSubmitBtn">✅ Submit — ส่งข้อมูล</button></div>`)
-      : '';
+    const fillFoot = '';   // เอาปุ่ม Submit ออก — หน้านี้ไม่กรอกแล้ว (ปริมาณดึงจาก Assumption)
     const adminUnlock = (user.role === 'ACCOUNTING' && submits.length)
       ? card(`📮 แผนกที่ส่งปริมาณแล้ว ปี ${year} (${submits.length})`, submits.map(s => {
           const dn = (Store.db.departments.find(d => d.code === s.deptCode) || {}).name || s.deptCode;
@@ -182,7 +175,7 @@ const PagesCost = (() => {
         roundChip)
       + submitBar + adminUnlock
       + card(`ต้นทุนการผลิต`, `
-          ${yearOpen ? `<div class="uc-hint-calc">🧮 ค่า <b>กีบ/ตัน</b> จะเริ่มคำนวณ <b>เมื่อแผนกที่รับผิดชอบกดปุ่ม "ส่งข้อมูล (Submit)"</b> เท่านั้น · /ตันอ้อย รอ <b>บริการไร่</b> ส่ง · /ตันน้ำตาล รอ <b>หม้อปั่น + การตลาด</b> ส่งครบ</div>` : ''}
+          <div class="uc-hint-calc">🧮 ตัวหาร (ปริมาณ) ดึงจากหน้า <b>Assumption (MTP) · งบต้นปี</b> อัตโนมัติ — ไม่ต้องกรอกในหน้านี้ · <b>กีบ/ตัน</b> = จำนวนเงิน ÷ ปริมาณ</div>
           <div class="table-scroll"><table class="data-table small"><thead>
             <tr><th>ปริมาณ ปี ${year}</th><th class="num">เกิดจริง (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
             <tbody>${volRows}
