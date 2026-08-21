@@ -711,13 +711,18 @@ const PagesAcc = (() => {
       return `<tr data-gl-row="${r.key}"><td class="sticky-col td-gl" title="CCT ${r.cct} ${esc(r.cctName)} · IO ${r.io || '—'}"><div class="gl-name-wrap"><span class="gl-code">${r.gl.code}</span><span class="gl-nm" title="${esc(r.gl.name)}">${esc(r.gl.name)}</span></div>${r.multiCct ? `<div class="cct-tag">↳ ${esc(r.cctName)}</div>` : ''}</td>${cells}<td class="num td-total" data-tot="${r.key}">${fmt(tot)}</td></tr>`;
     }).join('');
     const mm = Store.deptMonthly(year, deptId);
-    const foot = `<tr class="tr-sum"><td class="sticky-col td-gl"><b>รวมทั้งหน่วยงาน</b></td>${mm.map(v => `<td class="num"><b>${fmt(v)}</b></td>`).join('')}<td class="num" data-foot-total><b>${fmt(mm.reduce((s, v) => s + (v || 0), 0))}</b></td></tr>`;
+    const foot = `<tr class="tr-sum"><td class="sticky-col td-gl"><b>รวมทั้งหน่วยงาน</b></td>${mm.map((v, i) => `<td class="num" data-foot-m="${i}"><b>${fmt(v)}</b></td>`).join('')}<td class="num" data-foot-total><b>${fmt(mm.reduce((s, v) => s + (v || 0), 0))}</b></td></tr>`;
     const head = `<tr><th class="sticky-col th-gl">GL / บัญชี</th>${Store.MONTH_S.map(mo => `<th class="num th-m">${mo}<div class="th-yr">${year}</div></th>`).join('')}<th class="num th-total">รวมปี</th></tr>`;
-    return pageHead(`✏️ แก้ไขงบ — ${esc(d.name)}`, `โหมดแอดมิน · แก้งบรายเดือนได้ทุกช่อง · บันทึก Audit Log ทุกครั้ง · ปีงบ ${year}`,
-        `<button class="ghost-btn" data-drill-back-dept="${deptId}">← กลับหน้าหน่วยงาน</button>`)
+    return pageHead(`✏️ แก้ไขงบ — ${esc(d.name)}`, `โหมดแอดมิน · แก้งบรายเดือนได้ทุกช่อง · กดยืนยันเพื่อบันทึกลง Audit Log · ปีงบ ${year}`,
+        `<button class="ghost-btn" data-drill-back-dept="${deptId}">← กลับหน้าหน่วยงาน</button>
+         <span class="pa-right">
+           <button class="ghost-btn" data-edit-expand title="ขยาย/ย่อ ตารางเต็มจอ">⛶ ขยาย</button>
+           <button class="ghost-btn" data-edit-cancel disabled title="ยกเลิกการแก้ที่ยังไม่บันทึก">↺ ยกเลิก</button>
+           <button class="primary-btn" data-edit-confirm disabled title="ยืนยันบันทึกการแก้ไขทั้งหมด ลง Audit Log">✔ ยืนยันบันทึก</button>
+         </span>`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <a href="#/acc/departments?d=${deptId}">${esc(d.name)}</a> › <b>แก้ไขงบ</b></div>`
-      + `<div class="lock-banner" style="background:#fff7e6;border-color:#eda100;color:#7a5405;margin-bottom:12px">⚠ โหมดแอดมิน — แก้งบของ <b>${esc(d.name)}</b> ได้ทุกช่อง (ข้ามการล็อก) · พิมพ์แล้วออกจากช่อง = บันทึกอัตโนมัติ + ลง Audit Log</div>`
-      + card('', `<div class="table-scroll budget-scroll"><table class="budget-table" style="min-width:1500px"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' });
+      + `<div class="lock-banner" style="background:#fff7e6;border-color:#eda100;color:#7a5405;margin-bottom:12px">⚠ โหมดแอดมิน — แก้งบของ <b>${esc(d.name)}</b> ได้ทุกช่อง (ข้ามการล็อก) · พิมพ์ตัวเลขในช่องที่ต้องการ (ช่องที่แก้จะเป็นสีเหลือง) แล้วกด <b>✔ ยืนยันบันทึก</b> เพื่อลง Audit Log</div>`
+      + `<div id="admEditWrap">` + card('', `<div class="table-scroll budget-scroll"><table class="budget-table" style="min-width:1500px"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' }) + `</div>`;
   }
 
   function drillGL(user, deptId, glId) {
@@ -803,30 +808,86 @@ const PagesAcc = (() => {
 
   function departmentsBind(user) {
     const qs = parseQS();
-    // โหมดแอดมินแก้งบรายเดือน — ผูก input แต่ละช่อง → adminSetCell (+ audit)
+    // โหมดแอดมินแก้งบรายเดือน — สะสมการแก้ (staging) แล้วกด "ยืนยันบันทึก" → adminSetCell (+ audit)
     if (qs.d && qs.edit) {
       const year = UI.year(), deptId = qs.d;
+      const allRows = Store.deptRows(deptId);
       const parseNum = s => { s = String(s).replace(/[,\s]/g, '').trim(); if (s === '') return null; const v = Number(s); return isFinite(v) ? v : NaN; };
+      const norm = v => (v == null ? 0 : v);
+      const pending = new Map(); // `${key}|${m}` -> { key, m, val, inp }
+      const confirmBtn = document.querySelector('[data-edit-confirm]');
+      const cancelBtn = document.querySelector('[data-edit-cancel]');
+      const storedVal = (key, m) => Store.rowMonths(year, deptId, key)[m];
+      const rowMonthsWithPending = key => {
+        const arr = Store.rowMonths(year, deptId, key).slice();
+        pending.forEach(p => { if (p.key === key) arr[p.m] = p.val; });
+        return arr;
+      };
       const refreshTotals = key => {
-        const tot = Store.rowMonths(year, deptId, key).reduce((s, v) => s + (v ?? 0), 0);
-        const tc = document.querySelector(`[data-tot="${CSS.escape(key)}"]`); if (tc) tc.textContent = UI.fmt(tot);
-        const mm = Store.deptMonthly(year, deptId);
-        const ft = document.querySelector('[data-foot-total]'); if (ft) ft.innerHTML = '<b>' + UI.fmt(mm.reduce((s, x) => s + (x || 0), 0)) + '</b>';
+        const tc = document.querySelector(`[data-tot="${CSS.escape(key)}"]`);
+        if (tc) tc.textContent = UI.fmt(rowMonthsWithPending(key).reduce((s, v) => s + (v ?? 0), 0));
+        const months = new Array(12).fill(0);
+        allRows.forEach(r => rowMonthsWithPending(r.key).forEach((v, i) => { months[i] += (v ?? 0); }));
+        months.forEach((v, i) => { const c = document.querySelector(`[data-foot-m="${i}"]`); if (c) c.innerHTML = '<b>' + UI.fmt(v) + '</b>'; });
+        const ft = document.querySelector('[data-foot-total]'); if (ft) ft.innerHTML = '<b>' + UI.fmt(months.reduce((s, x) => s + x, 0)) + '</b>';
+      };
+      const updateButtons = () => {
+        const n = pending.size;
+        if (confirmBtn) { confirmBtn.disabled = !n; confirmBtn.textContent = n ? `✔ ยืนยันบันทึก (${n})` : '✔ ยืนยันบันทึก'; }
+        if (cancelBtn) cancelBtn.disabled = !n;
       };
       document.querySelectorAll('.adm-cell').forEach(inp => {
         inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
         inp.addEventListener('blur', () => {
           const v = parseNum(inp.value);
-          if (Number.isNaN(v)) { toast('รูปแบบตัวเลขไม่ถูกต้อง', 'err'); return; }
-          try {
-            const changed = Store.adminSetCell(user, year, deptId, inp.dataset.key, Number(inp.dataset.m), v);
-            inp.value = v === null ? '' : UI.fmt(v);
-            inp.classList.toggle('has-val', !!v);
-            if (changed) { inp.classList.add('cell-changed'); refreshTotals(inp.dataset.key); }
-          } catch (e) { toast(e.message, 'err'); }
+          const key = inp.dataset.key, m = Number(inp.dataset.m), pk = key + '|' + m;
+          if (Number.isNaN(v)) { toast('รูปแบบตัวเลขไม่ถูกต้อง', 'err'); const o = storedVal(key, m); inp.value = o == null ? '' : UI.fmt(o); return; }
+          inp.value = v == null ? '' : UI.fmt(v);
+          inp.classList.toggle('has-val', !!v);
+          if (norm(v) === norm(storedVal(key, m))) { pending.delete(pk); inp.classList.remove('cell-pending'); }
+          else { pending.set(pk, { key, m, val: v, inp }); inp.classList.add('cell-pending'); }
+          refreshTotals(key);
+          updateButtons();
         });
       });
-      document.querySelector('[data-drill-back-dept]')?.addEventListener('click', e => { location.hash = '#/acc/departments?d=' + e.currentTarget.dataset.drillBackDept; });
+      confirmBtn?.addEventListener('click', () => {
+        if (!pending.size) return;
+        let ok = 0, err = 0;
+        pending.forEach(p => {
+          try { if (Store.adminSetCell(user, year, deptId, p.key, p.m, p.val)) ok++; p.inp.classList.remove('cell-pending'); p.inp.classList.add('cell-changed'); }
+          catch (e) { err++; p.inp.classList.add('cell-err'); }
+        });
+        pending.clear();
+        updateButtons();
+        toast(`บันทึก ${ok} รายการ ลง Audit Log แล้ว${err ? ` · ผิดพลาด ${err} รายการ` : ''}`, err ? 'err' : 'ok');
+      });
+      cancelBtn?.addEventListener('click', () => {
+        const keys = new Set();
+        pending.forEach(p => {
+          const o = storedVal(p.key, p.m);
+          p.inp.value = o == null ? '' : UI.fmt(o);
+          p.inp.classList.toggle('has-val', !!o);
+          p.inp.classList.remove('cell-pending');
+          keys.add(p.key);
+        });
+        pending.clear();
+        keys.forEach(k => refreshTotals(k));
+        updateButtons();
+      });
+      const expandBtn = document.querySelector('[data-edit-expand]');
+      const wrap = document.getElementById('admEditWrap');
+      expandBtn?.addEventListener('click', () => {
+        const on = wrap.classList.toggle('edit-fs');
+        document.body.classList.toggle('edit-fs-lock', on);
+        expandBtn.innerHTML = on ? '⤡ ย่อ' : '⛶ ขยาย';
+      });
+      document.addEventListener('keydown', function esc(ev) {
+        if (ev.key === 'Escape' && wrap?.classList.contains('edit-fs')) { wrap.classList.remove('edit-fs'); document.body.classList.remove('edit-fs-lock'); if (expandBtn) expandBtn.innerHTML = '⛶ ขยาย'; }
+      });
+      document.querySelector('[data-drill-back-dept]')?.addEventListener('click', e => {
+        if (pending.size && !confirm(`มีการแก้ไข ${pending.size} รายการที่ยังไม่บันทึก — ออกโดยไม่บันทึกหรือไม่?`)) return;
+        location.hash = '#/acc/departments?d=' + e.currentTarget.dataset.drillBackDept;
+      });
       return;
     }
     if (qs.d && qs.gl && document.getElementById('chGLMonthly')) {
@@ -1764,10 +1825,17 @@ const PagesAcc = (() => {
       <td class="num">${l.oldValue !== null && typeof l.oldValue === 'number' ? fmt(l.oldValue) : esc(l.oldValue ?? '—')}</td>
       <td class="num">${l.newValue !== null && typeof l.newValue === 'number' ? fmt(l.newValue) : esc(String(l.newValue ?? '—').slice(0, 40))}</td>
     </tr>`).join('');
-    return pageHead('Audit Log', `บันทึกการเปลี่ยนแปลงทั้งหมด (read-only) · แสดง ${logs.length} รายการล่าสุด`)
+    return pageHead('Audit Log', `บันทึกการเปลี่ยนแปลงทั้งหมด (read-only) · แสดง ${logs.length} รายการล่าสุด · ทั้งหมด ${Store.db.auditLogs.length} รายการ`,
+        `<span class="pa-right"><button class="primary-btn" id="exportAuditJson" title="ส่งออก Audit Log ทั้งหมดเป็นไฟล์ JSON (สำหรับแอปอ่านรายงานภายนอก)">⬇ Export Log (JSON)</button></span>`)
       + card('', `<div class="table-scroll"><table class="data-table small">
         <thead><tr><th>เวลา</th><th>ผู้ใช้</th><th>การกระทำ</th><th>หน่วยงาน</th><th>GL</th><th>เดือน</th><th class="num">ค่าเดิม</th><th class="num">ค่าใหม่</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`, { cls: 'card-flush' });
+  }
+  function auditBind(user) {
+    document.getElementById('exportAuditJson')?.addEventListener('click', () => {
+      try { const n = Store.exportAuditJson(); toast(`ส่งออก Audit Log ${n} รายการ เป็นไฟล์ JSON แล้ว`, 'ok'); }
+      catch (e) { toast(e.message, 'err'); }
+    });
   }
 
   /* ============ งบการเงินตามงบ (Budget P&L by กลุ่มบัญชี) ============ */
@@ -2160,5 +2228,5 @@ const PagesAcc = (() => {
     else analysisBind(user);
   }
 
-  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, analytics, analyticsBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind, users, usersBind, exportForUser };
+  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, analytics, analyticsBind, control, controlBind, system, systemBind, audit, auditBind, actuals, actualsBind, pnl, pnlBind, variance, varianceBind, users, usersBind, exportForUser };
 })();

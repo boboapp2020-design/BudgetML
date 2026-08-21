@@ -1628,6 +1628,39 @@ const Store = (() => {
     const stamp = (db.meta.seededAt || '').slice(0, 10) || 'now';
     download(`budget_backup_${db.meta.yearCurrent}_${stamp}.json`, JSON.stringify(db), 'application/json');
   }
+  // ส่งออก Audit Log เป็นไฟล์ JSON (สำหรับแอปอ่านรายงานภายนอก)
+  function exportAuditJson() {
+    const logs = db.auditLogs.map(l => {
+      const d = l.deptId ? dept(l.deptId) : null;
+      return {
+        id: l.id,
+        ts: l.ts,
+        userId: l.userId ?? null,
+        userName: l.userName ?? null,
+        action: l.action ?? null,
+        deptId: l.deptId ?? null,
+        deptCode: d?.code ?? null,
+        deptName: d?.name ?? null,
+        glCode: l.glCode ?? null,
+        month: l.month ?? null,
+        monthName: l.month ? MONTH_TH[l.month - 1] : null,
+        oldValue: l.oldValue ?? null,
+        newValue: l.newValue ?? null,
+      };
+    });
+    const payload = {
+      app: 'iBud Annual Budget',
+      company: 'บริษัท น้ำตาลมิตรลาว จำกัด',
+      schema: 'audit-log/v1',
+      exportedAt: new Date().toISOString(),
+      yearCurrent: db.meta.yearCurrent,
+      count: logs.length,
+      logs,
+    };
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    download(`audit_log_${db.meta.yearCurrent}_${stamp}.json`, JSON.stringify(payload, null, 2), 'application/json');
+    return logs.length;
+  }
   function restoreBackup(actor, jsonText) {
     assertAccounting(actor);
     let nd; try { nd = JSON.parse(jsonText); } catch (e) { throw new Error('ไฟล์ไม่ใช่ JSON ที่ถูกต้อง'); }
@@ -1918,7 +1951,7 @@ const Store = (() => {
     CHANGE_WINDOWS, reqTypeLabel, changeWindowState, changeWindowsOpen, monthsAllowed, windowOfMonth, setChangeWindow, budgetRoundClosed, currentMonth, windowForMonth,
     changeRequests, requestById, myRequests, requestsForMgr, requestsByStatus,
     createChangeRequest, mgrApproveRequest, mgrRejectRequest, accApproveRequest, accRejectRequest, cancelChangeRequest, reqAdjustmentsFor,
-    exportDetail, exportDeptSummary, exportPnl, exportBackup, restoreBackup,
+    exportDetail, exportDeptSummary, exportPnl, exportBackup, exportAuditJson, restoreBackup,
     MONTH_TH, MONTH_S,
   };
 })();

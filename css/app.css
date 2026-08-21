@@ -365,6 +365,13 @@ body.no-scroll { overflow: hidden; }
 /* พื้นหลังงบเป็นขาว · ช่องที่มีตัวเลข = ไฮไลต์เขียวอ่อนให้เด่น */
 .cell.has-val, .cell.has-val:disabled { background: #edf7f0; border-color: #cfe6d7; }
 .cell-changed, .cell.has-val.cell-changed { background: #fff9e8; border-color: var(--warn-bd); }
+/* โหมดแอดมิน: ช่องที่แก้แต่ยังไม่ยืนยัน = สีเหลืองเข้ม + เส้นขอบเน้น */
+.cell.cell-pending, .cell.has-val.cell-pending { background: #fff3cd; border-color: #eda100; outline: 2px solid #eda100; outline-offset: -2px; font-weight: 600; }
+.cell.cell-err { background: #fde8e8; border-color: #e02424; outline: 2px solid #e02424; outline-offset: -2px; }
+/* โหมดแอดมิน: ขยายตารางแก้งบเต็มจอ */
+body.edit-fs-lock { overflow: hidden; }
+#admEditWrap.edit-fs { position: fixed; inset: 0; z-index: 1200; background: var(--bg, #fff); margin: 0; padding: 14px 16px; overflow: auto; box-shadow: 0 0 0 100vmax rgba(0,0,0,.15); }
+#admEditWrap.edit-fs .budget-scroll { max-height: calc(100vh - 40px); }
 /* ซ่อน GL ที่ไม่ได้ใช้ (แถวรวม=0) */
 .budget-card.hide-empty tr.row-empty { display: none; }
 #hideEmptyBtn.he-on { background: #eef4fc !important; border-color: var(--blue) !important; color: var(--blue) !important; font-weight: 700; }
