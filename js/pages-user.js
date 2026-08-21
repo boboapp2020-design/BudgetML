@@ -264,11 +264,94 @@ const PagesUser = (() => {
           <span class="grid-tools">
             ${hasOrig ? `<button id="viewOrigBtn" class="ghost-btn small ${viewOrig ? 'vo-on' : ''}" title="สลับตารางทั้งหมดเป็นงบที่ตั้งไว้ต้นปี (อนุมัติ) — ดูอย่างเดียว · กดอีกครั้งกลับงบปัจจุบัน">${viewOrig ? '🔙 กลับงบปัจจุบัน' : '📌 ดูงบต้นปี'}</button>` : ''}
             <button id="prevToggleBtn" class="ghost-btn small" title="แสดง/ซ่อนตัวเลขปีก่อนใต้ทุกช่อง (เทียบเดือนต่อเดือน)">🔀 ปีก่อน</button>
+            ${hasOrig ? `<button id="cmpOrigBtn" class="ghost-btn small btn-blue" title="เปิดหน้าต่างเต็มจอ เทียบงบปัจจุบัน ↔ งบต้นปี (อนุมัติ) เดือนต่อเดือน พร้อมงบคงเหลือ">⚖ เทียบงบต้นปี</button>` : ''}
             ${emptyCount ? `<button id="hideEmptyBtn" class="ghost-btn small ${hideEmpty ? 'he-on' : ''}" title="ซ่อน/แสดง GL ที่ยอดรวมทั้งปี = 0 (ยังไม่ได้ใช้) เพื่อดูเฉพาะที่มีตัวเลข">${hideEmpty ? `👁 แสดง GL ที่ไม่ได้ใช้ (${emptyCount})` : `🙈 ซ่อน GL ที่ไม่ได้ใช้ (${emptyCount})`}</button>` : ''}
             <button id="gridFsBtn" class="ghost-btn small btn-fs" title="ขยายตารางเกือบเต็มจอ (Esc เพื่อย่อกลับ)">⛶</button>
             <a class="ghost-btn small btn-review" href="#/review">✓ ตรวจสอบงบ</a>
           </span></div>
         <div class="table-scroll budget-scroll"><table class="budget-table"><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>`, { cls: 'card-flush budget-card' + (rvOn ? ' revise-mode' : '') + (viewOrig ? ' view-orig' : '') + (hideEmpty ? ' hide-empty' : '') });
+  }
+
+  /* ===== Pop-up เต็มจอ: เทียบงบปัจจุบัน ↔ งบต้นปี (อนุมัติ) + งบคงเหลือ ===== */
+  function openCompareOrig(c) {
+    const year = c.year, deptId = c.deptId, deptName = c.dept.name;
+    const z = v => v ?? 0;
+    const rows = Store.deptRows(deptId);
+    const data = rows.map(r => {
+      const o = Store.originalMonths(year, deptId, r.key).map(z);
+      const cu = Store.rowMonths(year, deptId, r.key).map(z);
+      const a = Store.actualMonths(year, deptId, r.key).map(z);
+      return { r, o, cu, a, oT: o.reduce((s, v) => s + v, 0), cT: cu.reduce((s, v) => s + v, 0), aT: a.reduce((s, v) => s + v, 0) };
+    }).filter(d => d.oT || d.cT || d.aT);
+    const hasAct = Store.hasPostedActuals(year, deptId);
+    const O = Array(12).fill(0), C = Array(12).fill(0), A = Array(12).fill(0);
+    data.forEach(d => { for (let i = 0; i < 12; i++) { O[i] += d.o[i]; C[i] += d.cu[i]; A[i] += d.a[i]; } });
+    const oTot = O.reduce((s, v) => s + v, 0), cTot = C.reduce((s, v) => s + v, 0), aTot = A.reduce((s, v) => s + v, 0);
+    const dTot = cTot - oTot, dPct = oTot ? dTot / oTot * 100 : null;
+    const remain = cTot - aTot;
+    const actCell = v => hasAct ? fmt(v) : '<span class="muted">—</span>';
+    const remainCell = (cu, ac) => hasAct ? fmt(cu - ac) : '<span class="muted">—</span>';
+
+    // มุมมองรายเดือน (รวมทั้งหน่วยงาน)
+    const monthTable = () => `<table class="data-table cmp-table"><thead><tr>
+        <th>เดือน</th><th class="num">งบต้นปี</th><th class="num">งบปัจจุบัน</th><th class="num">เปลี่ยนแปลง</th>${hasAct ? '<th class="num">เกิดจริง</th><th class="num">คงเหลือ</th>' : ''}</tr></thead><tbody>
+      ${Store.MONTH_TH.map((mo, i) => `<tr><td>${mo}</td><td class="num">${fmt(O[i])}</td><td class="num">${fmt(C[i])}</td>
+        <td class="num">${deltaBadge(C[i] - O[i], O[i] ? (C[i] - O[i]) / O[i] * 100 : null)}</td>${hasAct ? `<td class="num">${fmt(A[i])}</td><td class="num ${C[i] - A[i] < 0 ? 'txt-warn' : ''}">${fmt(C[i] - A[i])}</td>` : ''}</tr>`).join('')}
+      <tr class="tr-sum"><td><b>รวมทั้งปี</b></td><td class="num"><b>${fmt(oTot)}</b></td><td class="num"><b>${fmt(cTot)}</b></td>
+        <td class="num">${deltaBadge(dTot, dPct)}</td>${hasAct ? `<td class="num"><b>${fmt(aTot)}</b></td><td class="num"><b>${fmt(remain)}</b></td>` : ''}</tr>
+      </tbody></table>`;
+
+    // มุมมองราย GL (คลิกกางดูรายเดือน)
+    const glTable = () => `<table class="data-table cmp-table"><thead><tr>
+        <th>GL / บัญชี</th><th class="num">งบต้นปี</th><th class="num">งบปัจจุบัน</th><th class="num">เปลี่ยนแปลง</th>${hasAct ? '<th class="num">เกิดจริง</th><th class="num">คงเหลือ</th>' : ''}</tr></thead><tbody>
+      ${data.slice().sort((a, b) => Math.abs(b.cT - b.oT) - Math.abs(a.cT - a.oT)).map((d, idx) => {
+        const cols = hasAct ? d.cu.length : 0;
+        const detail = `<tr class="cmp-detail" data-detail="${idx}" hidden><td colspan="${hasAct ? 6 : 4}"><table class="data-table cmp-inner"><thead><tr><th>เดือน</th><th class="num">ต้นปี</th><th class="num">ปัจจุบัน</th><th class="num">Δ</th>${hasAct ? '<th class="num">เกิดจริง</th><th class="num">คงเหลือ</th>' : ''}</tr></thead><tbody>
+          ${Store.MONTH_TH.map((mo, i) => `<tr><td>${mo}</td><td class="num">${fmt(d.o[i])}</td><td class="num">${fmt(d.cu[i])}</td><td class="num">${deltaBadge(d.cu[i] - d.o[i], d.o[i] ? (d.cu[i] - d.o[i]) / d.o[i] * 100 : null)}</td>${hasAct ? `<td class="num">${fmt(d.a[i])}</td><td class="num ${d.cu[i] - d.a[i] < 0 ? 'txt-warn' : ''}">${fmt(d.cu[i] - d.a[i])}</td>` : ''}</tr>`).join('')}
+          </tbody></table></td></tr>`;
+        return `<tr class="cmp-glrow" data-gl="${idx}"><td><span class="cmp-caret">▸</span> <span class="gl-code">${d.r.gl.code}</span> ${esc(d.r.gl.name)}${d.r.multiCct ? ` <span class="muted">· ${esc(d.r.cctName)}</span>` : ''}</td>
+          <td class="num">${fmt(d.oT)}</td><td class="num">${fmt(d.cT)}</td><td class="num">${deltaBadge(d.cT - d.oT, d.oT ? (d.cT - d.oT) / d.oT * 100 : null)}</td>${hasAct ? `<td class="num">${actCell(d.aT)}</td><td class="num ${d.cT - d.aT < 0 ? 'txt-warn' : ''}">${remainCell(d.cT, d.aT)}</td>` : ''}</tr>${detail}`;
+      }).join('')}
+      <tr class="tr-sum"><td><b>รวมทั้งหน่วยงาน</b></td><td class="num"><b>${fmt(oTot)}</b></td><td class="num"><b>${fmt(cTot)}</b></td><td class="num">${deltaBadge(dTot, dPct)}</td>${hasAct ? `<td class="num"><b>${fmt(aTot)}</b></td><td class="num"><b>${fmt(remain)}</b></td>` : ''}</tr>
+      </tbody></table>`;
+
+    const ov = document.createElement('div');
+    ov.className = 'cmp-overlay';
+    ov.innerHTML = `<div class="cmp-inner-wrap">
+        <div class="cmp-head">
+          <div><h2>⚖ เทียบงบต้นปี ↔ ปัจจุบัน</h2><div class="cmp-sub">${esc(deptName)} · ปีงบ ${year}${hasAct ? '' : ' · <span class="muted">ยังไม่มีตัวเลขเกิดจริงที่โพสต์ (งบคงเหลือจะแสดงเมื่อมีเกิดจริง)</span>'}</div></div>
+          <button class="cmp-x" title="ปิด (Esc)">✕</button>
+        </div>
+        <div class="cmp-kpis">
+          <div class="cmp-kpi"><span>งบต้นปี (อนุมัติ)</span><b>${fmt(oTot)}</b></div>
+          <div class="cmp-kpi"><span>งบปัจจุบัน</span><b>${fmt(cTot)}</b></div>
+          <div class="cmp-kpi ${dTot >= 0 ? 'up' : 'down'}"><span>เปลี่ยนแปลงจากต้นปี</span><b>${(dTot >= 0 ? '+' : '') + fmt(dTot)}${dPct != null ? ` · ${(dPct >= 0 ? '+' : '') + dPct.toFixed(1)}%` : ''}</b></div>
+          ${hasAct ? `<div class="cmp-kpi"><span>เกิดจริงสะสม</span><b>${fmt(aTot)}</b></div><div class="cmp-kpi ${remain < 0 ? 'down' : ''}"><span>งบคงเหลือ</span><b>${fmt(remain)}</b></div>` : ''}
+        </div>
+        <div class="cmp-tabs">
+          <button class="cmp-tab active" data-cmp-view="month">📅 รายเดือน (รวมหน่วยงาน)</button>
+          <button class="cmp-tab" data-cmp-view="gl">📊 ราย GL (คลิกดูรายเดือน)</button>
+        </div>
+        <div class="cmp-body" id="cmpBody">${monthTable()}</div>
+      </div>`;
+    document.body.appendChild(ov);
+    document.body.classList.add('edit-fs-lock');
+    const close = () => { ov.remove(); document.body.classList.remove('edit-fs-lock'); document.removeEventListener('keydown', onKey); };
+    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+    document.addEventListener('keydown', onKey);
+    ov.querySelector('.cmp-x').addEventListener('click', close);
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    const body = ov.querySelector('#cmpBody');
+    ov.querySelectorAll('.cmp-tab').forEach(t => t.addEventListener('click', () => {
+      ov.querySelectorAll('.cmp-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      body.innerHTML = t.dataset.cmpView === 'gl' ? glTable() : monthTable();
+    }));
+    body.addEventListener('click', e => {
+      const row = e.target.closest('.cmp-glrow'); if (!row) return;
+      const det = body.querySelector(`.cmp-detail[data-detail="${row.dataset.gl}"]`);
+      if (det) { det.hidden = !det.hidden; row.classList.toggle('open', !det.hidden); }
+    });
   }
 
   function budgetBind(user) {
@@ -410,6 +493,9 @@ const PagesUser = (() => {
       App.render();
     });
     const bCard = document.querySelector('.budget-card');
+
+    /* --- ปุ่ม "⚖ เทียบงบต้นปี" — เปิด Pop-up เต็มจอ เทียบปัจจุบัน↔ต้นปี + งบคงเหลือ --- */
+    document.getElementById('cmpOrigBtn')?.addEventListener('click', () => openCompareOrig(c));
 
     /* --- เทียบปีก่อนเดือนต่อเดือน: ghost ทุกช่อง (toggle) --- */
     const SHOW_PREV_KEY = 'abp_show_prev';

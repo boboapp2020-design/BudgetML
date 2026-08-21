@@ -384,6 +384,35 @@ body.edit-fs-lock { overflow: hidden; }
 #admFsClose kbd { background: rgba(255,255,255,.22); border-radius: 5px; padding: 1px 6px; font-size: 11px; font-family: inherit; }
 /* แถบจับเมาส์บนสุด ให้ปุ่มโผล่ง่ายในเต็มจอ */
 #admEditWrap.edit-fs::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: 70px; z-index: 1250; pointer-events: none; }
+/* ===== Pop-up เต็มจอ: เทียบงบต้นปี ↔ ปัจจุบัน + งบคงเหลือ ===== */
+.cmp-overlay { position: fixed; inset: 0; z-index: 1400; background: rgba(15,23,42,.45); display: flex; align-items: stretch; justify-content: center; padding: 22px; overflow: auto; }
+.cmp-inner-wrap { background: var(--surface, #fff); width: 100%; max-width: 1180px; border-radius: 14px; padding: 18px 20px 24px; box-shadow: 0 18px 50px rgba(0,0,0,.3); display: flex; flex-direction: column; }
+.cmp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 14px; }
+.cmp-head h2 { margin: 0; font-size: 19px; }
+.cmp-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.cmp-x { background: #f1f3f5; border: none; border-radius: 8px; width: 34px; height: 34px; font-size: 16px; cursor: pointer; color: #444; flex: none; }
+.cmp-x:hover { background: #e2e6ea; }
+.cmp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.cmp-kpi { background: #f6f8fb; border-radius: 10px; padding: 11px 14px; }
+.cmp-kpi span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.cmp-kpi b { font-size: 18px; font-weight: 700; }
+.cmp-kpi.up b { color: #c0392b; }
+.cmp-kpi.down b { color: #1d9e75; }
+.cmp-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.cmp-tab { background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 7px 15px; font-size: 13px; cursor: pointer; color: var(--ink-2, #556); }
+.cmp-tab.active { background: #1f3a5f; color: #fff; border-color: #1f3a5f; }
+.cmp-body { overflow: auto; }
+.cmp-table { width: 100%; }
+.cmp-table .tr-sum td { background: #f0f4f8; font-weight: 700; border-top: 2px solid #cfd8e3; }
+.cmp-glrow { cursor: pointer; }
+.cmp-glrow:hover td { background: #f2f7ff; }
+.cmp-caret { display: inline-block; transition: transform .15s; color: #7a889a; font-size: 11px; }
+.cmp-glrow.open .cmp-caret { transform: rotate(90deg); }
+.cmp-inner { margin: 2px 0; background: #fbfcfe; }
+.cmp-inner th, .cmp-inner td { padding: 4px 8px !important; font-size: 12px; }
+.cmp-detail > td { padding: 4px 10px 10px !important; background: #f7f9fc; }
+.txt-warn { color: #c0392b; }
+@media (max-width: 720px){ .cmp-overlay { padding: 8px; } .cmp-inner-wrap { padding: 14px; } }
 /* ซ่อน GL ที่ไม่ได้ใช้ (แถวรวม=0) */
 .budget-card.hide-empty tr.row-empty { display: none; }
 #hideEmptyBtn.he-on { background: #eef4fc !important; border-color: var(--blue) !important; color: var(--blue) !important; font-weight: 700; }
