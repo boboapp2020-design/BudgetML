@@ -146,7 +146,7 @@ const PagesAssum = (() => {
         const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
         const isFormula = f && !ext;
         // โหมดปกติ: ช่องสูตร = อ่านอย่างเดียว · โหมด Edit (editAll): แก้ได้ทุกช่อง (พิมพ์ทับสูตร)
-        if (isFormula && !editAll) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="${esc(f)}">${fmt(val)}</td>`;
+        if (isFormula && !editAll) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="${esc(f)}">${val ? fmt(val) : ''}</td>`;
         const edited = (i + '_' + j) in committed;
         return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}${isFormula ? ' as-fcell' : ''}"><input class="as-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"${isFormula ? ` title="สูตร: ${esc(f)}"` : ''}></td>`;
       }).join('');
@@ -177,7 +177,7 @@ const PagesAssum = (() => {
     const { F, out } = compute();
     document.querySelectorAll('td.as-calc').forEach(td => {
       const i = +td.dataset.r, j = +td.dataset.c;
-      td.textContent = fmt(out[i][j]);
+      td.textContent = out[i][j] ? fmt(out[i][j]) : '';
     });
   }
 
