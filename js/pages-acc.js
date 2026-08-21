@@ -883,7 +883,6 @@ const PagesAcc = (() => {
         fsClose.id = 'admFsClose';
         fsClose.type = 'button';
         fsClose.innerHTML = '<span class="fs-x">✕</span> ย่อกลับ <kbd>Esc</kbd>';
-        fsClose.title = 'ย่อกลับหน้าปกติ (หรือกด Esc)';
         document.body.appendChild(fsClose);
       }
       const onFsMove = ev => { if (ev.clientY <= 70) fsClose.classList.add('show'); else fsClose.classList.remove('show'); };
