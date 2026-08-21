@@ -739,7 +739,9 @@ const PagesAcc = (() => {
         <td>${deltaBadge(c2.diff, c2.pct)}</td></tr>`;
     }).join('');
 
-    return pageHead(`GL ${g.code} — ${esc(g.name)}`, `${esc(d.name)} · งบปี ${year} เทียบปี ${prevYear}`)
+    return pageHead(`GL ${g.code} — ${esc(g.name)}`, `${esc(d.name)} · งบปี ${year} เทียบปี ${prevYear}`,
+        `<a class="ghost-btn" href="#/acc/departments?d=${deptId}" title="กลับไปหน้าหน่วยงานนี้">← กลับ</a>
+         <span class="pa-right"><a class="primary-btn" href="#/acc/departments?d=${deptId}&edit=1" title="โหมดแอดมิน — แก้งบรายเดือนของหน่วยงานนี้ได้ทุกช่อง (บันทึก Audit Log)">✏️ แก้ไขงบรายเดือน</a></span>`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <a href="#/acc/departments?d=${deptId}">${esc(d.name)}</a> › <b>GL ${g.code}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">
         ${kpi('ปี ' + year, fmt(cur) + ' <small>กีบ</small>')}
