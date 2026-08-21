@@ -1183,16 +1183,6 @@ const PagesAcc = (() => {
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
-      + card('📥 อัปโหลดตัวเลข "เกิดจริง" (บัญชี) — ทับงบผู้กรอกทันที', `
-          <p class="muted small">อัปโหลดไฟล์ตัวเลข<b>เกิดจริง</b> (Excel/CSV) — ระบบจับคู่แต่ละแถวด้วย <code>code a → IO → CCT+GL</code> แล้ว<b>เขียนทับช่องงบเดือนนั้นในตารางของผู้กรอกทันที</b> · ช่องที่ทับจะ<b>ถูกล็อก</b> (ผู้กรอกแก้ไม่ได้) · <b>ใช้ได้ทุกเมื่อ ไม่ต้องเปิดรอบ Revise</b></p>
-          <input type="file" id="postActFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
-          <span id="postActMsg" class="muted small" style="margin-left:10px"></span>
-          <div style="margin-top:12px;border-top:1px dashed var(--border);padding-top:10px">
-            <p class="muted small" style="margin:0 0 6px">— หรือวางจาก Excel: <code>code a</code> ตามด้วยตัวเลข 12 เดือน (คั่น Tab) · หรือ <code>CCT [Tab] รหัส GL</code> ตามด้วยตัวเลข —</p>
-            <textarea id="postActPaste" rows="5" placeholder="8003310100635202a\t45000000\t120000000\t8000000\t65000000\t…" style="font-family:monospace;font-size:12px;width:100%"></textarea>
-            <button class="primary-btn" id="postActPasteBtn" style="margin-top:8px">📥 โพสต์เกิดจริง (ทับงบ)</button>
-          </div>
-          <p class="warn-text small" style="margin-top:8px">⚠ เขียนทับตัวเลขที่แผนกกรอกในเดือนที่ตรงกัน (บันทึก audit log ว่ามาจากไฟล์เกิดจริง) — ถอยกลับได้จากเวอร์ชันงบ 📸 ที่บันทึกไว้</p>`)
       + card('📥 นำเข้าเกิดจริงจาก SAP (CA07) — จับคู่ GL + CCT', `
           <p class="muted small">อัปโหลดไฟล์ <b>SAP CA07 "Actual Analysis by Period"</b> — ระบบจับคู่ด้วย <b>GL + CCT (ดูคู่กันเท่านั้น)</b> แล้วทับ<b>งบปัจจุบัน</b>รายเดือน:<br>
           • <b>Act 3.Jan – 12.Oct → เดือน ม.ค.–ต.ค. ของปีในไฟล์</b> · <b>Act 1.Nov / 2.Dec → เดือน พ.ย./ธ.ค. ของปีก่อนหน้า</b> (ข้าม Total Quarter)<br>
@@ -1463,27 +1453,6 @@ const PagesAcc = (() => {
         ]);
       } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); e.target.value = ''; }
     });
-    document.getElementById('postActFile')?.addEventListener('change', async e => {
-      const file = e.target.files[0]; if (!file) return;
-      const msg = document.getElementById('postActMsg'); msg.textContent = 'กำลังอ่านไฟล์…';
-      try {
-        const grid = await fileToGrid(file);
-        const recs = gridToRecords(grid);
-        if (!recs.length) throw new Error('ไม่พบแถวข้อมูลในไฟล์');
-        const willMatch = recs.filter(r => Store.actualRowRef(r)).length;
-        msg.textContent = `พบ ${recs.length} แถว · จับคู่ได้ ${willMatch} แถว`;
-        UI.modal('📥 โพสต์เกิดจริง (ทับงบผู้กรอก)', `
-          <p>ไฟล์: <b>${esc(file.name)}</b></p>
-          <p>พบ <b>${recs.length}</b> แถว · จับคู่เข้า GL ได้ <b>${willMatch}</b> แถว${recs.length - willMatch ? ` · จับคู่ไม่ได้ ${recs.length - willMatch} แถว (จะถูกข้าม)` : ''}</p>
-          <p class="warn-text">⚠ ระบบจะ<b>เขียนทับตัวเลขงบที่แผนกกรอก</b> เฉพาะเดือนที่มีค่าในไฟล์ แล้ว<b>ล็อก</b>ช่องนั้น (ผู้กรอกแก้ไม่ได้) · ปีงบ ${UI.year()}</p>`, [
-          { label: 'ยกเลิก', cls: 'ghost-btn', onClick: close => { close(); e.target.value = ''; msg.textContent = ''; } },
-          { label: '📥 โพสต์เกิดจริง', cls: 'primary-btn', onClick: close => {
-              try { const r = Store.postActuals(user, UI.year(), recs); close(); e.target.value = ''; msg.textContent = ''; postActResult(r, file.name); }
-              catch (err) { toast(err.message, 'err'); }
-            } },
-        ]);
-      } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); e.target.value = ''; }
-    });
     document.getElementById('sapFile')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
       const msg = document.getElementById('sapMsg'); msg.textContent = 'กำลังอ่านไฟล์…';
@@ -1496,12 +1465,6 @@ const PagesAcc = (() => {
         showSapPreview(user, file.name, fileYear, records, plan);
       } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); }
       e.target.value = '';
-    });
-    document.getElementById('postActPasteBtn')?.addEventListener('click', () => {
-      const text = document.getElementById('postActPaste').value;
-      if (!text.trim()) { toast('วางข้อมูลก่อน', 'err'); return; }
-      try { const r = Store.postActualsPaste(user, UI.year(), text); postActResult(r, 'วางจาก Excel'); }
-      catch (err) { toast(err.message, 'err'); }
     });
     document.getElementById('reconFile')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
