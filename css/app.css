@@ -1784,9 +1784,17 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table th.as-name, .as-table td.as-name { position: sticky; left: 70px; z-index: 2; background: #fff; min-width: 210px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; text-align:left; }
 .as-table th.as-unit, .as-table td.as-unit { position: sticky; left: 280px; z-index: 2; background: #fbfcfe; min-width: 78px; text-align:left; color:#667; }
 .as-table thead th.as-note, .as-table thead th.as-ord, .as-table thead th.as-name, .as-table thead th.as-unit { background:#1f3a5f; z-index:4; }
-.as-table tr.as-main td.as-name { font-weight: 700; }
-.as-table tr.as-main td { background-color: #f7faff; }
-.as-table tr.as-main td.as-note, .as-table tr.as-main td.as-ord { background:#eaf1fb; }
+/* แถบหัวหมวด (main row) — bar สีครามเด่น + เส้นแบ่งหนา */
+.as-table tr.as-main td { background-color: #dfe7fb !important; border-top: 2px solid #4f6ef2; }
+.as-table tr.as-main td.as-name { font-weight: 700; color: #22317f; }
+.as-table tr.as-main td.as-note, .as-table tr.as-main td.as-ord { background: #cdd8f6 !important; color: #22317f; }
+.as-table tr.as-main td.as-unit { background: #d6dff8 !important; }
+.as-table tr.as-main td.as-note { box-shadow: inset 5px 0 0 #3a52c9; }
+/* zebra สลับแถวย่อย ให้อ่านง่าย (รวมคอลัมน์ตรึงซ้าย) */
+.as-table tr.as-sub.as-alt td { background-color: #f6f8fc; }
+.as-table tr.as-sub.as-alt td.as-name { background: #f6f8fc; }
+.as-table tr.as-sub.as-alt td.as-note, .as-table tr.as-sub.as-alt td.as-ord { background: #eef1f8; }
+.as-table tr.as-sub.as-alt td.as-unit { background: #f2f5fb; }
 .as-table tr.as-sub td.as-name { padding-left: 16px; color: #3a4658; }
 .as-calc { color: #556; background-image: none; }
 .as-in { padding: 1px !important; }

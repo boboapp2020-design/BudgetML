@@ -135,11 +135,13 @@ const PagesAssum = (() => {
     // หัวตาราง 2 แถว
     const head1 = COLS.map(c => `<th class="num as-h1 ${scCls(c.sc)}">${esc(c.grp)}${c.yr ? `<div class="as-yr">${c.yr}</div>` : ''}</th>`).join('');
     const head2 = COLS.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
-    let body = '';
+    let body = '', subN = 0;
     for (let i = R0; i <= R1; i++) {
       const note = V[i][0], order = V[i][1], name = V[i][2], unit = V[i][3], remark = V[i][REMARK_J];
       if (name == null && order == null) continue;
       const isMain = order != null && /^\d+$/.test(String(order));
+      if (isMain) subN = 0; else subN++;
+      const rowCls = isMain ? 'as-main' : ('as-sub' + (subN % 2 === 0 ? ' as-alt' : ''));
       const cells = COLS.map(c => {
         const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
         const isFormula = f && !ext;
@@ -148,7 +150,7 @@ const PagesAssum = (() => {
         const edited = (i + '_' + j) in committed;
         return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}${isFormula ? ' as-fcell' : ''}"><input class="as-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"${isFormula ? ` title="สูตร: ${esc(f)}"` : ''}></td>`;
       }).join('');
-      body += `<tr class="${isMain ? 'as-main' : 'as-sub'}">
+      body += `<tr class="${rowCls}">
         <td class="as-note">${esc(note ?? '')}</td>
         <td class="as-ord">${esc(order ?? '')}</td>
         <td class="as-name" title="${esc(name ?? '')}">${esc(name ?? '')}</td>
