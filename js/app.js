@@ -26,6 +26,7 @@ const App = (() => {
     '#/mgr/dept':        { role: 'MANAGER',    page: () => PagesMgr.deptDetail,   bind: () => PagesMgr.deptDetailBind },
     '#/acc/dashboard':   { role: 'ACCOUNTING', page: () => PagesAcc.dashboard,    bind: () => PagesAcc.dashboardBind },
     '#/acc/departments': { role: 'ACCOUNTING', page: () => PagesAcc.departments,  bind: () => PagesAcc.departmentsBind },
+    '#/acc/analytics':   { role: 'ACCOUNTING', page: () => PagesAcc.analytics,    bind: () => PagesAcc.analyticsBind },
     '#/acc/analysis':    { role: 'ACCOUNTING', page: () => PagesAcc.analysis,     bind: () => PagesAcc.analysisBind },
     '#/acc/pnl':         { role: 'ACCOUNTING', page: () => PagesAcc.pnl,          bind: () => PagesAcc.pnlBind },
     '#/acc/variance':    { role: 'ACCOUNTING', page: () => PagesAcc.variance,     bind: () => PagesAcc.varianceBind },

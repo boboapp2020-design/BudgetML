@@ -1671,3 +1671,10 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .req-section{background:#fafbfe;border-color:var(--border)}
 .boot-sync{background:#f5f7fb}
 .bs-card{box-shadow:0 10px 40px rgba(31,43,67,.12)}
+
+/* แท็บ "วิเคราะห์งบ" (รวม วิเคราะห์ + งบการเงิน + ควบคุมงบ) */
+.an-tabs{display:flex;gap:4px;margin:2px 0 18px;border-bottom:2px solid var(--border);flex-wrap:wrap}
+.an-tab{padding:11px 20px;font-weight:700;font-size:14px;color:var(--ink-2);text-decoration:none;border-bottom:3px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px;transition:color .15s,border-color .15s;white-space:nowrap}
+.an-tab:hover{color:var(--navy)}
+.an-tab.active{color:var(--navy);border-bottom-color:var(--blue)}
+.an-actions{display:flex;justify-content:flex-end;gap:8px;margin:-6px 0 12px}

@@ -936,7 +936,7 @@ const PagesAcc = (() => {
   }
 
   /* ============ Analysis ============ */
-  function analysis(user) {
+  function analysis(user, embed) {
     const year = UI.year(), prevYear = year - 1;
     const depts = Store.activeDepartments();
     const all = depts.flatMap(d => Store.deptGLs(d.id).map(g => {
@@ -956,9 +956,10 @@ const PagesAcc = (() => {
           <td class="small">${esc((Store.note(year, x.d.id, x.g.id).reason || '—').slice(0, 70))}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="muted">ไม่มีรายการ</p>');
 
-    return pageHead(`วิเคราะห์งบประมาณ ปี ${year}`, `เทียบงบปี ${prevYear} · ${asOf()}`,
+    return (embed ? `<div class="an-actions"><button class="ghost-btn small" onclick="Store.exportDetail(${year})">⬇ Export รายละเอียด CSV</button> <button class="ghost-btn small" onclick="window.print()">🖨 พิมพ์ / PDF</button></div>`
+        : pageHead(`วิเคราะห์งบประมาณ ปี ${year}`, `เทียบงบปี ${prevYear} · ${asOf()}`,
         `<button class="ghost-btn" onclick="Store.exportDetail(${year})">⬇ Export รายละเอียด CSV</button>
-         <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
+         <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`))
       + tbl(inc, `📈 Top 10 งบเพิ่มขึ้นสูงสุด (ต้องมีเหตุผลรองรับ)`, 'txt-up')
       + tbl(dec, `📉 Top 10 งบลดลงมากสุด`, 'txt-down')
       + card(`งบรายเดือนทุกหน่วยงาน ปี ${year} เทียบปี ${prevYear} (กีบ)`, `<div id="chAnaMonthly"></div>`);
@@ -1768,7 +1769,7 @@ const PagesAcc = (() => {
   }
 
   /* ============ งบการเงินตามงบ (Budget P&L by กลุ่มบัญชี) ============ */
-  function pnl(user) {
+  function pnl(user, embed) {
     const year = UI.year(), prevYear = year - 1;
     const gById = {}; Store.db.glAccounts.forEach(g => { gById[g.id] = g; });
     const agg = {};
@@ -1799,9 +1800,10 @@ const PagesAcc = (() => {
     }).join('');
     const gcmp = Store.compare(grand.cur, grand.prev);
 
-    return pageHead('📑 งบการเงินตามงบ (Budget P&L)', `สรุปงบตามกลุ่มบัญชี (ธรรมชาติค่าใช้จ่าย) · ทั้งบริษัท ปี ${year} · ${asOf()}`,
+    return (embed ? `<div class="an-actions"><button class="ghost-btn small" onclick="Store.exportPnl(${year})">⬇ Export CSV</button> <button class="ghost-btn small" onclick="window.print()">🖨 พิมพ์ / PDF</button></div>`
+        : pageHead('📑 งบการเงินตามงบ (Budget P&L)', `สรุปงบตามกลุ่มบัญชี (ธรรมชาติค่าใช้จ่าย) · ทั้งบริษัท ปี ${year} · ${asOf()}`,
         `<button class="ghost-btn" onclick="Store.exportPnl(${year})">⬇ Export CSV</button>
-         <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
+         <button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`))
       + `<div class="kpi-grid kpi-grid-4">
         ${kpiC('📑', '#e6f0fb', 'kpi-tint-blue', `งบรวมปี ${year}`, `${UI.fmtShort(grand.cur)} <small>กีบ</small>`, fmt(grand.cur) + ' กีบ')}
         ${kpiC('🗓️', '#e6f7f0', 'kpi-tint-teal', `ปี ${prevYear}`, `${UI.fmtShort(grand.prev)} <small>กีบ</small>`, fmt(grand.prev) + ' กีบ')}
@@ -1817,7 +1819,7 @@ const PagesAcc = (() => {
   function pnlBind() { UI.enableSort(document.getElementById('pnlTable')); }
 
   /* ============ ควบคุมงบ (Budget vs Actual / Variance) ============ */
-  function variance(user) {
+  function variance(user, embed) {
     const year = UI.year();
     const rv = Store.revisePhase(year);
     const acts = (Store.db.actuals || []).filter(a => a.year === year);
@@ -1855,8 +1857,9 @@ const PagesAcc = (() => {
     const emptyNote = actTotal === 0
       ? `<div class="anomaly-box warning" style="margin-bottom:14px">ℹ️ ยังไม่มีตัวเลขเกิดจริงปี ${year} — ${rv.on ? 'ใส่เกิดจริงที่เมนู "ใส่เกิดจริง" หรืออัปโหลดไฟล์ SAP' : 'เปิดรอบ Revise แล้วนำเข้าเกิดจริงก่อน'} · รายงานนี้จะคำนวณอัตโนมัติเมื่อมีข้อมูล</div>` : '';
 
-    return pageHead('🎯 ควบคุมงบ — งบ vs เกิดจริง', `เทียบงบที่ตั้งกับเกิดจริงสะสม${rv.on ? ` (ถึงเดือน ${rv.thru})` : ''} · ทั้งบริษัท ปี ${year} · ${asOf()}`,
-        `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`)
+    return (embed ? `<div class="an-actions"><button class="ghost-btn small" onclick="window.print()">🖨 พิมพ์ / PDF</button></div>`
+        : pageHead('🎯 ควบคุมงบ — งบ vs เกิดจริง', `เทียบงบที่ตั้งกับเกิดจริงสะสม${rv.on ? ` (ถึงเดือน ${rv.thru})` : ''} · ทั้งบริษัท ปี ${year} · ${asOf()}`,
+        `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`))
       + emptyNote
       + `<div class="kpi-grid kpi-grid-4">
         ${kpiC('💰', '#e6f0fb', 'kpi-tint-blue', `งบทั้งปี ${year}`, `${UI.fmtShort(budTotal)} <small>กีบ</small>`, fmt(budTotal) + ' กีบ')}
@@ -2134,5 +2137,26 @@ const PagesAcc = (() => {
     filt();
   }
 
-  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind, users, usersBind, exportForUser };
+  /* ============ วิเคราะห์งบ (รวม วิเคราะห์ + งบการเงิน + ควบคุมงบ เป็นแท็บเดียว) ============ */
+  const AN_TABS = [
+    { k: 'analyze',  ic: '📈', label: 'วิเคราะห์งบ' },
+    { k: 'pnl',      ic: '📑', label: 'งบการเงิน (P&L)' },
+    { k: 'variance', ic: '🎯', label: 'ควบคุมงบ (เกิดจริง)' },
+  ];
+  const anTab = () => { const t = parseQS().tab; return AN_TABS.some(x => x.k === t) ? t : 'analyze'; };
+  function analytics(user) {
+    const year = UI.year(), tab = anTab();
+    const bar = `<div class="an-tabs">${AN_TABS.map(t => `<a class="an-tab ${t.k === tab ? 'active' : ''}" href="#/acc/analytics?tab=${t.k}">${t.ic} <span>${t.label}</span></a>`).join('')}</div>`;
+    const body = tab === 'pnl' ? pnl(user, true) : tab === 'variance' ? variance(user, true) : analysis(user, true);
+    return pageHead(`วิเคราะห์งบประมาณ ปี ${year}`, `วิเคราะห์งบ · งบการเงิน · ควบคุมงบ (เกิดจริง) — รวมในหน้าเดียว · ${asOf()}`)
+      + bar + `<div class="an-body">${body}</div>`;
+  }
+  function analyticsBind(user) {
+    const tab = anTab();
+    if (tab === 'pnl') pnlBind(user);
+    else if (tab === 'variance') varianceBind(user);
+    else analysisBind(user);
+  }
+
+  return { dashboard, dashboardBind, departments, departmentsBind, analysis, analysisBind, analytics, analyticsBind, control, controlBind, system, systemBind, audit, actuals, actualsBind, pnl, pnlBind, variance, varianceBind, users, usersBind, exportForUser };
 })();

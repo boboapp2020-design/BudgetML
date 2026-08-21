@@ -86,10 +86,8 @@ const UI = (() => {
   const NAV_ACC = [
     { hash: '#/acc/dashboard',   icon: '📊', label: 'Executive Dashboard', sub: 'ภาพรวมทั้งบริษัท' },
     { hash: '#/acc/departments', icon: '🏢', label: 'หน่วยงาน & Drill-down', sub: 'Departments' },
-    { hash: '#/acc/analysis',    icon: '📈', label: 'วิเคราะห์งบประมาณ',  sub: 'Analysis' },
-    { hash: '#/acc/pnl',         icon: '📑', label: 'งบการเงินตามงบ',     sub: 'Budget P&L' },
+    { hash: '#/acc/analytics',   icon: '📈', label: 'วิเคราะห์งบ',        sub: 'วิเคราะห์ · งบการเงิน · ควบคุมงบ' },
     { hash: '#/unitcost',        icon: '🏭', label: 'ต้นทุนต่อหน่วย',     sub: 'กีบ/ตันอ้อย · น้ำตาล' },
-    { hash: '#/acc/variance',    icon: '🎯', label: 'ควบคุมงบ (เกิดจริง)', sub: 'Budget vs Actual' },
     { hash: '#/requests',        icon: '📝', label: 'คำร้องปรับงบ',       sub: 'ดำเนินการ/คุมหน้าต่าง' },
     { hash: '#/acc/control',     icon: '⚙️', label: 'Budget Control',      sub: 'จัดการระบบ' },
     { hash: '#/acc/audit',       icon: '📜', label: 'Audit Log',           sub: 'ประวัติการแก้ไข' },
@@ -130,7 +128,8 @@ const UI = (() => {
   function setYear(y) { selectedYear = Number(y); }
 
   // หน้าที่เข้าจากเมนูอื่น (ไม่มีใน sidebar) → ให้ไฮไลต์เมนูที่เกี่ยวข้อง
-  const NAV_ALIAS = { '#/acc/users': '#/acc/control', '#/acc/system': '#/acc/control', '#/acc/actuals': '#/acc/control' };
+  const NAV_ALIAS = { '#/acc/users': '#/acc/control', '#/acc/system': '#/acc/control', '#/acc/actuals': '#/acc/control',
+    '#/acc/analysis': '#/acc/analytics', '#/acc/pnl': '#/acc/analytics', '#/acc/variance': '#/acc/analytics' };
   function shell(user, contentHtml, activeHash) {
     const effHash = NAV_ALIAS[activeHash.split('?')[0]] || activeHash;
     const nav = (user.role === 'ACCOUNTING' ? NAV_ACC : user.role === 'MANAGER' ? NAV_MGR : NAV_USER)
