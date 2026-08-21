@@ -718,7 +718,7 @@ const PagesAcc = (() => {
          <span class="pa-right">
            <button class="ghost-btn" data-edit-expand title="ขยาย/ย่อ ตารางเต็มจอ">⛶ ขยาย</button>
            <button class="ghost-btn" data-edit-cancel disabled title="ยกเลิกการแก้ที่ยังไม่บันทึก">↺ ยกเลิก</button>
-           <button class="primary-btn" data-edit-confirm disabled title="ยืนยันบันทึกการแก้ไขทั้งหมด ลง Audit Log">✔ ยืนยันบันทึก</button>
+           <button class="primary-btn" data-edit-confirm disabled title="แก้ไขงบ — บันทึกการแก้ไขทั้งหมด ลง Audit Log">✔ แก้ไขงบ</button>
          </span>`)
       + `<div class="breadcrumb"><a href="#/acc/departments">ทุกหน่วยงาน</a> › <a href="#/acc/departments?d=${deptId}">${esc(d.name)}</a> › <b>แก้ไขงบ</b></div>`
       + `<div class="lock-banner" style="background:#fff7e6;border-color:#eda100;color:#7a5405;margin-bottom:12px">⚠ โหมดแอดมิน — แก้งบของ <b>${esc(d.name)}</b> ได้ทุกช่อง (ข้ามการล็อก) · พิมพ์ตัวเลขในช่องที่ต้องการ (ช่องที่แก้จะเป็นสีเหลือง) แล้วกด <b>✔ ยืนยันบันทึก</b> เพื่อลง Audit Log</div>`
@@ -833,7 +833,7 @@ const PagesAcc = (() => {
       };
       const updateButtons = () => {
         const n = pending.size;
-        if (confirmBtn) { confirmBtn.disabled = !n; confirmBtn.textContent = n ? `✔ ยืนยันบันทึก (${n})` : '✔ ยืนยันบันทึก'; }
+        if (confirmBtn) { confirmBtn.disabled = !n; confirmBtn.textContent = n ? `✔ แก้ไขงบ (${n})` : '✔ แก้ไขงบ'; }
         if (cancelBtn) cancelBtn.disabled = !n;
       };
       document.querySelectorAll('.adm-cell').forEach(inp => {
@@ -850,8 +850,7 @@ const PagesAcc = (() => {
           updateButtons();
         });
       });
-      confirmBtn?.addEventListener('click', () => {
-        if (!pending.size) return;
+      const commitPending = () => {
         let ok = 0, err = 0;
         pending.forEach(p => {
           try { if (Store.adminSetCell(user, year, deptId, p.key, p.m, p.val)) ok++; p.inp.classList.remove('cell-pending'); p.inp.classList.add('cell-changed'); }
@@ -860,6 +859,26 @@ const PagesAcc = (() => {
         pending.clear();
         updateButtons();
         toast(`บันทึก ${ok} รายการ ลง Audit Log แล้ว${err ? ` · ผิดพลาด ${err} รายการ` : ''}`, err ? 'err' : 'ok');
+      };
+      confirmBtn?.addEventListener('click', () => {
+        if (!pending.size) return;
+        const list = [...pending.values()].map(p => {
+          const r = allRows.find(x => x.key === p.key);
+          const oldV = storedVal(p.key, p.m);
+          return `<tr><td class="small"><span class="gl-code">${r ? r.gl.code : ''}</span> ${r ? esc(r.gl.name.slice(0, 22)) : ''}</td>
+            <td class="small">${Store.MONTH_TH[p.m]}</td>
+            <td class="num small">${UI.fmt(oldV ?? 0)}</td>
+            <td class="num small"><b>${UI.fmt(p.val ?? 0)}</b></td></tr>`;
+        }).join('');
+        UI.modal(`✏️ ยืนยันแก้ไขงบ — ${esc(Store.dept(deptId)?.name || '')}`,
+          `<p>คุณกำลังจะแก้ไขงบ <b>${pending.size}</b> รายการ และบันทึกลง <b>Audit Log</b></p>
+           <div class="table-scroll" style="max-height:46vh"><table class="data-table small">
+           <thead><tr><th>GL / บัญชี</th><th>เดือน</th><th class="num">ค่าเดิม</th><th class="num">ค่าใหม่</th></tr></thead>
+           <tbody>${list}</tbody></table></div>`,
+          [
+            { label: '↺ ยกเลิก', cls: 'ghost-btn' },
+            { label: '✔ ยืนยันแก้ไขงบ', cls: 'primary-btn', onClick: close => { close(); commitPending(); } },
+          ]);
       });
       cancelBtn?.addEventListener('click', () => {
         const keys = new Set();
