@@ -20,7 +20,6 @@ const App = (() => {
   const ROUTES = {
     '#/dashboard':       { role: 'USER',       page: () => PagesUser.dashboard,   bind: () => PagesUser.dashboardBind },
     '#/budget':          { role: 'USER',       page: () => PagesUser.budget,      bind: () => PagesUser.budgetBind },
-    '#/review':          { role: 'USER',       page: () => PagesUser.review,      bind: () => PagesUser.reviewBind },
     '#/calculators':     { role: 'USER',       page: () => PagesUser.calculators, bind: () => PagesUser.calculatorsBind },
     '#/mgr/dashboard':   { role: 'MANAGER',    page: () => PagesMgr.dashboard,    bind: () => PagesMgr.dashboardBind },
     '#/mgr/dept':        { role: 'MANAGER',    page: () => PagesMgr.deptDetail,   bind: () => PagesMgr.deptDetailBind },
