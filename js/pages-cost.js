@@ -67,8 +67,8 @@ const PagesCost = (() => {
     const yearLocked = !Store.isYearEditable(year);
     const metricSubmitted = key => { const eds = editorsCfg[key] || []; return eds.length > 0 && eds.every(c => Store.pptSubmitted(year, c)); };
     const committed = key => yearLocked || metricSubmitted(key);
-    // ตัวหาร /ตัน = ปริมาณ "งบต้นปี (Realistic)" ดึงจากหน้า Assumption (MTP) — ไม่กรอกในหน้านี้แล้ว
-    const AS_COL = 6; // งบต้นปี 2569 · Realistic
+    // ตัวหาร /ตัน = ปริมาณ "เกิดจริง+คาดการณ์ (Realistic)" ดึงจากหน้า Assumption (MTP) — ไม่กรอกในหน้านี้แล้ว
+    const AS_COL = 16; // เกิดจริง+คาดการณ์ · Realistic
     const AS_ROW = { caneCompany: 21, caneCommunity: 36, sugarProduce: 81 }; // แถว 4/5/13 (0-based)
     let _asGrid, _asTried = false;
     const asGrid = () => { if (!_asTried) { _asTried = true; try { _asGrid = (typeof PagesAssum !== 'undefined' && PagesAssum.grid) ? PagesAssum.grid() : null; } catch (e) { _asGrid = null; } } return _asGrid; };
@@ -106,7 +106,7 @@ const PagesCost = (() => {
     const divCell = v => v == null ? '<span class="muted">— ยังไม่ส่ง</span>' : fmt(Math.round(v));
     const tonCell = (a, div) => `<td class="num uc-ton">${perCane(a, div) === null ? '—' : fmt(Math.round(perCane(a, div)))}</td>
         <td class="num uc-ton">${perSugar(a) === null ? '—' : fmt(Math.round(perSugar(a)))}</td>`;
-    const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท · Assumption งบต้นปี)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม · Assumption งบต้นปี)</small>' : '';
+    const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท · Assumption เกิดจริง+คาดการณ์)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม · Assumption เกิดจริง+คาดการณ์)</small>' : '';
 
     // ตารางต้นทุน (อ่านอย่างเดียว — ทุก user เห็นชุดเดียวกัน)
     const body = LAYOUT.map(row => {
@@ -175,7 +175,7 @@ const PagesCost = (() => {
         roundChip)
       + submitBar + adminUnlock
       + card(`ต้นทุนการผลิต`, `
-          <div class="uc-hint-calc">🧮 ตัวหาร (ปริมาณ) ดึงจากหน้า <b>Assumption (MTP) · งบต้นปี</b> อัตโนมัติ — ไม่ต้องกรอกในหน้านี้ · <b>กีบ/ตัน</b> = จำนวนเงิน ÷ ปริมาณ</div>
+          <div class="uc-hint-calc">🧮 ตัวหาร (ปริมาณ) ดึงจากหน้า <b>Assumption (MTP) · เกิดจริง+คาดการณ์</b> อัตโนมัติ — ไม่ต้องกรอกในหน้านี้ · <b>กีบ/ตัน</b> = จำนวนเงิน ÷ ปริมาณ</div>
           <div class="table-scroll"><table class="data-table small"><thead>
             <tr><th>ปริมาณ ปี ${year}</th><th class="num">เกิดจริง (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
             <tbody>${volRows}
@@ -183,9 +183,9 @@ const PagesCost = (() => {
               <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${sugarAllActual == null ? '—' : fmt(Math.round(sugarAllActual))}</td><td class="num muted">—</td></tr>
             </tbody></table></div>${fillFoot}`)
       + `<div class="kpi-grid kpi-grid-4">
-          <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท (Assumption งบต้นปี)</div></div>
-          <div class="kpi kpi-tint-teal"><div class="kpi-label">🌱 ต้นทุนอ้อย ไร่ส่งเสริม / ตัน</div><div class="kpi-value">${caneComm == null ? '—' : fmt(Math.round(caneComm))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (4-6) ÷ ตันไร่ส่งเสริม (Assumption งบต้นปี)</div></div>
-          <div class="kpi"><div class="kpi-label">🏭 ต้นทุนรวม / ตันอ้อย</div><div class="kpi-value">${totCane == null ? '—' : fmt(Math.round(totCane))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ทุกหมวด ÷ ตันอ้อยรวม (Assumption งบต้นปี)</div></div>
+          <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท (Assumption เกิดจริง+คาดการณ์)</div></div>
+          <div class="kpi kpi-tint-teal"><div class="kpi-label">🌱 ต้นทุนอ้อย ไร่ส่งเสริม / ตัน</div><div class="kpi-value">${caneComm == null ? '—' : fmt(Math.round(caneComm))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (4-6) ÷ ตันไร่ส่งเสริม (Assumption เกิดจริง+คาดการณ์)</div></div>
+          <div class="kpi"><div class="kpi-label">🏭 ต้นทุนรวม / ตันอ้อย</div><div class="kpi-value">${totCane == null ? '—' : fmt(Math.round(totCane))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ทุกหมวด ÷ ตันอ้อยรวม (Assumption เกิดจริง+คาดการณ์)</div></div>
           <div class="kpi"><div class="kpi-label">🍬 ต้นทุนรวม / ตันน้ำตาล</div><div class="kpi-value">${totSugar == null ? '—' : fmt(Math.round(totSugar))} <small>กีบ/ตัน</small></div><div class="kpi-sub">รวมทั้งหมด ${fmt(Math.round(grand))} กีบ</div></div>
         </div>`
       + card('', `<p class="muted small" style="margin:0 0 8px">💡 จำนวนเงินทุกหมวด <span class="uc-auto" style="padding:1px 6px;border-radius:4px;background:#eef3ff">ดึง auto จาก GL ตามงบ</span> · <span style="background:#fff7cc;padding:1px 6px;border-radius:4px">เหลือง=รวมหมวด</span> · <span style="background:#fbe0ec;padding:1px 6px;border-radius:4px">ชมพู=รวมใหญ่</span> · กีบ/ตัน = จำนวนเงิน ÷ ปริมาณ &nbsp; ${srcNote}</p>
