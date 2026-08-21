@@ -164,8 +164,8 @@ const PagesAssum = (() => {
         ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
     return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
-         <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit'}</button>
          <span class="pa-right">
+           <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit'}</button>
            <button data-as-cancel class="ghost-btn small" disabled title="ยกเลิกการแก้ที่ยังไม่ Submit">↺ ยกเลิก</button>
            <button data-as-clear class="danger-btn small" title="ล้างค่าที่แก้ทั้งหมด กลับเป็นค่าต้นทาง">🗑 Clear</button>
            <button data-as-submit class="primary-btn small" disabled title="บันทึกค่าที่แก้ขึ้นระบบ (Supabase)">✔ Submit</button>
