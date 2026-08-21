@@ -87,7 +87,9 @@ const PagesCost = (() => {
     };
 
     // ---- จำนวนเงินรายหมวด = ดึง auto จาก GL ตามงบ · ปีก่อน (ไม่มีงบ) ใช้ค่าไฟล์ Revise ----
-    const glPpt = {}; Store.db.glAccounts.forEach(g => { glPpt[g.id] = g.pptCode || 0; });
+    // แยกรายการที่ "ไม่ใช่ต้นทุนการผลิต" ออก: รายได้ (44/45/46) + กำไร/ขาดทุน FX ยังไม่เกิดจริง (823)
+    const NON_COST = /^(44|45|46|823)/;
+    const glPpt = {}; Store.db.glAccounts.forEach(g => { glPpt[g.id] = NON_COST.test(g.code || '') ? 0 : (g.pptCode || 0); });
     const budgetByCode = {};
     Store.db.budgets.filter(b => b.year === year).forEach(b => {
       const c = glPpt[b.glId]; if (c) budgetByCode[c] = (budgetByCode[c] || 0) + b.months.reduce((s, v) => s + (v || 0), 0);
