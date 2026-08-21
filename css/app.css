@@ -1796,3 +1796,17 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 
 .as-table td.as-ext .as-cell { background:#eef2ff; }
 .as-table td.as-ext .as-cell:hover { background:#e2e9fe; }
+
+.as-table td .as-cell.as-edited { background:#e6f7ee; box-shadow: inset 2px 0 0 #1d9e75; }
+.as-table td .as-cell.as-edited:hover { background:#d6f0e2; }
+
+/* Assumption: ช่องที่แก้แต่ยังไม่ Submit (staged) */
+.as-table td .as-cell.as-pending { background:#fff3cd !important; box-shadow: inset 2px 0 0 #eda100; font-weight:600; }
+.as-table td .as-cell.as-pending:hover { background:#ffec9e !important; }
+/* Assumption: ขยายเต็มจอ */
+#asWrap.as-fs { position: fixed; inset: 0; z-index: 1200; background: var(--bg,#fff); margin:0; padding:12px 14px; overflow:auto; }
+#asWrap.as-fs .as-scroll { max-height: calc(100vh - 30px); }
+#asFsClose { display:none; position:fixed; top:12px; left:50%; z-index:1300; align-items:center; gap:7px; background:rgba(31,58,95,.55); color:#fff; border:none; border-radius:22px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; backdrop-filter:blur(2px); box-shadow:0 4px 14px rgba(0,0,0,.18); opacity:0; transform:translate(-50%,-22px); transition:opacity .2s,transform .2s,background .2s; pointer-events:none; }
+#asFsClose.show { opacity:.5; transform:translate(-50%,0); pointer-events:auto; }
+#asFsClose.show:hover { opacity:1; background:rgba(22,70,111,.95); }
+#asFsClose .fs-x { font-size:15px; line-height:1; } #asFsClose kbd { background:rgba(255,255,255,.22); border-radius:5px; padding:1px 6px; font-size:11px; font-family:inherit; }

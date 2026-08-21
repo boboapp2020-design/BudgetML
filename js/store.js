@@ -1456,6 +1456,18 @@ const Store = (() => {
     save();
     return { code, name, deptId };
   }
+  // ---- Assumption (MTP) — ค่าที่แก้ (override) ราย cell r,c → ซิงค์ Supabase ----
+  function assumEdits() { const m = {}; (db.assumptionCells || []).forEach(a => { m[a.r + '_' + a.c] = a.v; }); return m; }
+  function assumSet(actor, r, c, v) {
+    assertAccounting(actor);
+    db.assumptionCells = db.assumptionCells || [];
+    const i = db.assumptionCells.findIndex(a => a.r === r && a.c === c);
+    const blank = (v === null || v === undefined || v === '' || (typeof v === 'number' && !isFinite(v)));
+    if (blank) { if (i >= 0) db.assumptionCells.splice(i, 1); else return; }
+    else { const row = { r, c, v: Number(v), updatedAt: new Date().toISOString(), updatedBy: actor.name }; if (i >= 0) db.assumptionCells[i] = row; else db.assumptionCells.push(row); }
+    save();
+  }
+  function assumClear(actor) { assertAccounting(actor); if (!(db.assumptionCells || []).length) return; db.assumptionCells = []; save(); }
   function addGL(actor, code, name, glGroup, ioGroup) {
     assertAccounting(actor);
     if (db.glAccounts.some(g => g.code === code)) throw new Error('รหัส GL ซ้ำ');
@@ -2034,6 +2046,7 @@ const Store = (() => {
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, addCct, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
+    assumEdits, assumSet, assumClear,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt, submitAllPpt, unlockAllPpt,
     myNotifications, markNotificationsRead, notify, postAnnouncement, isAnnouncement,

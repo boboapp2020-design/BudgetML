@@ -232,6 +232,11 @@ const Supa = (() => {
       toRow: p => ({ year: p.year, metric: p.metric, plan: nz(p.plan), actual: nz(p.actual), updated_at: nz(p.updatedAt), updated_by: nz(p.updatedBy) }),
       fromRow: r => ({ year: r.year, metric: r.metric, plan: r.plan, actual: r.actual, updatedAt: r.updated_at, updatedBy: r.updated_by }),
     },
+    { name: 'assumption_cells', pk: ['r', 'c'], assign: 'assumptionCells', optional: true, // ค่าที่แก้ในหน้า Assumption (MTP) — override บนค่าต้นทางจากไฟล์
+      list: db => db.assumptionCells || [],
+      toRow: a => ({ r: a.r, c: a.c, v: a.v, updated_at: nz(a.updatedAt), updated_by: nz(a.updatedBy) }),
+      fromRow: r => ({ r: r.r, c: r.c, v: r.v, updatedAt: r.updated_at, updatedBy: r.updated_by }),
+    },
     { name: 'change_windows', pk: ['year', 'win'], assign: 'changeWindows', optional: true, // หน้าต่างปรับงบ (เปิด/ปิด ราย ปี×ช่วง)
       list: db => db.changeWindows || [],
       toRow: w => ({ year: w.year, win: w.window, open: !!w.open, opened_at: nz(w.openedAt), opened_by: nz(w.openedBy) }),

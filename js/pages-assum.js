@@ -5,7 +5,7 @@
    ============================================================ */
 const PagesAssum = (() => {
   const { esc, card, pageHead } = UI;
-  const EDIT_KEY = 'abp_assum_v1';
+  let pending = {};   // ค่าที่แก้แต่ยังไม่ Submit (staged) — key 'i_j' → number หรือ null(=คืนค่าเดิม)
 
   /* ---------- Formula engine (รองรับ ref/range, + - * /, IFERROR, SUM, SUBTOTAL, COUNTIFS) ---------- */
   const colIdx = s => { let n = 0; for (const ch of s.toUpperCase()) if (ch >= 'A' && ch <= 'Z') n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
@@ -74,8 +74,8 @@ const PagesAssum = (() => {
   }
 
   /* ---------- โหลด grid + คำนวณ ---------- */
-  function edits() { try { return JSON.parse(localStorage.getItem(EDIT_KEY) || '{}'); } catch (e) { return {}; } }
-  function saveEdit(i, j, val) { const e = edits(); const k = i + '_' + j; if (val === null || val === '' || isNaN(val)) delete e[k]; else e[k] = val; localStorage.setItem(EDIT_KEY, JSON.stringify(e)); }
+  // override ที่ commit แล้ว (Supabase) + pending (ยังไม่ submit); pending=null → คืนค่าเดิม
+  function edits() { const m = Object.assign({}, Store.assumEdits()); for (const k in pending) { if (pending[k] == null) delete m[k]; else m[k] = pending[k]; } return m; }
   function baseVal(V, i, j) { const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); }
 
   // คำนวณทั้งกริด → คืน number[][] (memoized + กัน circular)
@@ -124,7 +124,9 @@ const PagesAssum = (() => {
   };
 
   function page(user) {
+    pending = {};   // เริ่มหน้าใหม่ = ไม่มีค้าง
     const { V, F, out } = compute();
+    const committed = Store.assumEdits();
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
     // หัวตาราง 2 แถว
@@ -139,7 +141,8 @@ const PagesAssum = (() => {
         const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
         if (f && !ext) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="${esc(f)}">${fmt(val)}</td>`;
         // ช่องกรอก (รวมช่องลิงก์ไฟล์ภายนอก = แก้ได้ เพราะดึงสดไม่ได้)
-        return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}"><input class="as-cell" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"></td>`;
+        const edited = (i + '_' + j) in committed;
+        return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}"><input class="as-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"></td>`;
       }).join('');
       body += `<tr class="${isMain ? 'as-main' : 'as-sub'}">
         <td class="as-note">${esc(note ?? '')}</td>
@@ -153,9 +156,14 @@ const PagesAssum = (() => {
         <th class="as-note" rowspan="2">Note</th><th class="as-ord" rowspan="2">ลำดับ</th>
         <th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>
         ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
-    return pageHead('Assumption MTP 2027–2029', 'ตารางสมมติฐาน (คัดจาก Template Assumption) · ช่องไฮไลต์ = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ',
-        '<button id="assumReset" class="ghost-btn small" title="ล้างค่าที่แก้ กลับเป็นค่าต้นทาง">↺ รีเซ็ตค่าที่แก้</button>')
-      + card('', `<div class="table-scroll as-scroll"><table class="as-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' });
+    return pageHead('Assumption MTP 2027–2029', 'ตารางสมมติฐาน (คัดจาก Template Assumption) · ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ',
+        `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
+         <span class="pa-right">
+           <button data-as-cancel class="ghost-btn small" disabled title="ยกเลิกการแก้ที่ยังไม่ Submit">↺ ยกเลิก</button>
+           <button data-as-clear class="danger-btn small" title="ล้างค่าที่แก้ทั้งหมด กลับเป็นค่าต้นทาง">🗑 Clear</button>
+           <button data-as-submit class="primary-btn small" disabled title="บันทึกค่าที่แก้ขึ้นระบบ (Supabase)">✔ Submit</button>
+         </span>`)
+      + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
 
   function recalcDom() {
@@ -167,23 +175,57 @@ const PagesAssum = (() => {
   }
 
   function bind(user) {
+    pending = {};
+    const committed = Store.assumEdits();
+    const subBtn = document.querySelector('[data-as-submit]'), canBtn = document.querySelector('[data-as-cancel]');
+    const baseNum = (i, j) => { const V = window.ASSUMPTION_MTP.v; const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); };
+    const updateBtns = () => { const n = Object.keys(pending).length; if (subBtn) { subBtn.disabled = !n; subBtn.textContent = n ? `✔ Submit (${n})` : '✔ Submit'; } if (canBtn) canBtn.disabled = !n; };
+
     document.querySelectorAll('.as-cell').forEach(inp => {
       inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
       inp.addEventListener('blur', () => {
-        const i = +inp.dataset.r, j = +inp.dataset.c;
+        const i = +inp.dataset.r, j = +inp.dataset.c, k = i + '_' + j;
         const raw = inp.value.replace(/[,\s]/g, '').trim();
         const v = raw === '' ? null : Number(raw);
         if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
-        saveEdit(i, j, v);
         inp.value = v ? fmt(v) : '';
-        recalcDom();
+        // เทียบกับค่าที่ commit แล้ว (หรือค่าต้นทาง) — ถ้าเท่าเดิม เอาออกจาก pending
+        const cur = (k in committed) ? committed[k] : baseNum(i, j);
+        if ((v == null ? 0 : v) === (cur == null ? 0 : cur)) { delete pending[k]; inp.classList.remove('as-pending'); }
+        else { pending[k] = v; inp.classList.add('as-pending'); }
+        updateBtns(); recalcDom();
       });
     });
-    document.getElementById('assumReset')?.addEventListener('click', () => {
-      UI.confirm2('ล้างค่าที่แก้', 'จะลบเฉพาะค่าที่คุณแก้ กลับเป็นค่าต้นทางจากไฟล์ Assumption', 'ค่าต้นทางไม่หาย', () => {
-        localStorage.removeItem(EDIT_KEY); App.render();
+
+    subBtn?.addEventListener('click', () => {
+      const n = Object.keys(pending).length; if (!n) return;
+      UI.confirm2(`Submit ค่าที่แก้ ${n} ช่อง`, 'บันทึกค่าที่แก้ขึ้นระบบ (Supabase) — มีผลกับสมมติฐานที่ใช้คำนวณ', 'ค่าเดิมจะถูกทับ', () => {
+        let ok = 0; try { for (const k in pending) { const [i, j] = k.split('_').map(Number); Store.assumSet(user, i, j, pending[k]); ok++; } } catch (e) { UI.toast(e.message, 'err'); return; }
+        pending = {}; UI.toast(`บันทึกแล้ว ${ok} ช่อง`); App.render();
       });
     });
+    canBtn?.addEventListener('click', () => { if (!Object.keys(pending).length) return; pending = {}; App.render(); });
+    document.querySelector('[data-as-clear]')?.addEventListener('click', () => {
+      UI.confirm2('ล้างค่าที่แก้ทั้งหมด', 'ลบค่าที่แก้ทั้งหมด (ที่ Submit แล้ว) กลับเป็นค่าต้นทางจากไฟล์ Assumption', 'ย้อนกลับไม่ได้', () => {
+        try { pending = {}; Store.assumClear(user); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+      });
+    });
+
+    /* ---- ขยาย/ย่อ เต็มจอ + ปุ่ม ✕ ลอย ---- */
+    const wrap = document.getElementById('asWrap'), expBtn = document.querySelector('[data-as-expand]');
+    let fsClose = document.getElementById('asFsClose');
+    if (!fsClose) { fsClose = document.createElement('button'); fsClose.id = 'asFsClose'; fsClose.type = 'button'; fsClose.innerHTML = '<span class="fs-x">✕</span> ย่อกลับ <kbd>Esc</kbd>'; document.body.appendChild(fsClose); }
+    const onMove = ev => { if (ev.clientY <= 70) fsClose.classList.add('show'); else fsClose.classList.remove('show'); };
+    const setFs = on => {
+      wrap.classList.toggle('as-fs', on); document.body.classList.toggle('edit-fs-lock', on);
+      if (expBtn) expBtn.innerHTML = on ? '⤡ ย่อ' : '⛶ ขยาย';
+      fsClose.style.display = on ? 'inline-flex' : 'none'; fsClose.classList.add('show');
+      if (on) { document.addEventListener('mousemove', onMove); setTimeout(() => { if (wrap.classList.contains('as-fs')) fsClose.classList.remove('show'); }, 1800); }
+      else document.removeEventListener('mousemove', onMove);
+    };
+    expBtn?.addEventListener('click', () => setFs(!wrap.classList.contains('as-fs')));
+    fsClose.addEventListener('click', () => setFs(false));
+    document.addEventListener('keydown', function esc(ev) { if (ev.key === 'Escape' && wrap && wrap.classList.contains('as-fs')) setFs(false); });
   }
 
   return { page, bind };
