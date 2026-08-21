@@ -1671,3 +1671,63 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .req-section{background:#fafbfe;border-color:var(--border)}
 .boot-sync{background:#f5f7fb}
 .bs-card{box-shadow:0 10px 40px rgba(31,43,67,.12)}
+
+/* ===================== DARK MODE (โหมดกลางคืน) ===================== */
+:root[data-theme="dark"]{
+  --bg:#0f1319; --surface:#181d26; --border:#2a313d; --border-strong:#3a4453;
+  --ink:#e7eaf1; --ink-2:#a8afbc; --muted:#7b828f;
+  --navy:#8fb6f0; --navy-2:#6f9ce0; --blue:#5fa0f5; --blue-soft:#3a5a86;
+  --up:#ff6f6f; --down:#5cc276; --warn-bg:#332913; --warn-bd:#c9982f;
+  --crit-bg:#3a1e1e; --crit-bd:#e05a5a; --ok:#48c063;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 4px 16px rgba(0,0,0,.5);
+  --shadow-lg:0 4px 10px rgba(0,0,0,.55),0 12px 32px rgba(0,0,0,.65);
+}
+[data-theme="dark"] body{background:var(--bg);color:var(--ink);}
+/* ช่องกรอก/อินพุต/ปุ่ม (พื้น #fff → เข้ม) */
+[data-theme="dark"] .cell{background:#1c222d;color:var(--ink);border-color:var(--border-strong);}
+[data-theme="dark"] .cell:disabled{background:#141a23;color:var(--ink-2);}
+[data-theme="dark"] .cell.has-val,[data-theme="dark"] .cell.has-val:disabled{background:#16281d;border-color:#2c4a37;}
+[data-theme="dark"] .cell.cell-actual,[data-theme="dark"] .cell.cell-actual:disabled{background:#141a23 !important;color:var(--ink) !important;border-color:var(--border-strong) !important;}
+[data-theme="dark"] .cell:focus{background:#1d2942 !important;}
+[data-theme="dark"] .cell-mtp{background:#161d29;}
+[data-theme="dark"] .budget-card.view-orig .cell,[data-theme="dark"] .budget-card.view-orig .cell:disabled{background:#1c222d !important;}
+[data-theme="dark"] input,[data-theme="dark"] textarea,[data-theme="dark"] select{background:#1c222d;color:var(--ink);border-color:var(--border-strong);}
+[data-theme="dark"] input::placeholder,[data-theme="dark"] textarea::placeholder,[data-theme="dark"] .cell::placeholder{color:#6b727f;}
+[data-theme="dark"] .ghost-btn,[data-theme="dark"] .icon-btn,[data-theme="dark"] .user-chip.uc-clickable{background:#1c222d;color:var(--ink);border-color:var(--border-strong);}
+[data-theme="dark"] .ghost-btn:hover,[data-theme="dark"] .icon-btn:hover{background:#262e3b;}
+/* ตาราง */
+[data-theme="dark"] .data-table th{background:#1a212c;color:var(--navy);border-bottom-color:var(--border-strong);}
+[data-theme="dark"] .data-table td{color:var(--ink);}
+[data-theme="dark"] .data-table tbody tr:hover{background:#1d2632;}
+[data-theme="dark"] .tr-sum td{background:#1a2230 !important;}
+[data-theme="dark"] .tr-notused td{background:#151a21;}
+[data-theme="dark"] .side-row td{background:#161d28 !important;color:var(--ink-2);}
+/* เมนูโปรไฟล์ / แจ้งเตือน */
+[data-theme="dark"] .um-head{background:linear-gradient(180deg,#1d2634,#161e29);}
+[data-theme="dark"] .um-item:hover,[data-theme="dark"] .um-swrole:hover:not(.cur){background:#232d3b;}
+[data-theme="dark"] .um-swrole.cur{background:#16281d;border-color:#2c4a37;}
+[data-theme="dark"] .noti-compose{background:#141b25;}
+[data-theme="dark"] .noti-item.unread{background:#172235;}
+[data-theme="dark"] .noti-item.is-ann{background:#2c2410;}
+[data-theme="dark"] .noti-head{background:var(--surface);}
+/* เบ็ดเตล็ด */
+[data-theme="dark"] .prev-ghost{color:var(--muted);}
+[data-theme="dark"] .prev-chip,[data-theme="dark"] .role-tip{background:#0d366b;color:#fff;}
+[data-theme="dark"] .pill-green,[data-theme="dark"] .pill-on{background:#14331f;color:#5cc276;}
+[data-theme="dark"] .req-section,[data-theme="dark"] .boot-sync,[data-theme="dark"] .bs-card{background:var(--surface);}
+[data-theme="dark"] .kpi-tint-blue,[data-theme="dark"] .kpi-tint-teal,[data-theme="dark"] .kpi-tint-green,[data-theme="dark"] .kpi-tint-amber,[data-theme="dark"] .kpi-tint-red{box-shadow:var(--shadow) !important;}
+[data-theme="dark"] .comp-bar{background:#242c3a;}
+/* ทับพื้น #fff !important จาก clean-theme block */
+[data-theme="dark"] .card{background:var(--surface) !important;}
+[data-theme="dark"] .topbar{background:#12161d !important;border-color:var(--border) !important;}
+[data-theme="dark"] .icon-btn{background:#1c222d !important;}
+[data-theme="dark"] .icon-btn:hover{background:#262e3b !important;}
+[data-theme="dark"] .kpi,[data-theme="dark"] .kpi-c{background:linear-gradient(180deg,#1b212c,#161b24) !important;}
+[data-theme="dark"] .side-card{background:linear-gradient(180deg,#1b212c,#161b24) !important;color:var(--ink);}
+[data-theme="dark"] .ctrl-page .card-head{background:#161d28;}
+[data-theme="dark"] .req-card{background:var(--surface);border-color:var(--border);}
+[data-theme="dark"] .rail-warn-card{background:#2a2412;}
+[data-theme="dark"] .bs-card{background:var(--surface) !important;}
+[data-theme="dark"] .pc-bar{background:#242c3a;}
+[data-theme="dark"] .tr-sum td{background:#1a2230 !important;}
+[data-theme="dark"] .ud-bar input,[data-theme="dark"] .io-search{background:#1c222d;color:var(--ink);}

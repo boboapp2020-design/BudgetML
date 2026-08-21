@@ -213,6 +213,7 @@ const UI = (() => {
                   <div class="um-role">${roleLabel}</div></div>
               </div>
               ${switcher}
+              <button class="um-item" id="themeToggleBtn">${document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️ โหมดกลางวัน <small>สลับเป็นธีมสว่าง</small>' : '🌙 โหมดกลางคืน <small>สลับเป็นธีมมืด (ถนอมสายตา)</small>'}</button>
               ${user.role === 'ACCOUNTING' ? '<a class="um-item" href="#/acc/users">👥 จัดการผู้ใช้ <small>เพิ่ม / ลบ / เปลี่ยนบทบาท · รีเซ็ตรหัส</small></a>' : ''}
               <button class="um-item" id="changePwBtn" data-pwkey="${user.role === 'ACCOUNTING' ? '__admin__' : esc(email)}">🔑 เปลี่ยนรหัสผ่าน <small>${user.role === 'ACCOUNTING' ? 'รหัสผู้ดูแลระบบ' : 'รหัสเดียวใช้ทุกบทบาทของคุณ'}</small></button>
               <button class="um-item um-danger" id="logoutBtn">🚪 ออกจากระบบ</button>
@@ -251,6 +252,13 @@ const UI = (() => {
     const umBtn = document.getElementById('userMenuBtn'), umenu = document.getElementById('userMenu');
     const closeMenu = () => { if (umenu) umenu.hidden = true; hideRoleTip(); };
     umBtn?.addEventListener('click', () => { umenu.hidden = !umenu.hidden; if (umenu.hidden) hideRoleTip(); });
+    // สลับธีมสว่าง/มืด (จำใน localStorage · ใช้กับทุก user บนเครื่องนี้)
+    document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+      const toDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+      if (toDark) { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('abp_theme', 'dark'); }
+      else { document.documentElement.removeAttribute('data-theme'); localStorage.removeItem('abp_theme'); }
+      App.render();
+    });
     document.addEventListener('click', e => {
       if (umenu && !umenu.hidden && !umenu.contains(e.target) && !umBtn.contains(e.target)) closeMenu();
     });
