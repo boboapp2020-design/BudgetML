@@ -372,6 +372,18 @@ body.no-scroll { overflow: hidden; }
 body.edit-fs-lock { overflow: hidden; }
 #admEditWrap.edit-fs { position: fixed; inset: 0; z-index: 1200; background: var(--bg, #fff); margin: 0; padding: 14px 16px; overflow: auto; box-shadow: 0 0 0 100vmax rgba(0,0,0,.15); }
 #admEditWrap.edit-fs .budget-scroll { max-height: calc(100vh - 40px); }
+/* ปุ่ม X ลอย ในโหมดเต็มจอ — ซ่อนไว้บนสุด เลื่อนเมาส์ขึ้นบนแล้วโผล่ลงมา */
+#admFsClose { display: none; position: fixed; top: 12px; right: 20px; z-index: 1300;
+  align-items: center; gap: 7px; background: #1f3a5f; color: #fff; border: none; border-radius: 22px;
+  padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,.28); opacity: 0; transform: translateY(-22px);
+  transition: opacity .2s ease, transform .2s ease; pointer-events: none; }
+#admFsClose.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+#admFsClose:hover { background: #16466f; }
+#admFsClose .fs-x { font-size: 15px; line-height: 1; }
+#admFsClose kbd { background: rgba(255,255,255,.2); border-radius: 5px; padding: 1px 6px; font-size: 11px; font-family: inherit; }
+/* แถบจับเมาส์บนสุด ให้ปุ่มโผล่ง่ายในเต็มจอ */
+#admEditWrap.edit-fs::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: 70px; z-index: 1250; pointer-events: none; }
 /* ซ่อน GL ที่ไม่ได้ใช้ (แถวรวม=0) */
 .budget-card.hide-empty tr.row-empty { display: none; }
 #hideEmptyBtn.he-on { background: #eef4fc !important; border-color: var(--blue) !important; color: var(--blue) !important; font-weight: 700; }

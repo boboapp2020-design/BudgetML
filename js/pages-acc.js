@@ -876,13 +876,30 @@ const PagesAcc = (() => {
       });
       const expandBtn = document.querySelector('[data-edit-expand]');
       const wrap = document.getElementById('admEditWrap');
-      expandBtn?.addEventListener('click', () => {
-        const on = wrap.classList.toggle('edit-fs');
+      // ปุ่ม X ลอย — โผล่เมื่อเลื่อนเมาส์ขึ้นบนสุด (เฉพาะโหมดเต็มจอ)
+      let fsClose = document.getElementById('admFsClose');
+      if (!fsClose) {
+        fsClose = document.createElement('button');
+        fsClose.id = 'admFsClose';
+        fsClose.type = 'button';
+        fsClose.innerHTML = '<span class="fs-x">✕</span> ย่อกลับ <kbd>Esc</kbd>';
+        fsClose.title = 'ย่อกลับหน้าปกติ (หรือกด Esc)';
+        document.body.appendChild(fsClose);
+      }
+      const onFsMove = ev => { if (ev.clientY <= 70) fsClose.classList.add('show'); else fsClose.classList.remove('show'); };
+      const setFs = on => {
+        wrap.classList.toggle('edit-fs', on);
         document.body.classList.toggle('edit-fs-lock', on);
-        expandBtn.innerHTML = on ? '⤡ ย่อ' : '⛶ ขยาย';
-      });
+        if (expandBtn) expandBtn.innerHTML = on ? '⤡ ย่อ' : '⛶ ขยาย';
+        fsClose.style.display = on ? 'inline-flex' : 'none';
+        fsClose.classList.add('show'); // โชว์ครั้งแรกให้เห็นก่อน แล้วค่อยซ่อนเมื่อเมาส์ลง
+        if (on) { document.addEventListener('mousemove', onFsMove); setTimeout(() => { if (wrap.classList.contains('edit-fs')) fsClose.classList.remove('show'); }, 1800); }
+        else document.removeEventListener('mousemove', onFsMove);
+      };
+      expandBtn?.addEventListener('click', () => setFs(!wrap.classList.contains('edit-fs')));
+      fsClose.addEventListener('click', () => setFs(false));
       document.addEventListener('keydown', function esc(ev) {
-        if (ev.key === 'Escape' && wrap?.classList.contains('edit-fs')) { wrap.classList.remove('edit-fs'); document.body.classList.remove('edit-fs-lock'); if (expandBtn) expandBtn.innerHTML = '⛶ ขยาย'; }
+        if (ev.key === 'Escape' && wrap?.classList.contains('edit-fs')) setFs(false);
       });
       document.querySelector('[data-drill-back-dept]')?.addEventListener('click', e => {
         if (pending.size && !confirm(`มีการแก้ไข ${pending.size} รายการที่ยังไม่บันทึก — ออกโดยไม่บันทึกหรือไม่?`)) return;
