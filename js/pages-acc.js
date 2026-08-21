@@ -1193,6 +1193,12 @@ const PagesAcc = (() => {
             <button class="primary-btn" id="postActPasteBtn" style="margin-top:8px">📥 โพสต์เกิดจริง (ทับงบ)</button>
           </div>
           <p class="warn-text small" style="margin-top:8px">⚠ เขียนทับตัวเลขที่แผนกกรอกในเดือนที่ตรงกัน (บันทึก audit log ว่ามาจากไฟล์เกิดจริง) — ถอยกลับได้จากเวอร์ชันงบ 📸 ที่บันทึกไว้</p>`)
+      + card('📥 นำเข้าเกิดจริงจาก SAP (CA07) — จับคู่ GL + CCT', `
+          <p class="muted small">อัปโหลดไฟล์ <b>SAP CA07 "Actual Analysis by Period"</b> — ระบบจับคู่ด้วย <b>GL + CCT (ดูคู่กันเท่านั้น)</b> แล้วทับ<b>งบปัจจุบัน</b>รายเดือน:<br>
+          • <b>Act 3.Jan – 12.Oct → เดือน ม.ค.–ต.ค. ของปีในไฟล์</b> · <b>Act 1.Nov / 2.Dec → เดือน พ.ย./ธ.ค. ของปีก่อนหน้า</b> (ข้าม Total Quarter)<br>
+          • ช่องที่ทับจะ<b>ถูกล็อก</b> (ผู้กรอกแก้ไม่ได้) · รองรับหลาย CCT ต่อไฟล์ · <b>มีหน้าต่างสรุป/แจ้ง Error ให้ยืนยันก่อนบันทึกทุกครั้ง</b></p>
+          <input type="file" id="sapFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
+          <span id="sapMsg" class="muted small" style="margin-left:10px"></span>`)
       + card('📗 นำเข้าจากไฟล์ต้นฉบับ (I–T → งบต้นปี · AM–AX → งบปัจจุบัน)', `
           <p class="muted small">อัปโหลดไฟล์ <b>ML งบค่าใช้จ่าย</b> (โครง code a · IO · CCT · GL · เดือน) — ระบบจับคู่ด้วย <b>code a</b> แล้ว<br>
           • คอลัมน์ <b>I–T</b> (งบต้นปี) → บันทึกเป็น <b>งบต้นปี (ORIGINAL)</b><br>
@@ -1477,6 +1483,19 @@ const PagesAcc = (() => {
             } },
         ]);
       } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); e.target.value = ''; }
+    });
+    document.getElementById('sapFile')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const msg = document.getElementById('sapMsg'); msg.textContent = 'กำลังอ่านไฟล์…';
+      try {
+        const grid = await fileToGrid(file);
+        const { fileYear, records } = gridToSapRecords(grid);
+        if (!records.length) throw new Error('ไม่พบแถว GL ในไฟล์ SAP');
+        const plan = Store.sapImport(user, fileYear, records, false); // dry-run (ยังไม่เขียน)
+        msg.textContent = `พบ ${records.length} แถว · จับคู่ได้ ${plan.glCount} · ปัญหา ${plan.unmatchedGL.length + plan.unknownCct.length}`;
+        showSapPreview(user, file.name, fileYear, records, plan);
+      } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); }
+      e.target.value = '';
     });
     document.getElementById('postActPasteBtn')?.addEventListener('click', () => {
       const text = document.getElementById('postActPaste').value;
@@ -1812,6 +1831,82 @@ const PagesAcc = (() => {
       recs.push({ codeA, io: String(row[1] || '').trim(), cct: String(row[2] || '').trim(), deptCode: String(row[4] || '').trim(), glCode: gl, cctName: String(row[3] || '').trim(), deptName: String(row[5] || '').trim(), glName: String(row[7] || '').trim(), original, current });
     }
     return recs;
+  }
+  // แปลง grid ไฟล์ SAP CA07 → { fileYear, records:[{cct,glCode,glName,m:{Jan..Dec}}] }
+  function gridToSapRecords(grid) {
+    const trim = v => String(v == null ? '' : v).trim();
+    const num = v => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/[, ]/g, '')); return isFinite(n) ? n : null; };
+    // 1) ปีจากไฟล์: หา "Date: dd.mm.yyyy" หรือ "ปีบัญชี yyyy"
+    let fileYear = null;
+    for (let i = 0; i < Math.min(grid.length, 15); i++) {
+      const line = (grid[i] || []).map(trim).join(' ');
+      let m = line.match(/(\d{2})\.(\d{2})\.(20\d{2})/); if (m) { fileYear = Number(m[3]); break; }
+      m = line.match(/ปีบัญชี\s*(20\d{2})/); if (m) { fileYear = Number(m[1]); break; }
+    }
+    // 2) แถวหัว: คอลัมน์ "Act n.Mon" → map คอลัมน์ → ชื่อเดือน (ข้าม Total Quarter/Actual/Plan)
+    let hi = -1, monthCols = [];
+    for (let i = 0; i < Math.min(grid.length, 30); i++) {
+      const mc = [];
+      (grid[i] || []).forEach((c, ci) => { const m = trim(c).match(/Act\s*\d+\s*\.\s*([A-Za-z]{3,4})/); if (m) mc.push({ col: ci, mon: m[1].slice(0, 3) }); });
+      if (mc.length >= 6) { hi = i; monthCols = mc; break; }
+    }
+    if (hi < 0) throw new Error('ไม่พบหัวตาราง SAP (คอลัมน์ "Act n.Mon") — ต้องเป็นไฟล์ CA07 Actual by Period');
+    if (!fileYear) throw new Error('อ่านปีจากไฟล์ไม่ได้ (ไม่พบ "Date: dd.mm.yyyy" หรือ "ปีบัญชี")');
+    // 3) ไล่แถว: GL row = "รหัส6หลัก + ชื่อ" · แถวสรุป CCT = "* รหัส ชื่อ" → กำหนด CCT ให้ทั้งบล็อก
+    const glPat = /^(\d{6})\s+\D/, cctPat = /^\*\s*(\d{6,})\s+\D/;
+    const labelOf = row => { for (const c of row) { const t = trim(c); if (glPat.test(t) || cctPat.test(t)) return t; } return ''; };
+    let block = []; const records = [];
+    for (let r = hi + 1; r < grid.length; r++) {
+      const row = grid[r] || [], lab = labelOf(row);
+      let m = lab.match(cctPat);
+      if (m) { const cct = m[1]; block.forEach(o => { o.cct = cct; records.push(o); }); block = []; continue; }
+      m = lab.match(glPat);
+      if (m) {
+        const mo = {}; monthCols.forEach(({ col, mon }) => { mo[mon] = num(row[col]); });
+        block.push({ glCode: m[1], glName: lab.slice(6).trim(), m: mo });
+      }
+    }
+    // เผื่อไม่มีแถว "*" ปิดท้าย → ใช้ CCT จากหัวรายงาน (Cost Center Group)
+    if (block.length) {
+      let hdrCct = null;
+      for (let i = 0; i < Math.min(grid.length, 15); i++) { const m = (grid[i] || []).map(trim).join(' ').match(/Cost Center Group\s*(\d{6,})/i); if (m) { hdrCct = m[1]; break; } }
+      block.forEach(o => { o.cct = hdrCct; records.push(o); });
+    }
+    return { fileYear, records: records.filter(r => r.cct) };
+  }
+  // หน้าต่างสรุป/ยืนยันการนำเข้า SAP (dry-run → ผู้ใช้กดบันทึก/ยกเลิก)
+  function showSapPreview(user, fileName, fileYear, records, plan) {
+    const errN = plan.unmatchedGL.length + plan.unknownCct.length;
+    const errBlock = errN ? `<div class="sub-status miss" style="margin:0 0 12px"><b>⚠ พบปัญหา ${errN} รายการ (จะถูกข้าม ไม่นำเข้า)</b>
+        <div class="table-scroll" style="max-height:150px;overflow:auto;margin-top:6px"><table class="data-table small"><thead><tr><th>CCT</th><th>GL</th><th>สาเหตุ</th></tr></thead><tbody>
+        ${plan.unknownCct.map(u => `<tr><td>${esc(u.cct)}</td><td>${esc(u.glCode)} ${esc(u.glName || '')}</td><td>ไม่มี CCT นี้ในระบบ</td></tr>`).join('')}
+        ${plan.unmatchedGL.map(u => `<tr><td>${esc(u.cct)}</td><td>${esc(u.glCode)} ${esc(u.glName || '')}</td><td>${esc(u.reason)}</td></tr>`).join('')}
+        </tbody></table></div></div>` : `<div class="sub-status ok" style="margin:0 0 12px"><b>✓ จับคู่ครบทุกรายการ ไม่มีปัญหา</b></div>`;
+    const rows = plan.matched.map(mm => {
+      const years = [...new Set(mm.cells.map(c => c.year))].sort().join(', ');
+      const sum = mm.cells.reduce((s, c) => s + (c.newVal || 0), 0);
+      return `<tr><td><span class="gl-code">${esc(mm.glCode)}</span> ${esc(mm.glName || '')}</td><td>${esc(mm.deptName || mm.deptId)}</td>
+        <td><span class="gl-code">${esc(mm.cct)}</span></td><td class="num">${mm.cells.length}</td><td>${years}</td><td class="num">${fmt(sum)}</td></tr>`;
+    }).join('');
+    UI.modal(`📥 ยืนยันนำเข้า SAP CA07 — ปี ${fileYear}`,
+      `<div class="cmp-kpis" style="margin-bottom:12px">
+         <div class="cmp-kpi"><span>ไฟล์</span><b style="font-size:14px">${esc(fileName)}</b></div>
+         <div class="cmp-kpi"><span>GL ที่จับคู่ได้</span><b>${plan.glCount}</b></div>
+         <div class="cmp-kpi"><span>แผนกที่กระทบ</span><b>${plan.deptCount}</b></div>
+         <div class="cmp-kpi ${errN ? 'up' : ''}"><span>ช่องที่จะทับ</span><b>${plan.cellCount}</b></div>
+       </div>
+       ${errBlock}
+       <div style="font-size:13px;font-weight:700;margin:0 0 6px">รายการที่จะนำเข้า (${plan.glCount} GL)</div>
+       <div class="table-scroll" style="max-height:38vh;overflow:auto"><table class="data-table small"><thead><tr><th>GL / บัญชี</th><th>แผนก</th><th>CCT</th><th class="num">#ช่อง</th><th>ปีที่แตะ</th><th class="num">รวมค่าใหม่</th></tr></thead><tbody>${rows}</tbody></table></div>
+       <p class="warn-text small" style="margin-top:8px">⚠ จะเขียนทับงบปัจจุบันในเดือนที่ตรงกัน + ล็อกช่อง (บันทึก audit log) — ถอยกลับได้จากเวอร์ชันงบ 📸 · ควรกด "⬇ ดาวน์โหลดสำรอง" ก่อน</p>`,
+      [
+        { label: 'ยกเลิก', cls: 'ghost-btn' },
+        { label: plan.glCount ? `✔ บันทึก (${plan.cellCount} ช่อง)` : 'ไม่มีรายการให้บันทึก', cls: 'primary-btn', onClick: close => {
+            if (!plan.glCount) { close(); return; }
+            try { const r = Store.sapImport(user, fileYear, records, true); close(); toast(`นำเข้าแล้ว: ${r.glCount} GL · ${r.cellCount} ช่อง`); App.render(); }
+            catch (e) { toast(e.message, 'err'); }
+          } },
+      ]);
   }
   function gridToRecords(grid) {
     let hi = -1;

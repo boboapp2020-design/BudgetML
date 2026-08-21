@@ -640,6 +640,53 @@ const Store = (() => {
     return (db.actuals || []).some(a => a.year === Number(year) && a.departmentId === deptId && a.months.some(v => v !== null && v !== undefined));
   }
 
+  // ---- นำเข้าเกิดจริงจากไฟล์ SAP CA07 (จับคู่ GL + CCT เท่านั้น) — ทับงบปัจจุบัน + ล็อกช่อง ----
+  // records = [{ cct, glCode, glName, m:{Jan..Oct, Nov, Dec} }]  (ค่าเป็นตัวเลข หรือ null=ข้าม)
+  // กฎเดือน: Jan..Oct → ปีไฟล์ (y) ช่อง 0..9 · Nov,Dec → ปีก่อน (y-1) ช่อง 10,11
+  // commit=false → dry-run (คืนแผน ไม่เขียน) · commit=true → เขียน row.months + db.actuals (ล็อก) + audit
+  function sapImport(actor, fileYear, records, commit) {
+    assertAccounting(actor);
+    const y = Number(fileYear);
+    const IDX = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+    if (commit && !db.actuals) db.actuals = [];
+    const matched = [], unmatchedGL = [], unknownCct = []; let cellCount = 0;
+    (records || []).forEach(rec => {
+      const g = glByCode(rec.glCode);
+      const ref = actualRowRef({ cct: rec.cct, glCode: rec.glCode });
+      if (!ref) {
+        const cctExists = (db.departmentRows || []).some(x => x.cct === rec.cct);
+        if (!g) unmatchedGL.push({ cct: rec.cct, glCode: rec.glCode, glName: rec.glName, reason: 'ไม่มี GL นี้ในระบบ' });
+        else if (!cctExists) unknownCct.push({ cct: rec.cct, glCode: rec.glCode, glName: rec.glName });
+        else unmatchedGL.push({ cct: rec.cct, glCode: rec.glCode, glName: rec.glName, reason: 'ไม่มีคู่ GL+CCT นี้ในระบบ' });
+        return;
+      }
+      const deptId = ref.departmentId, glId = ref.glId, cct = ref.cct, key = glId + '@' + cct;
+      const cells = [];
+      Object.keys(rec.m || {}).forEach(mon => {
+        const mi = IDX[String(mon).slice(0, 3).toLowerCase()];
+        if (mi === undefined) return;
+        const v = rec.m[mon];
+        if (v === null || v === undefined || !isFinite(v)) return;
+        const yr = (mi >= 10) ? y - 1 : y;                 // Nov/Dec → ปีก่อน
+        const existing = rowByKey(yr, deptId, key);
+        cells.push({ year: yr, monthIdx: mi, oldVal: existing ? existing.months[mi] : null, newVal: v });
+        if (commit) {
+          let a = db.actuals.find(x => x.year === yr && x.departmentId === deptId && x.glId === glId && x.cct === cct);
+          if (!a) { a = { year: yr, departmentId: deptId, glId, cct, months: Array(12).fill(null), updatedAt: null, updatedBy: null }; db.actuals.push(a); }
+          const row = ensureRow(yr, deptId, key);
+          const old = row.months[mi];
+          a.months[mi] = v; row.months[mi] = v;            // ทับงบ + เก็บเกิดจริง (ล็อกช่อง)
+          if (old !== v) audit(actor, 'นำเข้าเกิดจริง SAP (ทับงบ)', { deptId, glCode: rec.glCode, month: mi + 1, oldValue: old, newValue: v });
+          const ts = new Date().toISOString(); a.updatedAt = ts; a.updatedBy = actor.name; row.updatedAt = ts; row.updatedBy = actor.name + ' (SAP เกิดจริง)';
+        }
+      });
+      cellCount += cells.length;
+      matched.push({ cct, glCode: rec.glCode, glName: rec.glName, deptId, deptName: dept(deptId)?.name, cells });
+    });
+    if (commit) { audit(actor, 'นำเข้าไฟล์ SAP CA07', { newValue: `ปี ${y}: ${matched.length} GL · ${cellCount} ช่อง` }); save(); }
+    return { fileYear: y, matched, unmatchedGL, unknownCct, cellCount, glCount: matched.length, deptCount: new Set(matched.map(m => m.deptId)).size };
+  }
+
   // ---- นำเข้าจากไฟล์ต้นฉบับ 2 ชุด: current (AM-AX) → db.budgets (งบปัจจุบัน) · original (I-T) → ORIGINAL (งบต้นปี freeze) ----
   // records = [{io,codeA,cct,glCode, current:[12], original:[12]}]
   function importDualBudget(actor, year, records, opts = {}) {
@@ -1940,7 +1987,7 @@ const Store = (() => {
     originalMonths, originalRowTotal, originalGlTotal,
     originalDeptMonthly, originalDeptTotal, actualMonths, openRevise, setActual, pasteActuals,
     actualRowRef, importActuals, importBudgetFile, reconcileFile,
-    postActuals, postActualsPaste, hasPostedActuals, importDualBudget, importV7Data,
+    postActuals, postActualsPaste, hasPostedActuals, importDualBudget, importV7Data, sapImport,
     canEdit, setCell, adminSetCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
