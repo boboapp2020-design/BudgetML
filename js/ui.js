@@ -87,6 +87,7 @@ const UI = (() => {
     { hash: '#/acc/departments', icon: '🏢', label: 'หน่วยงาน & Drill-down', sub: 'Departments' },
     { hash: '#/acc/analytics',   icon: '📈', label: 'วิเคราะห์งบ',        sub: 'วิเคราะห์ · งบการเงิน · ควบคุมงบ' },
     { hash: '#/unitcost',        icon: '🏭', label: 'ต้นทุนต่อหน่วย',     sub: 'กีบ/ตันอ้อย · น้ำตาล' },
+    { hash: '#/acc/assumption',  icon: '🧮', label: 'Assumption (MTP)',    sub: 'สมมติฐาน 2027-2029' },
     { hash: '#/requests',        icon: '📝', label: 'คำร้องปรับงบ',       sub: 'ดำเนินการ/คุมหน้าต่าง' },
     { hash: '#/acc/control',     icon: '⚙️', label: 'Budget Control',      sub: 'จัดการระบบ' },
     { hash: '#/acc/audit',       icon: '📜', label: 'Audit Log',           sub: 'ประวัติการแก้ไข' },

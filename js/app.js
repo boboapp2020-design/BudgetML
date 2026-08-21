@@ -33,6 +33,7 @@ const App = (() => {
     '#/acc/system':      { role: 'ACCOUNTING', page: () => PagesAcc.system,       bind: () => PagesAcc.systemBind },
     '#/acc/users':       { role: 'ACCOUNTING', page: () => PagesAcc.users,        bind: () => PagesAcc.usersBind },
     '#/acc/audit':       { role: 'ACCOUNTING', page: () => PagesAcc.audit,        bind: () => PagesAcc.auditBind },
+    '#/acc/assumption':  { role: 'ACCOUNTING', page: () => PagesAssum.page,       bind: () => PagesAssum.bind },
     '#/acc/actuals':     { role: 'ACCOUNTING', page: () => PagesAcc.actuals,      bind: () => PagesAcc.actualsBind },
     '#/unitcost':        { role: '*',          page: () => PagesCost.unitCost,    bind: () => PagesCost.unitCostBind },
     '#/requests':        { role: '*',          page: () => PagesReq.requests,     bind: () => PagesReq.requestsBind },
