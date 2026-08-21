@@ -1443,6 +1443,19 @@ const Store = (() => {
     save();
     return d;
   }
+  // เพิ่ม/แก้ CCT ในผังหน่วยงาน (cct_master) → ผูกเข้าแผนก · ใช้ก่อนนำเข้า SAP สำหรับ CCT ที่ระบบยังไม่มี
+  function addCct(actor, code, name, deptId) {
+    assertAccounting(actor);
+    if (!/^\d{6,}$/.test(String(code || ''))) throw new Error('รหัส CCT ไม่ถูกต้อง');
+    if (!dept(deptId)) throw new Error('ไม่พบแผนกที่ระบุ');
+    db.cctMaster = db.cctMaster || [];
+    const ex = db.cctMaster.find(c => c.code === code);
+    if (ex) { ex.name = name || ex.name; ex.departmentId = deptId; }
+    else db.cctMaster.push({ code, name: name || code, departmentId: deptId });
+    audit(actor, 'เพิ่ม/แก้ CCT', { newValue: `${code} ${name || ''} → ${dept(deptId)?.name}` });
+    save();
+    return { code, name, deptId };
+  }
   function addGL(actor, code, name, glGroup, ioGroup) {
     assertAccounting(actor);
     if (db.glAccounts.some(g => g.code === code)) throw new Error('รหัส GL ซ้ำ');
@@ -2020,7 +2033,7 @@ const Store = (() => {
     canEdit, setCell, adminSetCell, setMtp, mtp, SCEN_DEF, scenarioVal, setScenario, setNote, submit, glNotUsed, setGlNotUsed,
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
-    addDepartment, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
+    addDepartment, addCct, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt, submitAllPpt, unlockAllPpt,
     myNotifications, markNotificationsRead, notify, postAnnouncement, isAnnouncement,
