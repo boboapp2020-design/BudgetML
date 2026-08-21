@@ -228,5 +228,7 @@ const PagesAssum = (() => {
     document.addEventListener('keydown', function esc(ev) { if (ev.key === 'Escape' && wrap && wrap.classList.contains('as-fs')) setFs(false); });
   }
 
-  return { page, bind };
+  // กริดค่าที่คำนวณแล้ว (ใช้ค่าที่ Submit แล้วจาก Supabase) — ให้หน้าอื่นดึงตัวเลขไปใช้ (เช่น ต้นทุนต่อหน่วย)
+  function grid() { return compute().out; }
+  return { page, bind, grid };
 })();
