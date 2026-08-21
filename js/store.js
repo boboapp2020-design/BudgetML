@@ -644,18 +644,46 @@ const Store = (() => {
   // records = [{ cct, glCode, glName, m:{Jan..Oct, Nov, Dec} }]  (ค่าเป็นตัวเลข หรือ null=ข้าม)
   // กฎเดือน: Jan..Oct → ปีไฟล์ (y) ช่อง 0..9 · Nov,Dec → ปีก่อน (y-1) ช่อง 10,11
   // commit=false → dry-run (คืนแผน ไม่เขียน) · commit=true → เขียน row.months + db.actuals (ล็อก) + audit
-  function sapImport(actor, fileYear, records, commit) {
+  // autoCreate=true → สร้าง GL/แถวที่ยังไม่มี ตามแผนกที่ CCT ชี้ (แล้วใส่เกิดจริง) · CCT ที่ไม่มีในระบบเลย ยังสร้างไม่ได้ (ไม่รู้แผนก)
+  function sapImport(actor, fileYear, records, commit, autoCreate) {
     assertAccounting(actor);
     const y = Number(fileYear);
     const IDX = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
     if (commit && !db.actuals) db.actuals = [];
     const matched = [], unmatchedGL = [], unknownCct = []; let cellCount = 0;
+    const newGl = new Set(), newRow = new Set();
+    const glGroupOf = c => { const p = String(c).slice(0, 2); if (['44', '45', '46'].includes(p)) return 'รายได้'; if (p === '51') return 'ต้นทุนอ้อย'; if (['65', '68', '75'].includes(p)) return 'ต้นทุน'; return 'ค่าใช้จ่าย'; };
+    // แผนกของ CCT = แผนกที่ถือ CCT นั้น "มากสุด" (majority) — กัน CCT ที่ใช้ร่วมหลายแผนกเดาผิด
+    const deptByCct = cct => {
+      const cnt = {};
+      (db.departmentRows || []).forEach(x => { if (x.cct === cct) cnt[x.departmentId] = (cnt[x.departmentId] || 0) + 1; });
+      const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+      if (top) return top[0];
+      const cm = (db.cctMaster || []).find(c => c.code === cct); if (cm) return cm.departmentId;
+      const b = db.budgets.find(x => x.cct === cct); return b ? b.departmentId : null;
+    };
     (records || []).forEach(rec => {
-      const g = glByCode(rec.glCode);
-      const ref = actualRowRef({ cct: rec.cct, glCode: rec.glCode });
+      let g = glByCode(rec.glCode);
+      let ref = actualRowRef({ cct: rec.cct, glCode: rec.glCode });
+      let isNew = false;
+      if (!ref && autoCreate) {
+        const deptId = deptByCct(rec.cct);
+        if (deptId) {
+          const glId = 'g' + rec.glCode;
+          if (!gl(glId) && !newGl.has(glId)) {
+            newGl.add(glId);
+            if (commit) { db.glAccounts.push({ id: glId, code: rec.glCode, name: rec.glName || rec.glCode, glGroup: glGroupOf(rec.glCode), ioGroup: 'ไม่คุม', active: true }); audit(actor, 'เพิ่ม GL (SAP reconcile)', { glCode: rec.glCode, newValue: rec.glName || '' }); }
+          }
+          if (!(db.departmentRows || []).some(x => x.departmentId === deptId && x.cct === rec.cct && x.glId === glId)) {
+            newRow.add(deptId + '|' + glId + '|' + rec.cct);
+            if (commit) { (db.departmentRows = db.departmentRows || []).push({ departmentId: deptId, cct: rec.cct, glId, io: '', codeA: rec.cct + rec.glCode + 'a' }); if (!db.departmentGL.some(x => x.departmentId === deptId && x.glId === glId)) db.departmentGL.push({ departmentId: deptId, glId }); }
+          }
+          ref = { departmentId: deptId, glId, cct: rec.cct }; isNew = true;
+        }
+      }
       if (!ref) {
         const cctExists = (db.departmentRows || []).some(x => x.cct === rec.cct);
-        if (!g) unmatchedGL.push({ cct: rec.cct, glCode: rec.glCode, glName: rec.glName, reason: 'ไม่มี GL นี้ในระบบ' });
+        if (!g && !autoCreate) unmatchedGL.push({ cct: rec.cct, glCode: rec.glCode, glName: rec.glName, reason: 'ไม่มี GL นี้ในระบบ' });
         else if (!cctExists) unknownCct.push({ cct: rec.cct, glCode: rec.glCode, glName: rec.glName });
         else unmatchedGL.push({ cct: rec.cct, glCode: rec.glCode, glName: rec.glName, reason: 'ไม่มีคู่ GL+CCT นี้ในระบบ' });
         return;
@@ -681,10 +709,11 @@ const Store = (() => {
         }
       });
       cellCount += cells.length;
-      matched.push({ cct, glCode: rec.glCode, glName: rec.glName, deptId, deptName: dept(deptId)?.name, cells });
+      matched.push({ cct, glCode: rec.glCode, glName: rec.glName, deptId, deptName: dept(deptId)?.name, cells, created: isNew });
     });
-    if (commit) { audit(actor, 'นำเข้าไฟล์ SAP CA07', { newValue: `ปี ${y}: ${matched.length} GL · ${cellCount} ช่อง` }); save(); }
-    return { fileYear: y, matched, unmatchedGL, unknownCct, cellCount, glCount: matched.length, deptCount: new Set(matched.map(m => m.deptId)).size };
+    const created = { gls: newGl.size, rows: newRow.size };
+    if (commit) { audit(actor, 'นำเข้าไฟล์ SAP CA07', { newValue: `ปี ${y}: ${matched.length} GL · ${cellCount} ช่อง · สร้างใหม่ ${created.rows} แถว / ${created.gls} GL` }); save(); }
+    return { fileYear: y, matched, unmatchedGL, unknownCct, cellCount, glCount: matched.length, deptCount: new Set(matched.map(m => m.deptId)).size, created };
   }
 
   // ---- นำเข้าจากไฟล์ต้นฉบับ 2 ชุด: current (AM-AX) → db.budgets (งบปัจจุบัน) · original (I-T) → ORIGINAL (งบต้นปี freeze) ----

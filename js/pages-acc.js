@@ -1456,7 +1456,7 @@ const PagesAcc = (() => {
         const grid = await fileToGrid(file);
         const { fileYear, records } = gridToSapRecords(grid);
         if (!records.length) throw new Error('ไม่พบแถว GL ในไฟล์ SAP');
-        const plan = Store.sapImport(user, fileYear, records, false); // dry-run (ยังไม่เขียน)
+        const plan = Store.sapImport(user, fileYear, records, false, true); // dry-run + แผน autoCreate
         msg.textContent = `พบ ${records.length} แถว · จับคู่ได้ ${plan.glCount} · ปัญหา ${plan.unmatchedGL.length + plan.unknownCct.length}`;
         showSapPreview(user, file.name, fileYear, records, plan);
       } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); }
@@ -1817,28 +1817,34 @@ const PagesAcc = (() => {
         ${plan.unknownCct.map(u => `<tr><td>${esc(u.cct)}</td><td>${esc(u.glCode)} ${esc(u.glName || '')}</td><td>ไม่มี CCT นี้ในระบบ</td></tr>`).join('')}
         ${plan.unmatchedGL.map(u => `<tr><td>${esc(u.cct)}</td><td>${esc(u.glCode)} ${esc(u.glName || '')}</td><td>${esc(u.reason)}</td></tr>`).join('')}
         </tbody></table></div></div>` : `<div class="sub-status ok" style="margin:0 0 12px"><b>✓ จับคู่ครบทุกรายการ ไม่มีปัญหา</b></div>`;
+    const newRows = plan.created ? plan.created.rows : 0;
     const rows = plan.matched.map(mm => {
       const years = [...new Set(mm.cells.map(c => c.year))].sort().join(', ');
       const sum = mm.cells.reduce((s, c) => s + (c.newVal || 0), 0);
-      return `<tr><td><span class="gl-code">${esc(mm.glCode)}</span> ${esc(mm.glName || '')}</td><td>${esc(mm.deptName || mm.deptId)}</td>
+      return `<tr><td><span class="gl-code">${esc(mm.glCode)}</span> ${esc(mm.glName || '')}${mm.created ? ' <span class="chip-new">＋ใหม่</span>' : ''}</td><td>${esc(mm.deptName || mm.deptId)}</td>
         <td><span class="gl-code">${esc(mm.cct)}</span></td><td class="num">${mm.cells.length}</td><td>${years}</td><td class="num">${fmt(sum)}</td></tr>`;
     }).join('');
     UI.modal(`📥 ยืนยันนำเข้า SAP CA07 — ปี ${fileYear}`,
       `<div class="cmp-kpis" style="margin-bottom:12px">
-         <div class="cmp-kpi"><span>ไฟล์</span><b style="font-size:14px">${esc(fileName)}</b></div>
-         <div class="cmp-kpi"><span>GL ที่จับคู่ได้</span><b>${plan.glCount}</b></div>
+         <div class="cmp-kpi"><span>รายการที่จะนำเข้า</span><b>${plan.glCount}</b></div>
+         <div class="cmp-kpi ${newRows ? 'up' : ''}"><span>แถวใหม่ที่จะสร้าง</span><b>${newRows}</b><small style="display:block;color:var(--muted);font-size:11px">${plan.created ? plan.created.gls : 0} GL ใหม่</small></div>
          <div class="cmp-kpi"><span>แผนกที่กระทบ</span><b>${plan.deptCount}</b></div>
-         <div class="cmp-kpi ${errN ? 'up' : ''}"><span>ช่องที่จะทับ</span><b>${plan.cellCount}</b></div>
+         <div class="cmp-kpi"><span>ช่องที่จะทับ</span><b>${plan.cellCount}</b></div>
        </div>
        ${errBlock}
-       <div style="font-size:13px;font-weight:700;margin:0 0 6px">รายการที่จะนำเข้า (${plan.glCount} GL)</div>
-       <div class="table-scroll" style="max-height:38vh;overflow:auto"><table class="data-table small"><thead><tr><th>GL / บัญชี</th><th>แผนก</th><th>CCT</th><th class="num">#ช่อง</th><th>ปีที่แตะ</th><th class="num">รวมค่าใหม่</th></tr></thead><tbody>${rows}</tbody></table></div>
-       <p class="warn-text small" style="margin-top:8px">⚠ จะเขียนทับงบปัจจุบันในเดือนที่ตรงกัน + ล็อกช่อง (บันทึก audit log) — ถอยกลับได้จากเวอร์ชันงบ 📸 · ควรกด "⬇ ดาวน์โหลดสำรอง" ก่อน</p>`,
+       <label style="display:flex;align-items:flex-start;gap:8px;background:#eef2ff;border:1px solid #c3ccf3;border-radius:8px;padding:10px 12px;margin:0 0 10px;font-size:13px;cursor:pointer">
+         <input type="checkbox" id="sapAutoCreate" checked style="margin-top:3px">
+         <span><b>➕ สร้างแถว/GL ที่ระบบยังไม่มีให้อัตโนมัติ</b> — ตามแผนกที่ CCT ชี้ แล้วใส่เกิดจริง (ล็อก) · <b>${newRows}</b> แถวใหม่ · CCT ที่ไม่มีในระบบเลยจะยังข้ามไว้ (ดูรายการด้านบน)</span>
+       </label>
+       <div style="font-size:13px;font-weight:700;margin:0 0 6px">รายการที่จะนำเข้า (${plan.glCount})</div>
+       <div class="table-scroll" style="max-height:34vh;overflow:auto"><table class="data-table small"><thead><tr><th>GL / บัญชี</th><th>แผนก</th><th>CCT</th><th class="num">#ช่อง</th><th>ปีที่แตะ</th><th class="num">รวมค่าใหม่</th></tr></thead><tbody>${rows}</tbody></table></div>
+       <p class="warn-text small" style="margin-top:8px">⚠ จะเขียนทับงบปัจจุบัน + สร้างแถว/GL ใหม่ + ล็อกช่อง (บันทึก audit log) — <b>ควรกด "⬇ ดาวน์โหลดสำรอง" ก่อนทุกครั้ง</b></p>`,
       [
         { label: 'ยกเลิก', cls: 'ghost-btn' },
-        { label: plan.glCount ? `✔ บันทึก (${plan.cellCount} ช่อง)` : 'ไม่มีรายการให้บันทึก', cls: 'primary-btn', onClick: close => {
+        { label: plan.glCount ? `✔ บันทึก` : 'ไม่มีรายการให้บันทึก', cls: 'primary-btn', onClick: close => {
             if (!plan.glCount) { close(); return; }
-            try { const r = Store.sapImport(user, fileYear, records, true); close(); toast(`นำเข้าแล้ว: ${r.glCount} GL · ${r.cellCount} ช่อง`); App.render(); }
+            const auto = document.getElementById('sapAutoCreate')?.checked;
+            try { const r = Store.sapImport(user, fileYear, records, true, auto); close(); toast(`นำเข้าแล้ว: ${r.glCount} รายการ · ${r.cellCount} ช่อง · สร้างใหม่ ${r.created.rows} แถว / ${r.created.gls} GL`); App.render(); }
             catch (e) { toast(e.message, 'err'); }
           } },
       ]);
