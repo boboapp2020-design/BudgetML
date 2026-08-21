@@ -1183,23 +1183,19 @@ const PagesAcc = (() => {
             <td><button class="ghost-btn small" data-editfuel="${esc(f.fuelType)}">แก้ไข</button></td></tr>`).join('')}
           </tbody></table></div>
           <p class="muted small" style="margin-top:8px">ราคานี้แสดงในเครื่องมือคำนวณของทุกหน่วยงาน</p>`)
-      + card('📥 นำเข้าเกิดจริงจาก SAP (CA07) — จับคู่ GL + CCT', `
+      + card('📥 อัปโหลดไฟล์จาก SAP (CA07) — จับคู่ GL + CCT', `
           <p class="muted small">อัปโหลดไฟล์ <b>SAP CA07 "Actual Analysis by Period"</b> — ระบบจับคู่ด้วย <b>GL + CCT (ดูคู่กันเท่านั้น)</b> แล้วทับ<b>งบปัจจุบัน</b>รายเดือน:<br>
           • <b>Act 3.Jan – 12.Oct → เดือน ม.ค.–ต.ค. ของปีในไฟล์</b> · <b>Act 1.Nov / 2.Dec → เดือน พ.ย./ธ.ค. ของปีก่อนหน้า</b> (ข้าม Total Quarter)<br>
           • ช่องที่ทับจะ<b>ถูกล็อก</b> (ผู้กรอกแก้ไม่ได้) · รองรับหลาย CCT ต่อไฟล์ · <b>มีหน้าต่างสรุป/แจ้ง Error ให้ยืนยันก่อนบันทึกทุกครั้ง</b></p>
           <input type="file" id="sapFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
-          <span id="sapMsg" class="muted small" style="margin-left:10px"></span>`)
-      + card('📗 นำเข้าจากไฟล์ต้นฉบับ (I–T → งบต้นปี · AM–AX → งบปัจจุบัน)', `
+          <span id="sapMsg" class="muted small" style="margin-left:10px"></span>`, { cls: 'upload-card upload-sap' })
+      + card('📗 อัปโหลดไฟล์ Excel (งบต้นปี · งบปัจจุบัน)', `
           <p class="muted small">อัปโหลดไฟล์ <b>ML งบค่าใช้จ่าย</b> (โครง code a · IO · CCT · GL · เดือน) — ระบบจับคู่ด้วย <b>code a</b> แล้ว<br>
           • คอลัมน์ <b>I–T</b> (งบต้นปี) → บันทึกเป็น <b>งบต้นปี (ORIGINAL)</b><br>
           • คอลัมน์ <b>AM–AX</b> (เกิดจริงสะสม) → เขียนลง <b>ตารางงบปัจจุบัน</b></p>
           <input type="file" id="dualFile" accept=".xlsx,.xls,.csv" style="font:inherit">
           <span id="dualMsg" class="muted small" style="margin-left:10px"></span>
-          <p class="warn-text small" style="margin-top:8px">⚠ เขียนทับงบปัจจุบัน + งบต้นปี ทั้งปี — <b>ควรกด "⬇ ดาวน์โหลดสำรอง" ด้านล่างก่อนทุกครั้ง</b></p>`)
-      + card('🔍 ตรวจกระทบยอดกับไฟล์ (Reconciliation)', `
-          <p class="muted small">อัปโหลดไฟล์งบ (Excel/CSV) เพื่อ<b>เทียบกับงบปี ${year} ในระบบ</b> — ดูว่าตรง/ต่าง/ขาดแถวไหน (จับคู่ด้วย code a / IO / CCT+GL) โดย<b>ไม่แก้ไขข้อมูล</b></p>
-          <input type="file" id="reconFile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="font:inherit">
-          <span id="reconMsg" class="muted small" style="margin-left:10px"></span>`)
+          <p class="warn-text small" style="margin-top:8px">⚠ เขียนทับงบปัจจุบัน + งบต้นปี ทั้งปี — <b>ควรกด "⬇ ดาวน์โหลดสำรอง" ด้านล่างก่อนทุกครั้ง</b></p>`, { cls: 'upload-card upload-xlsx' })
       + card('💾 สำรอง / กู้คืนข้อมูล (Backup)', `
           <div class="td-actions">
             <button class="primary-btn" id="backupBtn">⬇ ดาวน์โหลดสำรองทั้งหมด (JSON)</button>
@@ -1465,30 +1461,6 @@ const PagesAcc = (() => {
         showSapPreview(user, file.name, fileYear, records, plan);
       } catch (err) { msg.textContent = ''; toast('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'err'); }
       e.target.value = '';
-    });
-    document.getElementById('reconFile')?.addEventListener('change', async e => {
-      const file = e.target.files[0]; if (!file) return;
-      const msg = document.getElementById('reconMsg'); msg.textContent = 'กำลังอ่านและกระทบยอด…';
-      try {
-        const grid = await fileToGrid(file);
-        const recs = gridToRecords(grid);
-        const r = Store.reconcileFile(UI.year(), recs);
-        const money = n => Math.round(n).toLocaleString();
-        const mtbl = r.mismatch.length ? `<div style="margin-top:10px"><b class="txt-warn">ตัวเลขต่างกัน (${r.mismatch.length})</b><div class="table-scroll" style="max-height:200px"><table class="data-table small"><thead><tr><th>แผนก</th><th>GL</th><th>CCT</th><th class="num">ในระบบ</th><th class="num">ในไฟล์</th><th class="num">ต่าง</th></tr></thead><tbody>${r.mismatch.slice(0, 100).map(m => `<tr><td class="small">${esc(m.dept)}</td><td><span class="gl-code">${m.gl}</span></td><td class="mono small">${m.cct}</td><td class="num">${money(m.app)}</td><td class="num">${money(m.file)}</td><td class="num" style="color:${m.diff >= 0 ? '#d03b3b' : '#0ca30c'}">${(m.diff >= 0 ? '+' : '') + money(m.diff)}</td></tr>`).join('')}</tbody></table></div></div>` : '';
-        const fotbl = r.fileOnly.length ? `<div style="margin-top:10px"><b>มีในไฟล์ แต่ไม่มีในระบบ (${r.fileOnly.length})</b><div class="muted small">${r.fileOnly.slice(0, 20).map(x => esc(x.id)).join(' · ')}${r.fileOnly.length > 20 ? ' …' : ''}</div></div>` : '';
-        const aotbl = r.appOnly.length ? `<div style="margin-top:8px"><b>มีในระบบ แต่ไม่มีในไฟล์ (${r.appOnly.length})</b><div class="muted small">${r.appOnly.slice(0, 20).map(x => x.gl + '@' + x.cct).join(' · ')}${r.appOnly.length > 20 ? ' …' : ''}</div></div>` : '';
-        UI.modal(`🔍 ผลกระทบยอด — งบปี ${UI.year()} vs ไฟล์`, `
-          <div class="kpi-grid kpi-grid-4" style="margin-bottom:10px">
-            ${kpiC('✓', '#eaf6ea', 'kpi-tint-green', 'ตรงกัน', `${r.matched} <small>แถว</small>`, '')}
-            ${kpiC('≠', '#fff7e6', 'kpi-tint-amber', 'ตัวเลขต่าง', `${r.mismatch.length} <small>แถว</small>`, '')}
-            ${kpiC('📄', '#e6f0fb', 'kpi-tint-blue', 'ไฟล์เกิน', `${r.fileOnly.length} <small>แถว</small>`, 'ไม่มีในระบบ')}
-            ${kpiC('🗄️', '#fdecec', 'kpi-tint-red', 'ระบบเกิน', `${r.appOnly.length} <small>แถว</small>`, 'ไม่มีในไฟล์')}
-          </div>
-          <p>ยอดรวมไฟล์: <b>${money(r.fileTotal)}</b> กีบ · ยอดในระบบ (เฉพาะแถวจับคู่ได้): <b>${money(r.appMatchedTotal)}</b> กีบ · ผลต่าง: <b style="color:${Math.abs(r.fileTotal - r.appMatchedTotal) < 0.5 ? '#0ca30c' : '#d03b3b'}">${money(r.fileTotal - r.appMatchedTotal)}</b> กีบ</p>
-          ${mtbl}${fotbl}${aotbl}`, [{ label: 'ปิด', cls: 'primary-btn' }]);
-        msg.textContent = `ตรง ${r.matched} · ต่าง ${r.mismatch.length} · ไฟล์เกิน ${r.fileOnly.length} · ระบบเกิน ${r.appOnly.length}`;
-        document.getElementById('reconFile').value = '';
-      } catch (err) { msg.textContent = ''; toast('กระทบยอดไม่สำเร็จ: ' + err.message, 'err'); document.getElementById('reconFile').value = ''; }
     });
     document.getElementById('backupBtn')?.addEventListener('click', () => {
       try { Store.exportBackup(); toast('ดาวน์โหลดไฟล์สำรองแล้ว ✓'); } catch (e) { toast(e.message, 'err'); }
