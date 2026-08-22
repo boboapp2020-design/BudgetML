@@ -1873,6 +1873,5 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .asu-locked-bar { margin: 8px 0 -4px; padding: 8px 12px; border-radius: 8px; background: #fbeaea; color: #a12727; font-weight: 600; border: 1px solid #f0c2c2; }
 .ghost-btn.as-locked { background: #fbeaea; color: #a12727; border-color: #eaa; font-weight: 700; }
 
-/* Assumption autosave — ไฟลชบันทึก + ป้าย */
-.as-table td.asu-in .as-cell.as-saved { background: #d7f5e3 !important; transition: background .3s; }
-.asu-autosave { font-size: 12px; color: #2e7d52; font-weight: 600; }
+/* Assumption autosave — ไฟลชเขียวเมื่อบันทึก (ทั้งแอดมิน/user) */
+.as-table .as-cell.as-saved { background: #d7f5e3 !important; transition: background .3s; }

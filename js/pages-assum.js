@@ -215,14 +215,12 @@ const PagesAssum = (() => {
         <th class="as-note" rowspan="2">Note</th><th class="as-ord" rowspan="2">ลำดับ</th>
         <th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>
         ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
-    return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
+    return pageHead('Assumption MTP 2027–2029', 'ช่องขาว = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง · บันทึกอัตโนมัติ',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
          <button data-as-lock class="ghost-btn small${Store.assumLocked(year) ? ' as-locked' : ''}" title="ล็อก/ปลดล็อกการกรอกของ User (ปีนี้)">${Store.assumLocked(year) ? '🔒 ล็อกอยู่ (คลิกปลด)' : '🔓 เปิดให้กรอก'}</button>
          <span class="pa-right">
            <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit: ปิด'}</button>
-           <button data-as-cancel class="ghost-btn small" disabled title="ยกเลิกการแก้ที่ยังไม่ Submit">↺ ยกเลิก</button>
            <button data-as-clear class="danger-btn small" title="ล้างค่าที่แก้ทั้งหมด กลับเป็นค่าต้นทาง">🗑 Clear</button>
-           <button data-as-submit class="primary-btn small" disabled title="บันทึกค่าที่แก้ขึ้นระบบ (Supabase)">✔ Submit</button>
          </span>`)
       + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table mtp3"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
@@ -288,7 +286,7 @@ const PagesAssum = (() => {
   function bind(user) {
     pending = {};
     const year = UI.year();
-    wireInputs(user, '.as-cell');
+    wireInputs(user, '.as-cell', { autosave: true });
     document.querySelector('[data-as-clear]')?.addEventListener('click', () => {
       UI.confirm2('ล้างค่าที่แก้ทั้งหมด', 'ลบค่าที่แก้ทั้งหมด (ที่ Submit แล้ว) กลับเป็นค่าต้นทางจากไฟล์ Assumption', 'ย้อนกลับไม่ได้', () => {
         try { pending = {}; Store.assumClear(user, year); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
@@ -380,8 +378,7 @@ const PagesAssum = (() => {
     }));
     const th = `<tr><th class="as-ord" rowspan="2">ลำดับ</th><th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>${head1}</tr><tr>${head2}</tr>`;
     return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ส่วน 1 คาดการณ์ปีนี้ · ส่วน 2 งบทั้งปี ${year + 1} (บันทึกเป็นงบต้นปี ${year + 1}) · เลขวิ่งเข้าตาราง MTP/ต้นทุน อัตโนมัติ`,
-        `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
-         <span class="pa-right">${locked ? '' : '<span class="asu-autosave">💾 บันทึกอัตโนมัติ · กด Enter เลื่อนลงช่องถัดไป</span>'}</span>`)
+        `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>`)
       + (locked ? `<div class="asu-locked-bar">🔒 Assumption ปี ${year} ถูกล็อกโดยแอดมิน — ดูได้อย่างเดียว กรอกไม่ได้</div>` : '')
       + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table asu-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
