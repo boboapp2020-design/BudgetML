@@ -249,7 +249,6 @@ const PagesUser = (() => {
     return pageHead(`กรอกงบประมาณปี ${c.year} 👋`, `${esc(c.dept.name)} · GL เป็นแถว เดือนเป็นคอลัมน์ · หน่วย: กีบ (LAK) · บันทึกอัตโนมัติ`,
         `<span id="autosaveInd" class="autosave-ind" title="กรอกแล้วบันทึกให้เองอัตโนมัติ ทุกช่อง — ออกจากเว็บแล้วกลับมากรอกต่อได้ ข้อมูลไม่หาย">💾 บันทึกอัตโนมัติ</span>
          <button id="ioViewBtn" class="ghost-btn">🔎 IO / CCT</button>
-         <button id="calcuOpenBtn" class="ghost-btn btn-purple"><span class="btn-svg">${calcIcon(17)}</span> เครื่องคิดเลข</button>
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
          <button id="exportMyXlsx" class="ghost-btn btn-green btn-push-right" title="ดาวน์โหลด Excel (ML Form) เฉพาะหน่วยงานของคุณ">⬇ Excel ของฉัน</button>`)
       + `<div class="kpi-grid kpi-grid-4">
@@ -786,12 +785,6 @@ const PagesUser = (() => {
           .then(() => UI.toast(`คัดลอก ${t} แล้ว ✓`)).catch(() => {});
       }));
     });
-    document.getElementById('calcuOpenBtn')?.addEventListener('click', () => {
-      const back = UI.modal(`<span class="mt-svg">${calcIcon(38)}</span><span class="mt-tx">เครื่องคิดเลข<small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></span>`,
-        calcuHtml(), [{ label: 'ปิด', cls: 'ghost-btn' }]);
-      back.querySelector('.modal').classList.add('modal-calcu');
-      calcuBind();
-    });
 
     document.querySelectorAll('[data-note]').forEach(btn => btn.addEventListener('click', () => {
       const key = btn.dataset.note;
@@ -877,9 +870,17 @@ const PagesUser = (() => {
       <td class="num"><b>${fmt(r.rateToLAK)}.00</b></td>
       <td class="muted small">ต่อ 1 ${r.currency}</td></tr>`).join('');
 
-    return `<div class="ft-grid">
+    return `
+    <div class="ft-tabs">
+      <button class="ft-tab active" data-fttab="fx">💱 อัตราแลกเปลี่ยน</button>
+      <button class="ft-tab" data-fttab="fuel">⛽ น้ำมัน</button>
+      <button class="ft-tab" data-fttab="assume">🧮 Assumption</button>
+      <button class="ft-tab" data-fttab="tax">🧾 ภาษี</button>
+      <button class="ft-tab" data-fttab="calcu">🖩 เครื่องคิดเลข</button>
+    </div>
+    <div class="ft-grid ft-tabbed">
 
-      <section class="ft-col">
+      <section class="ft-col ft-pane active" data-ftpane="fx">
         <div class="ft-head"><span class="ft-ic" style="background:#e6f0fb">💱</span>
           <div><b>อัตราแลกเปลี่ยน</b><small>Exchange Rate</small></div></div>
         <div class="ft-ratebox">
@@ -901,27 +902,29 @@ const PagesUser = (() => {
           <span class="fxr-val"><b id="fxOut">680,000</b> กีบ</span></button>
       </section>
 
-      <section class="ft-col">
+      <section class="ft-col ft-pane" data-ftpane="fuel">
         <div class="ft-head"><span class="ft-ic" style="background:#fdecec">⛽</span>
           <div><b>ราคาน้ำมัน</b><small>Fuel Price</small></div>
-          <span class="pill-green" style="margin-left:auto">ข้อมูลล่าสุด</span></div>
+          <span class="pill-green" style="margin-left:auto">ราคากลาง ${year}</span></div>
         <div class="fuel-info"><div class="ft-ratebox-head"><b>🛢 ราคากลาง ${year}</b></div>
           ${fuels.map(f => `<div class="fuel-row"><span>${esc(UI.fuelLabel(f.fuelType))}</span><b>${fmt(f.pricePerLiter)}.00 กีบ/ลิตร</b></div>`).join('')}
         </div>
         <label class="fld"><span>ชนิดน้ำมัน</span><select id="fuType">${fuels.map(f => `<option value="${f.pricePerLiter}">⛽ ${esc(UI.fuelLabel(f.fuelType))}</option>`).join('')}</select></label>
-        <label class="fld"><span>ราคาปัจจุบัน (กีบ/ลิตร)</span><input id="fuPrice" inputmode="decimal" value="${fuels[0] ? fmt(fuels[0].pricePerLiter) : ''}"></label>
-        <div class="two-up">
-          <label class="fld"><span>คาดว่าเพิ่มขึ้น %</span><div class="suffix-wrap"><input id="fuInc" inputmode="decimal" value="0"><span class="suffix">%</span></div></label>
-          <label class="fld"><span>ปริมาณใช้ (ลิตร/เดือน)</span><input id="fuCons" inputmode="decimal" value="1,000"></label>
-        </div>
-        <div class="green-card"><span class="gc-label">📈 ราคาคาดการณ์</span>
-          <span class="gc-val"><b id="fuExp">—</b> กีบ/ลิตร</span></div>
-        <div class="green-card"><span class="gc-label">🧮 ประมาณการค่าใช้จ่าย</span>
+        <label class="fld"><span>ปริมาณใช้ (ลิตร/เดือน)</span><div class="suffix-wrap"><input id="fuCons" inputmode="decimal" value="1,000"><span class="suffix">ลิตร</span></div></label>
+        <div class="green-card"><span class="gc-label">🧮 ประมาณการค่าใช้จ่าย <small>(ราคากลาง <b id="fuPriceShow">—</b> กีบ/ลิตร — แก้ไม่ได้)</small></span>
           <span class="gc-val"><b id="fuMon">—</b> กีบ/เดือน</span>
           <span class="gc-sub">ต่อปี <b id="fuYear">—</b> กีบ</span></div>
+        <div class="ft-divider"><span>🚗 คำนวณน้ำมันการเดินทาง</span></div>
+        <div class="two-up">
+          <label class="fld"><span>อัตราการกินน้ำมัน</span><div class="suffix-wrap"><input id="trEff" inputmode="decimal" value="10"><span class="suffix">กม./ลิตร</span></div></label>
+          <label class="fld"><span>จำนวนระยะทาง</span><div class="suffix-wrap"><input id="trKm" inputmode="decimal" value="100"><span class="suffix">กม.</span></div></label>
+        </div>
+        <div class="green-card"><span class="gc-label">⛽ ใช้น้ำมัน</span>
+          <span class="gc-val"><b id="trLit">—</b> ลิตร</span>
+          <span class="gc-sub">ค่าน้ำมัน <b id="trCost">—</b> กีบ (× ราคากลางชนิดที่เลือก)</span></div>
       </section>
 
-      <section class="ft-col">
+      <section class="ft-col ft-pane" data-ftpane="assume">
         <div class="ft-head"><span class="ft-ic" style="background:#f3effc">🧮</span>
           <div><b>Budget Assumption</b><small>Qty × Price × Freq</small></div></div>
         <label class="fld"><span>จำนวน (เช่น พนักงาน 25 คน)</span>
@@ -935,6 +938,30 @@ const PagesUser = (() => {
         <div class="fld"><span class="muted small">สร้างข้อความ Assumption อัตโนมัติ</span>
           <div id="qText" class="assume-text">—</div></div>
         <button class="ghost-btn" id="qCopy" style="width:100%">📋 คัดลอกข้อความ + ตัวเลข</button>
+      </section>
+
+      <section class="ft-col ft-pane" data-ftpane="tax">
+        <div class="ft-head"><span class="ft-ic" style="background:#fdf6e7">🧾</span>
+          <div><b>คำนวณภาษี</b><small>VAT / Withholding</small></div></div>
+        <label class="fld"><span>รูปแบบ</span><select id="txMode">
+          <option value="add">บวกภาษี — กรอกยอดก่อนภาษี</option>
+          <option value="ex">ถอดภาษี — กรอกยอดรวมภาษีแล้ว</option>
+        </select></label>
+        <div class="two-up">
+          <label class="fld"><span>ยอดเงิน (กีบ)</span><input id="txAmt" inputmode="decimal" value="1,000,000"></label>
+          <label class="fld"><span>อัตราภาษี</span><div class="suffix-wrap"><input id="txRate" inputmode="decimal" value="10"><span class="suffix">%</span></div></label>
+        </div>
+        <div class="green-card"><span class="gc-label">🧾 ภาษี</span>
+          <span class="gc-val"><b id="txTax">—</b> กีบ</span></div>
+        <div class="purple-card"><span class="gc-label" id="txOutLabel">💰 ยอดรวมภาษี</span>
+          <span class="pc-val"><b id="txOut">—</b> กีบ</span>
+          <span class="gc-sub" id="txBaseLine">ยอดก่อนภาษี <b id="txBase">—</b> กีบ</span></div>
+      </section>
+
+      <section class="ft-col ft-pane" data-ftpane="calcu">
+        <div class="ft-head"><span class="ft-ic" style="background:#e6f7f0">🖩</span>
+          <div><b>เครื่องคิดเลข</b><small>คัดลอกผลลัพธ์เพื่อวางในช่องงบประมาณ</small></div></div>
+        ${calcuHtml()}
       </section>
 
     </div>
@@ -1046,15 +1073,48 @@ const PagesUser = (() => {
       navigator.clipboard?.writeText(document.getElementById('fxOut').textContent.replace(/,/g, ''));
       toast('คัดลอก ' + document.getElementById('fxOut').textContent + ' กีบ แล้ว — วางในช่องงบได้เลย');
     });
+    // น้ำมัน: ราคา = ราคากลางตามชนิดที่เลือก (แก้ไม่ได้) — กรอกได้เฉพาะปริมาณลิตร
+    const fuelPrice = () => Number(document.getElementById('fuType')?.value || 0);
     const fu = () => {
-      const exp = num('fuPrice') * (1 + num('fuInc') / 100);
-      const mon = exp * num('fuCons');
-      document.getElementById('fuExp').textContent = fmt(exp);
+      const p = fuelPrice();
+      const mon = p * num('fuCons');
+      const show = document.getElementById('fuPriceShow'); if (show) show.textContent = fmt(p);
       document.getElementById('fuMon').textContent = fmt(mon);
       document.getElementById('fuYear').textContent = fmt(mon * 12);
+      trip();
     };
-    document.getElementById('fuType')?.addEventListener('change', e => { document.getElementById('fuPrice').value = fmt(Number(e.target.value)); fu(); });
-    ['fuPrice', 'fuInc', 'fuCons'].forEach(id => document.getElementById(id)?.addEventListener('input', fu));
+    // คำนวณน้ำมันการเดินทาง: ลิตร = ระยะทาง ÷ (กม./ลิตร) · ค่าน้ำมัน = ลิตร × ราคากลาง
+    const trip = () => {
+      const eff = num('trEff'), km = num('trKm');
+      const lit = eff > 0 ? km / eff : 0;
+      const el = document.getElementById('trLit'); if (!el) return;
+      el.textContent = lit ? lit.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
+      document.getElementById('trCost').textContent = lit ? fmt(Math.round(lit * fuelPrice())) : '—';
+    };
+    document.getElementById('fuType')?.addEventListener('change', fu);
+    ['fuCons'].forEach(id => document.getElementById(id)?.addEventListener('input', fu));
+    ['trEff', 'trKm'].forEach(id => document.getElementById(id)?.addEventListener('input', trip));
+    // ภาษี: บวก/ถอด ตามอัตรา %
+    const tax = () => {
+      const amt = num('txAmt'), rate = num('txRate') / 100, mode = document.getElementById('txMode')?.value;
+      if (!document.getElementById('txTax')) return;
+      let base, t, total;
+      if (mode === 'ex') { total = amt; base = rate >= 0 ? amt / (1 + rate) : amt; t = total - base; }
+      else { base = amt; t = amt * rate; total = base + t; }
+      document.getElementById('txTax').textContent = fmt(Math.round(t));
+      document.getElementById('txOut').textContent = fmt(Math.round(mode === 'ex' ? base : total));
+      document.getElementById('txOutLabel').textContent = mode === 'ex' ? '💰 ยอดก่อนภาษี' : '💰 ยอดรวมภาษี';
+      document.getElementById('txBaseLine').innerHTML = mode === 'ex'
+        ? `ยอดรวมภาษี <b>${fmt(Math.round(total))}</b> กีบ` : `ยอดก่อนภาษี <b>${fmt(Math.round(base))}</b> กีบ`;
+    };
+    ['txAmt', 'txRate'].forEach(id => document.getElementById(id)?.addEventListener('input', tax));
+    document.getElementById('txMode')?.addEventListener('change', tax);
+    // แท็บ
+    document.querySelectorAll('.ft-tab').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('.ft-tab').forEach(x => x.classList.toggle('active', x === b));
+      document.querySelectorAll('.ft-pane').forEach(p => p.classList.toggle('active', p.dataset.ftpane === b.dataset.fttab));
+    }));
+    if (document.getElementById('calcuDisplay')) { try { calcuBind(); } catch (e) {} }
     const q = () => {
       const out = num('qQty') * num('qPrice') * num('qFreq');
       document.getElementById('qOut').textContent = fmt(out);
@@ -1066,7 +1126,7 @@ const PagesUser = (() => {
       navigator.clipboard?.writeText(document.getElementById('qText').textContent);
       toast('คัดลอกแล้ว — นำไปวางในช่อง Assumption ได้เลย');
     });
-    fx(); fu(); q(); // คำนวณค่าเริ่มต้นทันทีที่เปิด
+    fx(); fu(); q(); tax(); // คำนวณค่าเริ่มต้นทันทีที่เปิด
   }
 
   return { dashboard, dashboardBind, budget, budgetBind, review, reviewBind, calculators, calculatorsBind };
