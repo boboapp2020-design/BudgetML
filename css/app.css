@@ -1940,3 +1940,6 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .fi-list li.fi-warn { background: #fdf6e7; border-color: #ecd9a8; }
 .fi-list li.fi-crit { background: #fbeded; border-color: #eec3c3; }
 .fi-list li.fi-good { background: #ecf7f0; border-color: #bfe0cb; }
+
+/* การ์ดค่าน้ำมันเดินทาง (ในแท็บน้ำมัน): ชิดซ้ายเหมือนการ์ดเขียว */
+[data-ftpane="fuel"] .purple-card { text-align: left; padding: 10px 14px; }

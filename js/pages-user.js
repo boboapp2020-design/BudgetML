@@ -54,12 +54,20 @@ const PagesUser = (() => {
     const anomalies = Store.deptAnomalies(c.year, c.deptId);
     const v = Store.validate(c.year, c.deptId);
 
+    // สัดส่วนงบแผนกเทียบทั้งบริษัท — ฐาน = งบต้นปีที่อนุมัติ (ORIGINAL) ตัดรายได้ 44/45
+    //  (งบปัจจุบันมีรายการเครดิต SAP เช่น Unrealized FX ทำให้ฐานติดลบ ใช้เทียบไม่ได้)
+    const _g = {}; Store.db.glAccounts.forEach(g => { _g[g.id] = g.code || ''; });
+    const _snap = Store.snapshotFor ? Store.snapshotFor(c.year) : null;
+    const _base = _snap ? _snap.rows : Store.db.budgets.filter(b => b.year === c.year);
+    const coTotal = _base.filter(b => !/^(44|45|82)/.test(_g[b.glId] || ''))
+      .reduce((s, b) => s + b.months.reduce((x, v) => x + (v || 0), 0), 0);
+    const share = coTotal > 0 && cur > 0 ? (cur / coTotal * 100) : null;
     const kpis = `<div class="kpi-grid">
-      ${kpi(`งบประมาณปี ${c.year}`, fmt(cur) + ' <small>กีบ</small>', 'ยอดรวมที่กรอกแล้ว')}
-      ${kpi(`งบประมาณปี ${c.prevYear} (ปีก่อน)`, fmt(prev) + ' <small>กีบ</small>', 'baseline เปรียบเทียบ')}
+      ${kpi(`งบประมาณปี ${c.year}`, UI.fmtShort(cur) + ' <small>กีบ</small>', fmt(cur) + ' กีบ · ยอดรวมที่กรอกแล้ว')}
+      ${kpi(`งบประมาณปี ${c.prevYear} (ปีก่อน)`, UI.fmtShort(prev) + ' <small>กีบ</small>', fmt(prev) + ' กีบ · baseline เปรียบเทียบ')}
       ${kpi('เพิ่ม / ลด เทียบปีก่อน', deltaBadge(cmp.diff, cmp.pct), (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
       ${gaugeKpi('ความครบถ้วน', c.comp.pct, `${c.comp.filled}/${c.comp.total} ช่อง · เป้าหมาย 100%`)}
-      ${kpi('จำนวน GL', c.gls.length, 'ที่ได้รับมอบหมาย')}
+      ${kpi('จำนวน GL · สัดส่วนงบ', `${c.gls.length} <small>GL</small>${share != null ? ` · ${share < 0.1 ? share.toFixed(3) : share.toFixed(2)}<small>%</small>` : ''}`, share != null ? `ที่ได้รับมอบหมาย · งบแผนกคิดเป็น ${share < 0.1 ? share.toFixed(3) : share.toFixed(2)}% ของงบทั้งบริษัท` : 'ที่ได้รับมอบหมาย')}
     </div>`;
 
     const todo = [];
@@ -317,8 +325,8 @@ const PagesUser = (() => {
          <button id="calcOpenBtn" class="ghost-btn btn-teal">🧮 เครื่องมือคำนวณ</button>
          <button id="exportMyXlsx" class="ghost-btn btn-green btn-push-right" title="ดาวน์โหลด Excel (ML Form) เฉพาะหน่วยงานของคุณ">⬇ Excel ของฉัน</button>`)
       + `<div class="kpi-grid kpi-grid-4">
-          ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', (rvOn ? 'ยอด Revise ปี ' : 'ยอดรวมปี ') + c.year, `<span data-kpi-total>${fmt(cur)}</span> <small>กีบ</small>`, rvOn ? `เกิดจริง 1-${thru} + คาดการณ์ ${thru + 1}-12` : 'คำนวณอัตโนมัติ real-time')}
-          ${kpiC(rvOn ? '🧊' : '📅', '#e6f7f0', 'kpi-tint-teal', baseLabel, fmt(prev) + ' <small>กีบ</small>', rvOn ? 'งบที่อนุมัติตอนต้นปี (freeze)' : 'baseline เปรียบเทียบ')}
+          ${kpiC('💵', '#e6f0fb', 'kpi-tint-blue', (rvOn ? 'ยอด Revise ปี ' : 'ยอดรวมปี ') + c.year, `<span data-kpi-total>${UI.fmtShort(cur)}</span> <small>กีบ</small>`, `<span data-kpi-total-full>${fmt(cur)} กีบ</span> · ${rvOn ? `เกิดจริง 1-${thru} + คาดการณ์ ${thru + 1}-12` : 'คำนวณอัตโนมัติ real-time'}`)}
+          ${kpiC(rvOn ? '🧊' : '📅', '#e6f7f0', 'kpi-tint-teal', baseLabel, UI.fmtShort(prev) + ' <small>กีบ</small>', `${fmt(prev)} กีบ · ${rvOn ? 'งบที่อนุมัติตอนต้นปี (freeze)' : 'baseline เปรียบเทียบ'}`)}
           ${kpiC(cmp.diff >= 0 ? '📈' : '📉', cmp.diff >= 0 ? '#fdecec' : '#eaf6ea', 'kpi-tint-green', rvOn ? 'เพิ่ม/ลดระหว่างปี' : 'เพิ่ม/ลด', `<span data-kpi-delta>${deltaBadge(cmp.diff, cmp.pct)}</span>`, 'เทียบ' + baseLabel)}
           ${gaugeKpi('ความครบถ้วน', c.comp.pct, 'เป้าหมาย 100% ก่อน Submit', 'data-kpi-comp')}
         </div>`
@@ -513,7 +521,8 @@ const PagesUser = (() => {
       document.querySelector('[data-gsum] b').textContent = fmt(cur);
       const gp = document.querySelector('[data-gpct]');
       if (gp) gp.innerHTML = deltaBadge(dcmp.diff, dcmp.pct);
-      document.querySelector('[data-kpi-total]').textContent = fmt(cur);
+      document.querySelector('[data-kpi-total]').textContent = UI.fmtShort(cur);
+      const kf = document.querySelector('[data-kpi-total-full]'); if (kf) kf.textContent = fmt(cur) + ' กีบ';
       document.querySelector('[data-kpi-delta]').innerHTML = deltaBadge(dcmp.diff, dcmp.pct);
       document.querySelector('[data-kpi-comp]').innerHTML = Charts.gauge(Store.completion(c.year, c.deptId).pct);
     }
