@@ -282,22 +282,33 @@ const PagesAssum = (() => {
     const cols = COLS.filter(c => ROUND_COLS[userRound].includes(c.j));
     const head1 = cols.map(c => `<th class="num as-h1 ${scCls(c.sc)}">${esc(c.grp)}${c.yo != null ? `<div class="as-yr">${thaiYr(c.yo)}</div>` : ''}</th>`).join('');
     const head2 = cols.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
-    let body = '', n = 0;
+    // แบ่งบล็อกตามแถวหมวด (ลำดับเลขจำนวนเต็ม) — แสดงทั้งบล็อกถ้ามีแถวของแผนกนี้ (รวมแถวผลรวม อ่านอย่างเดียว)
+    const blocks = []; let cur = null;
     for (let i = R0; i <= R1; i++) {
-      const remark = String(V[i][REMARK_J] ?? '').trim();
-      if (remark !== section) continue;
-      n++;
+      const order = V[i][1], name = V[i][2];
+      if (name == null && order == null) continue;
+      const isMain = order != null && /^\d+$/.test(String(order));
+      if (isMain || !cur) { cur = { rows: [], match: false }; blocks.push(cur); }
+      cur.rows.push(i);
+      if (String(V[i][REMARK_J] ?? '').trim() === section) cur.match = true;
+    }
+    let body = '', n = 0;
+    blocks.filter(b => b.match).forEach(b => b.rows.forEach(i => {
+      const order = V[i][1], isMain = order != null && /^\d+$/.test(String(order));
+      const mine = String(V[i][REMARK_J] ?? '').trim() === section;
+      if (isMain) n = 0; else n++;
       const cells = cols.map(c => {
         const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
-        if (f && !ext) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
+        // กรอกได้เฉพาะแถวของแผนกตัวเอง (ช่องไม่มีสูตร/ลิงก์ภายนอก) — แถวผลรวม/แถวแผนกอื่น = อ่านอย่างเดียว
+        if ((f && !ext) || !mine) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
         const edited = (i + '_' + j) in committed;
         return `<td class="num as-in asu-in ${scCls(c.sc)}"><input class="as-cell asu-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"></td>`;
       }).join('');
-      body += `<tr class="as-sub${n % 2 === 0 ? ' as-alt' : ''}">
-        <td class="as-ord">${esc(V[i][1] ?? '')}</td>
+      body += `<tr class="${isMain ? 'as-main' : 'as-sub' + (n % 2 === 0 ? ' as-alt' : '')}">
+        <td class="as-ord">${esc(order ?? '')}</td>
         <td class="as-name" title="${esc(V[i][2] ?? '')}">${esc(V[i][2] ?? '')}</td>
         <td class="as-unit">${esc(V[i][3] ?? '')}</td>${cells}</tr>`;
-    }
+    }));
     const th = `<tr><th class="as-ord" rowspan="2">ลำดับ</th><th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>${head1}</tr><tr>${head2}</tr>`;
     return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ช่องชมพู = กรอก · กรอกแล้วเลขวิ่งเข้าตาราง MTP อัตโนมัติ`,
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
