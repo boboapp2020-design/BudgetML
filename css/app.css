@@ -1821,8 +1821,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table td.as-ext .as-cell { background:#eef2ff; }
 .as-table td.as-ext .as-cell:hover { background:#e2e9fe; }
 
-.as-table td .as-cell.as-edited { background:#e6f7ee; box-shadow: inset 2px 0 0 #1d9e75; }
-.as-table td .as-cell.as-edited:hover { background:#d6f0e2; }
+.as-table td .as-cell.as-edited { }   /* ไม่ไฮไลต์ช่องที่แก้แล้ว (autosave ทุกช่องอยู่แล้ว) */
 
 /* Assumption: ช่องที่แก้แต่ยังไม่ Submit (staged) */
 .as-table td .as-cell.as-pending { background:#fff3cd !important; box-shadow: inset 2px 0 0 #eda100; font-weight:600; }
