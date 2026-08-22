@@ -1793,7 +1793,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table th.as-ord, .as-table td.as-ord  { position: sticky; left: 28px; z-index: 2; background: #f4f6fb; width: 42px; color:#556; }
 .as-table th.as-name, .as-table td.as-name { position: sticky; left: 70px; z-index: 2; background: #fff; min-width: 210px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; text-align:left; }
 .as-table th.as-unit, .as-table td.as-unit { position: sticky; left: 280px; z-index: 2; background: #fbfcfe; min-width: 78px; text-align:left; color:#667; }
-.as-table thead th.as-note, .as-table thead th.as-ord, .as-table thead th.as-name, .as-table thead th.as-unit { background:#1f3a5f; z-index:4; }
+.as-table thead th.as-note, .as-table thead th.as-ord, .as-table thead th.as-name, .as-table thead th.as-unit, .as-table thead th.as-remark { background:#1f3a5f; z-index:4; color:#fff !important; }
 /* แถบหัวหมวด (main row) — bar สีครามเด่น + เส้นแบ่งหนา */
 .as-table tr.as-main td { background-color: #dfe7fb !important; border-top: 2px solid #4f6ef2; }
 .as-table tr.as-main td.as-name { font-weight: 700; color: #22317f; }
@@ -1810,7 +1810,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-in { padding: 1px !important; }
 .as-cell { width: 100%; min-width: 62px; border: none; background: #fffbe8; text-align: right; font: inherit; padding: 2px 6px; border-radius: 3px; }
 .as-cell:hover { background: #fff4c9; } .as-cell:focus { outline: 2px solid #eda100; background:#fff; }
-.as-remark { position: sticky; right: 0; background: #f4f6fb; color: #8a5a00; font-size: 11px; }
+.as-remark { background: #f4f6fb; color: #8a5a00; font-size: 11px; }   /* ไม่ freeze — เลื่อนตามตาราง */
 
 .as-table td.as-ext .as-cell { background:#eef2ff; }
 .as-table td.as-ext .as-cell:hover { background:#e2e9fe; }
@@ -1844,6 +1844,14 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .asu-table th.as-unit, .asu-table td.as-unit { left: 256px; }
 .asu-rounds { display: inline-flex; gap: 6px; }
 .asu-rounds .asu-on { background: #1f3a5f; color: #fff; border-color: #1f3a5f; font-weight: 700; }
+/* หัว 2 ส่วนตามวงจร — คุมความสูงตายตัว ไม่มีช่องว่างขาว */
+.as-table.asu-table thead th { box-sizing: border-box; border-bottom: none; border-right: 1px solid rgba(255,255,255,.14); vertical-align: middle; }
+.as-table.asu-table thead tr:nth-child(1) th { top: 0; height: 34px; padding: 0 8px; }
+.as-table.asu-table thead tr:nth-child(2) th { top: 34px; height: 24px; padding: 0 6px; line-height: 24px; border-bottom: 2px solid #10203c; }
+.as-table.asu-table thead th.as-ord, .as-table.asu-table thead th.as-name, .as-table.asu-table thead th.as-unit { top: 0; height: 58px; }
+.asu-table thead th.asu-sec1 { background: #20507e !important; }
+.asu-table thead th.asu-sec2 { background: #7a3b2e !important; }
+.asu-table thead .as-rng { font-weight: 400; font-size: 10px; opacity: .85; }
 
 /* Assumption: ช่องอัตราแลกเปลี่ยน auto จาก Budget Control */
 .as-table td.as-fx { background:#e6f6ee !important; color:#0b6b47; font-weight:600; }
