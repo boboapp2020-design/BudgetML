@@ -1970,3 +1970,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .boot-skel .sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .boot-skel .sk-card { height: 220px; }
 .boot-skel .sk-table { flex: 1; min-height: 160px; }
+
+/* GL chip ที่ยังไม่ตั้งงบ (ยอดปี = 0) — แดง */
+.gl-chip.gl-chip-zero { background: #fbeded; border-color: #e5a9a9; color: #b32d2d; font-weight: 700; }
+.gl-chip.gl-chip-zero .chip-x { color: #b32d2d; }

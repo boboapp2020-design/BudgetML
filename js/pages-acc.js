@@ -1116,13 +1116,16 @@ const PagesAcc = (() => {
 
     const depts = Store.db.departments;
     const nActive = depts.filter(d => d.active).length;
+    const glYear = UI.year();
     const dRows = depts.slice().sort((a, b) => (b.active - a.active) || a.code.localeCompare(b.code)).map(d => {
       const gls = Store.deptGLs(d.id);
+      const zeroN = gls.filter(g => Store.glTotal(glYear, d.id, g.id) === 0).length;
       return `<tr class="${d.active ? '' : 'tr-notused'}">
         <td><b>${esc(d.name)}</b><div class="muted small">${d.code}</div></td>
         <td>${d.active ? '<span class="status-badge st-completed">เปิดใช้งาน</span>' : '<span class="status-badge st-draft">ยังไม่เปิดใช้</span>'}</td>
-        <td>${gls.length} GL</td>
-        <td class="small">${gls.map(g => `<span class="gl-chip">${g.code}<button class="chip-x" data-unassign="${d.id}|${g.id}" title="ถอด GL">✕</button></span>`).join(' ')}</td>
+        <td>${gls.length} GL${zeroN ? `<div class="small" style="color:#b32d2d;font-weight:700">🔴 ${zeroN} ไม่ตั้งงบ</div>` : ''}</td>
+        <td class="small">${gls.map(g => { const zero = Store.glTotal(glYear, d.id, g.id) === 0;
+          return `<span class="gl-chip${zero ? ' gl-chip-zero' : ''}" title="${zero ? 'GL นี้ยังไม่ได้ตั้งงบปี ' + glYear + ' (ยอด = 0)' : ''}">${g.code}<button class="chip-x" data-unassign="${d.id}|${g.id}" title="ถอด GL">✕</button></span>`; }).join(' ')}</td>
         <td class="td-actions">
           <button class="ghost-btn small" data-assign="${d.id}">＋ มอบหมาย GL</button>
           ${d.active
