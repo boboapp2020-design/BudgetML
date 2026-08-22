@@ -341,11 +341,20 @@ const PagesAssum = (() => {
     const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
-    // คาดการณ์ปีนี้เท่านั้น: เกิดจริง ม.ค-ส.ค (B อ่าน) · คาดการณ์ ก.ย-ธ.ค (C กรอก) · เกิดจริง+คาดการณ์ (D ผลรวม)
-    //  (งบปีถัดไปไม่แสดงที่นี่ — จะไปกรอกเป็น "งบต้นปี" ของปีนั้นเมื่อถึงรอบปีถัดไป)
-    const cols = COLS.filter(c => [11, 12, 13, 14, 15, 16, 17].includes(c.j));
-    const head1 = `<th class="num as-h1 asu-sec1" colspan="7">คาดการณ์ปี ${year} <span class="as-rng">(เกิดจริง ม.ค.-ส.ค. + คาดการณ์ ก.ย.-ธ.ค.)</span></th>`;
-    const head2 = cols.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${esc(c.j === 11 ? 'เกิดจริง' : c.grp === 'คาดการณ์ ก.ย-ธ.ค' ? 'คาดฯ ' + scLbl(c.sc) : c.grp === 'เกิดจริง+คาดการณ์' ? 'รวม ' + scLbl(c.sc) : scLbl(c.sc))}</th>`).join('');
+    // คอลัมน์ F-R ของไฟล์ (ยกเว้น L เกิดจริง ม.ค-ส.ค): งบต้นปี · งบ Revise · คาดการณ์ ก.ย-ธ.ค · เกิดจริง+คาดการณ์ (O/R/P อย่างละ 3)
+    const USER_COLS = [5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17];
+    const cols = COLS.filter(c => USER_COLS.includes(c.j));
+    const rangeU = grp => grp.startsWith('คาดการณ์') ? `(ก.ย.-ธ.ค.${year})` : `(ม.ค.-ธ.ค.${year})`;
+    let head1 = ''; for (let k = 0; k < cols.length;) { const c = cols[k]; let span = 1; while (k + span < cols.length && cols[k + span].grp === c.grp) span++; head1 += `<th class="num as-h1 asu-sec1" colspan="${span}">${esc(c.grp)} <span class="as-rng">${rangeU(c.grp)}</span></th>`; k += span; }
+    const head2 = cols.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
+    // แถวที่เปิดให้กรอก (แถวชีท Excel 1-based → index-1)
+    const FILL_SHEET_ROWS = [28, 29, 33, 34, 43, 44, 48, 49, 53, 54, 55, 59, 60, 61, 63, 64, 66, 67, 69, 70, 72, 73, 75, 76, 77, 83, 84, 85, 86, 89, 90, 91, 92, 93, 95, 96, 97, 98, 99, 101, 102, 103, 104, 105, 107, 108, 124, 125, 126, 128, 129, 130, 137, 138, 139, 141, 142, 143, 145, 146, 148, 149, 151, 153, 155, 156, 158, 160, 162, 165, 167, 169, 171];
+    const FILL_ROWS = new Set(FILL_SHEET_ROWS.map(r => r - 1));
+    // แถวที่คอลัมน์ AD ว่างในไฟล์ — กำหนดแผนกเอง (ตามที่ตกลง): ยกมา/คงเหลือ→การตลาด · ค่าอ้อย→ด้านอ้อย
+    const SEC_OVERRIDE = {};
+    [89, 90, 91, 92, 93, 101, 102, 103, 104, 105].forEach(r => SEC_OVERRIDE[r - 1] = 'การตลาด');
+    [124, 125, 126, 128, 129, 130, 137, 138, 139, 141, 142, 143].forEach(r => SEC_OVERRIDE[r - 1] = 'ด้านอ้อย');
+    const secOf = i => SEC_OVERRIDE[i] || String(V[i][REMARK_J] ?? '').trim();
     // แบ่งบล็อกตามแถวหมวด (ลำดับเลขจำนวนเต็ม) — แสดงทั้งบล็อกถ้ามีแถวของแผนกนี้ (รวมแถวผลรวม อ่านอย่างเดียว)
     const blocks = []; let cur = null;
     for (let i = R0; i <= R1; i++) {
@@ -354,20 +363,20 @@ const PagesAssum = (() => {
       const isMain = order != null && /^\d+$/.test(String(order));
       if (isMain || !cur) { cur = { rows: [], match: false }; blocks.push(cur); }
       cur.rows.push(i);
-      if (String(V[i][REMARK_J] ?? '').trim() === section) cur.match = true;
+      if (secOf(i) === section) cur.match = true;
     }
     let body = '', n = 0;
     blocks.filter(b => b.match).forEach(b => b.rows.forEach(i => {
       const order = V[i][1], isMain = order != null && /^\d+$/.test(String(order));
-      const mine = String(V[i][REMARK_J] ?? '').trim() === section;
+      const mine = secOf(i) === section;
       if (isMain) n = 0; else n++;
       const cells = cols.map(c => {
         const j = c.j; const val = out[i][j];
         const home = homeOf(j); const hy = year + home.dy, hc = home.c;
         const f = F[i] && F[i][hc]; const ext = f && f.indexOf('!') >= 0;
-        const editableCol = (j >= 12 && j <= 14);   // กรอกได้เฉพาะ คาดการณ์ ก.ย-ธ.ค (C)
-        // กรอกได้เฉพาะแถวของแผนกตัวเอง + คอลัมน์ที่เปิด + ปีนี้ยังไม่ถูกล็อก — นอกนั้นอ่านอย่างเดียว
-        if ((f && !ext) || !mine || !editableCol || locked) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
+        const editableRow = FILL_ROWS.has(i);   // กรอกได้เฉพาะแถวที่กำหนด
+        // กรอกได้: แถวที่กำหนด + แถวของแผนกตัวเอง + ช่องไม่มีสูตร + ปีนี้ยังไม่ถูกล็อก — นอกนั้นอ่านอย่างเดียว
+        if ((f && !ext) || !mine || !editableRow || locked) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
         const edited = (i + '_' + hc) in committedBy(hy);
         return `<td class="num as-in asu-in ${scCls(c.sc)}"><input class="as-cell asu-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" data-y="${hy}" data-hc="${hc}" inputmode="decimal" value="${val ? fmt(val) : ''}"${home.dy ? ` title="บันทึกเป็น งบต้นปี ${hy}"` : ''}></td>`;
       }).join('');
