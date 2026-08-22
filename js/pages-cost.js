@@ -18,6 +18,7 @@ const PagesCost = (() => {
   const esc = s => UI.esc(s);
   const fmt = n => UI.fmt(n);
   const card = (t, b, o) => UI.card(t, b, o);
+  let divMode = 'fc';   // ชุดตัวหาร: 'fc' = คาดการณ์ (งบต้นปี) · 'act' = เกิดจริง+คาดการณ์
 
   const ALL = []; for (let i = 1; i <= 33; i++) ALL.push(i);
   // Layout ตรงชีท PPT — ['cat',รหัส,div] · ['sum',ชื่อ,[รหัส..],div,style]
@@ -67,9 +68,11 @@ const PagesCost = (() => {
     const yearLocked = !Store.isYearEditable(year);
     const metricSubmitted = key => { const eds = editorsCfg[key] || []; return eds.length > 0 && eds.every(c => Store.pptSubmitted(year, c)); };
     const committed = key => yearLocked || metricSubmitted(key);
-    // ตัวหาร /ตัน + คอลัมน์แสดง = ปริมาณ "เกิดจริง+คาดการณ์ (Pess)" ดึงจากหน้า Assumption (MTP) — ไม่กรอกในหน้านี้แล้ว
-    const AS_COL = 17; // เกิดจริง+คาดการณ์ · Pessimistic (ตามที่ผู้ใช้ระบุ)
-    const AS_ROW = { caneCompany: 21, caneCommunity: 36, sugarProduce: 81 }; // แถว 4/5/13 (0-based)
+    // ปริมาณดึงจาก Assumption (MTP) — Realistic ทั้งคู่:
+    //  คาดการณ์ = งบต้นปี (col 6) · เกิดจริง+คาดการณ์ = col 16 · แถว: 4 ไร่บริษัท / 5 ไร่ส่งเสริม / 13 น้ำตาลผลิต / 15.5 น้ำตาล Trading
+    const BUD_COL = 6, ACT_COL = 16;
+    const AS_COL = divMode === 'fc' ? BUD_COL : ACT_COL;   // ตัวหาร /ตัน ตามชุดที่เลือก
+    const AS_ROW = { caneCompany: 21, caneCommunity: 36, sugarProduce: 81, sugarTrading: 98 };
     let _asGrid, _asTried = false;
     const asGrid = () => { if (!_asTried) { _asTried = true; try { _asGrid = (typeof PagesAssum !== 'undefined' && PagesAssum.grid) ? PagesAssum.grid() : null; } catch (e) { _asGrid = null; } } return _asGrid; };
     const tv = m => { const r = AS_ROW[m]; if (r != null) { const g = asGrid(); if (g && g[r]) return g[r][AS_COL] || 0; } return Store.volume(year, m).plan ?? 0; };
@@ -113,7 +116,8 @@ const PagesCost = (() => {
       // เรียงคู่กัน: กีบ/ตันอ้อย · บาท/ตันอ้อย · กีบ/ตันน้ำตาล · บาท/ตันน้ำตาล
       return cell(kc) + cell(toBaht(kc)) + cell(ks) + cell(toBaht(ks));
     };
-    const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท · Assumption เกิดจริง+คาดการณ์)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม · Assumption เกิดจริง+คาดการณ์)</small>' : '';
+    const modeName = divMode === 'fc' ? 'คาดการณ์' : 'เกิดจริง+คาดการณ์';
+    const divTag = div => div === 'co' ? ` <small class="muted">(÷ ตันไร่บริษัท · ${modeName})</small>` : div === 'comm' ? ` <small class="muted">(÷ ตันไร่ส่งเสริม · ${modeName})</small>` : '';
 
     // ตารางต้นทุน (อ่านอย่างเดียว — ทุก user เห็นชุดเดียวกัน)
     const body = LAYOUT.map(row => {
@@ -147,14 +151,14 @@ const PagesCost = (() => {
     };
     // อ่านอย่างเดียว — ปริมาณดึงจาก Assumption: คาดการณ์ = งบต้นปี Opt (col5) · เกิดจริง+คาดการณ์ (col16)
     // แถวที่แมพ: ปริมาณอ้อย-ไร่บริษัท (i21) · ไร่ส่งเสริม (i36) · ปริมาณน้ำตาล-ผลิต (i81)
-    const AS_FC_COL = 6;   // งบต้นปี · Realistic (ตามที่ผู้ใช้ระบุ)
+    const AS_FC_COL = BUD_COL;   // คาดการณ์ = งบต้นปี Real
     const asVal = (m, col) => { const r = AS_ROW[m]; if (r == null) return null; const g = asGrid(); return (g && g[r]) ? (g[r][col] || 0) : null; };
     const volCell = v => v == null ? '<span class="muted">—</span>' : `<b>${fmt(Math.round(v))}</b>`;
     const volRows = Store.VOLUME_METRICS.map(m => {
       const pv = Store.volume(year - 1, m.key);
       return `<tr><td>${esc(m.label)}</td>
         <td class="num">${volCell(asVal(m.key, AS_FC_COL))}</td>
-        <td class="num">${volCell(asVal(m.key, AS_COL))}</td>
+        <td class="num">${volCell(asVal(m.key, ACT_COL))}</td>
         <td class="num muted">${(pv.actual ?? pv.plan) == null ? '—' : fmt(pv.actual ?? pv.plan)}</td></tr>`;
     }).join('');
     const volSum = (keys, col) => { const vs = keys.map(k => asVal(k, col)); return vs.every(x => x == null) ? null : vs.reduce((s, x) => s + (x || 0), 0); };
@@ -191,20 +195,23 @@ const PagesCost = (() => {
         roundChip)
       + submitBar + adminUnlock
       + card(`ต้นทุนการผลิต`, `
-          <div class="uc-hint-calc">🧮 ตัวหาร (ปริมาณ) ดึงจากหน้า <b>Assumption (MTP) · เกิดจริง+คาดการณ์</b> อัตโนมัติ — ไม่ต้องกรอกในหน้านี้ · <b>กีบ/ตัน</b> = จำนวนเงิน ÷ ปริมาณ</div>
           <div class="table-scroll"><table class="data-table small"><thead>
             <tr><th>ปริมาณ ปี ${year}</th><th class="num">คาดการณ์ (ตัน)</th><th class="num">เกิดจริง+คาดการณ์ (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
             <tbody>${volRows}
-              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_COL))}</td><td class="num muted">${pvSum(['caneCompany','caneCommunity']) == null ? '—' : fmt(Math.round(pvSum(['caneCompany','caneCommunity'])))}</td></tr>
-              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_COL))}</td><td class="num muted">${pvSum(['sugarProduce','sugarTrading']) == null ? '—' : fmt(Math.round(pvSum(['sugarProduce','sugarTrading'])))}</td></tr>
+              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], ACT_COL))}</td><td class="num muted">${pvSum(['caneCompany','caneCommunity']) == null ? '—' : fmt(Math.round(pvSum(['caneCompany','caneCommunity'])))}</td></tr>
+              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], ACT_COL))}</td><td class="num muted">${pvSum(['sugarProduce','sugarTrading']) == null ? '—' : fmt(Math.round(pvSum(['sugarProduce','sugarTrading'])))}</td></tr>
             </tbody></table></div>${fillFoot}`)
       + `<div class="kpi-grid kpi-grid-4">
-          <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท (Assumption เกิดจริง+คาดการณ์)</div></div>
-          <div class="kpi kpi-tint-teal"><div class="kpi-label">🌱 ต้นทุนอ้อย ไร่ส่งเสริม / ตัน</div><div class="kpi-value">${caneComm == null ? '—' : fmt(Math.round(caneComm))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (4-6) ÷ ตันไร่ส่งเสริม (Assumption เกิดจริง+คาดการณ์)</div></div>
-          <div class="kpi"><div class="kpi-label">🏭 ต้นทุนรวม / ตันอ้อย</div><div class="kpi-value">${totCane == null ? '—' : fmt(Math.round(totCane))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ทุกหมวด ÷ ตันอ้อยรวม (Assumption เกิดจริง+คาดการณ์)</div></div>
+          <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท (Assumption ${modeName})</div></div>
+          <div class="kpi kpi-tint-teal"><div class="kpi-label">🌱 ต้นทุนอ้อย ไร่ส่งเสริม / ตัน</div><div class="kpi-value">${caneComm == null ? '—' : fmt(Math.round(caneComm))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (4-6) ÷ ตันไร่ส่งเสริม (Assumption ${modeName})</div></div>
+          <div class="kpi"><div class="kpi-label">🏭 ต้นทุนรวม / ตันอ้อย</div><div class="kpi-value">${totCane == null ? '—' : fmt(Math.round(totCane))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ทุกหมวด ÷ ตันอ้อยรวม (Assumption ${modeName})</div></div>
           <div class="kpi"><div class="kpi-label">🍬 ต้นทุนรวม / ตันน้ำตาล</div><div class="kpi-value">${totSugar == null ? '—' : fmt(Math.round(totSugar))} <small>กีบ/ตัน</small></div><div class="kpi-sub">รวมทั้งหมด ${fmt(Math.round(grand))} กีบ</div></div>
         </div>`
-      + card('', `<p class="muted small" style="margin:0 0 8px">💡 จำนวนเงินทุกหมวด <span class="uc-auto" style="padding:1px 6px;border-radius:4px;background:#eef3ff">ดึง auto จาก GL ตามงบ</span> · <span style="background:#fff7cc;padding:1px 6px;border-radius:4px">เหลือง=รวมหมวด</span> · <span style="background:#fbe0ec;padding:1px 6px;border-radius:4px">ชมพู=รวมใหญ่</span> · กีบ/ตัน = จำนวนเงิน ÷ ปริมาณ &nbsp; ${srcNote}</p>
+      + card('', `<div class="uc-divmode">
+            <button class="ghost-btn small${divMode === 'fc' ? ' uc-dm-on' : ''}" data-divmode="fc">÷ คาดการณ์ (ตัน)</button>
+            <button class="ghost-btn small${divMode === 'act' ? ' uc-dm-on' : ''}" data-divmode="act">÷ เกิดจริง+คาดการณ์ (ตัน)</button>
+          </div>
+          <p class="muted small" style="margin:0 0 8px">💡 จำนวนเงินทุกหมวด <span class="uc-auto" style="padding:1px 6px;border-radius:4px;background:#eef3ff">ดึง auto จาก GL ตามงบ</span> · <span style="background:#fff7cc;padding:1px 6px;border-radius:4px">เหลือง=รวมหมวด</span> · <span style="background:#fbe0ec;padding:1px 6px;border-radius:4px">ชมพู=รวมใหญ่</span> · กีบ/ตัน = จำนวนเงิน ÷ ปริมาณ<b>${modeName}</b> &nbsp; ${srcNote}</p>
           <div class="table-scroll"><table class="data-table uc-table">
           <thead><tr><th style="min-width:300px">รายการ (หมวด PPT)</th><th class="num">จำนวนเงิน (กีบ)</th><th class="num">กีบ/ตันอ้อย</th><th class="num">บาท/ตันอ้อย</th><th class="num">กีบ/ตันน้ำตาล</th><th class="num">บาท/ตันน้ำตาล</th></tr></thead>
           <tbody>${body}</tbody></table></div>`, { cls: 'card-flush' });
@@ -212,6 +219,7 @@ const PagesCost = (() => {
 
   function unitCostBind(user) {
     const year = UI.year();
+    document.querySelectorAll('[data-divmode]').forEach(b => b.addEventListener('click', () => { divMode = b.dataset.divmode; App.render(); }));
     document.querySelectorAll('.uc-vol').forEach(inp => inp.addEventListener('change', () => {
       const raw = inp.value.replace(/[,\s]/g, '').trim();
       const val = raw === '' ? null : Number(raw);

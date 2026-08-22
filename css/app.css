@@ -1881,3 +1881,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 /* Assumption ส่งแล้ว */
 .asu-sent { font-size: 13px; color: #1d7a4c; font-weight: 700; }
 .ghost-btn.asu-sent-chip { background:#e6f6ee; color:#1d7a4c; border-color:#b7e0c8; }
+
+/* หน้าต้นทุน: ปุ่มสลับชุดตัวหาร */
+.uc-divmode { display:flex; gap:6px; margin: 0 0 10px; }
+.uc-divmode .uc-dm-on { background:#1f3a5f; color:#fff; border-color:#1f3a5f; font-weight:700; }
