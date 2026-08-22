@@ -208,13 +208,13 @@ const PagesAssum = (() => {
         <td class="as-ord">${esc(order ?? '')}</td>
         <td class="as-name" title="${esc(name ?? '')}">${esc(name ?? '')}</td>
         <td class="as-unit">${esc(unit ?? '')}</td>
-        ${cells}
-        <td class="as-remark">${esc(remark ?? '')}</td></tr>`;
+        <td class="as-remark">${esc(remark ?? '')}</td>
+        ${cells}</tr>`;
     }
     const th = `<tr>
         <th class="as-note" rowspan="2">Note</th><th class="as-ord" rowspan="2">ลำดับ</th>
         <th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>
-        ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
+        <th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th>${head1}</tr><tr>${head2}</tr>`;
     return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
          <span class="pa-right">
