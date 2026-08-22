@@ -25,3 +25,6 @@ import-src-2026.json
 src-v7-2026.json
 src-2025-janoct.json
 src-2025-novdec.json
+
+# ผลลัพธ์ build สำหรับ Cloudflare Pages (สร้างใหม่ได้จาก build.sh)
+dist/
