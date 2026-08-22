@@ -1841,3 +1841,6 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .asu-table th.as-unit, .asu-table td.as-unit { left: 256px; }
 .asu-rounds { display: inline-flex; gap: 6px; }
 .asu-rounds .asu-on { background: #1f3a5f; color: #fff; border-color: #1f3a5f; font-weight: 700; }
+
+/* Assumption: ช่องอัตราแลกเปลี่ยน auto จาก Budget Control */
+.as-table td.as-fx { background:#e6f6ee !important; color:#0b6b47; font-weight:600; }

@@ -79,16 +79,34 @@ const PagesAssum = (() => {
   function edits() { const m = Object.assign({}, Store.assumEdits(UI.year())); for (const k in pending) { if (pending[k] == null) delete m[k]; else m[k] = pending[k]; } return m; }
   function baseVal(V, i, j) { const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); }
 
+  /* ---- แถวอัตราแลกเปลี่ยน (24.x) — ดึงอัตโนมัติจาก Budget Control (exchange_rates) ---- */
+  // i173 USD:THB · i174 EUR:THB · i175 LAK:THB · i176 LAK:USD · i177 LAK:EUR
+  const FX_ROWS = { 173: ['USD', 'THB'], 174: ['EUR', 'THB'], 175: ['LAK', 'THB'], 176: ['LAK', 'USD'], 177: ['LAK', 'EUR'] };
+  let _JYO = null;
+  const JYO = () => { if (!_JYO) { _JYO = {}; COLS.forEach(c => { _JYO[c.j] = c.yo; }); } return _JYO; };
+  function fxVal(i, j) {
+    const pair = FX_ROWS[i]; if (!pair) return undefined;
+    const yo = JYO()[j]; if (yo == null) return undefined;           // ผลต่าง/%Growth → ใช้สูตรตามปกติ
+    const y = UI.year() + yo;
+    const rate = cur => (Store.db.exchangeRates || []).find(x => x.year === y && x.currency === cur)?.rateToLAK ?? null;
+    const [a, b] = pair;
+    if (a === 'LAK') { return rate(b); }                             // LAK:X = กีบต่อ 1 หน่วย X
+    const ra = rate(a), rb = rate(b);
+    return (ra != null && rb != null && rb !== 0) ? ra / rb : null;  // A:B = rate(A)/rate(B)
+  }
+  const isFxCell = (i, j) => FX_ROWS[i] !== undefined && JYO()[j] != null;
+
   // คำนวณทั้งกริด → คืน number[][] (memoized + กัน circular)
   function compute() {
     const D = window.ASSUMPTION_MTP; const V = D.v, F = D.f, R = V.length, C = D.cols;
     const ov = edits();
     const cache = Array.from({ length: R }, () => new Array(C).fill(undefined));
     const busy = new Set();
-    const isBlank = (i, j) => { const ek = i + '_' + j; if (ek in ov) return false; const f = F[i] && F[i][j]; if (f && f.indexOf('!') < 0) return false; return (V[i] ? V[i][j] : null) == null; };
+    const isBlank = (i, j) => { if (isFxCell(i, j)) return fxVal(i, j) == null; const ek = i + '_' + j; if (ek in ov) return false; const f = F[i] && F[i][j]; if (f && f.indexOf('!') < 0) return false; return (V[i] ? V[i][j] : null) == null; };
     function get(i, j) {
       if (i < 0 || i >= R || j < 0 || j >= C) return 0;
       if (cache[i][j] !== undefined) return cache[i][j];
+      if (isFxCell(i, j)) { const n = fxVal(i, j); cache[i][j] = (n == null ? 0 : n); return cache[i][j]; }   // FX auto จาก Budget Control (ชนะทุกอย่าง)
       const ek = i + '_' + j;
       if (ek in ov) { const n = +ov[ek]; cache[i][j] = n; return n; }   // ค่าที่แก้มือ (override) — ทับสูตร/ค่าเดิมเสมอ
       const f = F[i] && F[i][j];
@@ -159,6 +177,8 @@ const PagesAssum = (() => {
       const cells = COLS.map(c => {
         const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
         const isFormula = f && !ext;
+        // แถวอัตราแลกเปลี่ยน — auto จาก Budget Control (อ่านอย่างเดียวเสมอ)
+        if (isFxCell(i, j)) return `<td class="num as-calc as-fx ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="ดึงจาก Budget Control (อัตราแลกเปลี่ยน)">${val ? fmt(val) : ''}</td>`;
         // โหมดปกติ: ช่องสูตร = อ่านอย่างเดียว · โหมด Edit (editAll): แก้ได้ทุกช่อง (พิมพ์ทับสูตร)
         if (isFormula && !editAll) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="${esc(f)}">${val ? fmt(val) : ''}</td>`;
         const edited = (i + '_' + j) in committed;
