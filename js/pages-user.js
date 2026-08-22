@@ -470,9 +470,11 @@ const PagesUser = (() => {
           <div class="cmp-kpi"><span>ยอดรวมปี ${c.year}</span><b>${fmt(cur)}</b></div>
           <div class="cmp-kpi ${cmp.diff >= 0 ? 'up' : 'down'}"><span>เทียบภาพรวมปี ${c.prevYear}</span><b>${(cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff)}${cmp.pct != null ? `<span class="cmp-pct">${(cmp.pct >= 0 ? '+' : '') + cmp.pct.toFixed(1)}%</span>` : ''}</b></div>
         </div>
+        <div class="cmp-scroll">
         ${missCard}${warnCard}
         <div style="font-size:13px;font-weight:700;margin:14px 0 6px">สรุปราย GL เทียบปี ${c.prevYear}</div>
         <div class="cmp-body"><table class="data-table cmp-table"><thead><tr><th>GL / บัญชี</th><th class="num">ปี ${c.prevYear}</th><th class="num">ปี ${c.year}</th><th class="num">เทียบปีก่อน</th><th>ตรวจสอบ</th></tr></thead><tbody>${glRows}</tbody></table></div>
+        </div>
         <div class="sub-foot">
           <button class="ghost-btn" data-sub-cancel>↺ ยกเลิก (กลับไปแก้)</button>
           <button class="primary-btn" data-sub-confirm ${ready ? '' : 'disabled'} title="${ready ? 'ส่งให้แผนกบัญชี — งบจะแก้ไขไม่ได้จนกว่าจะถูกตีกลับ' : 'ต้องกรอกให้ครบ 100% ก่อน'}">✔ ยืนยันส่งงบประมาณ</button>
