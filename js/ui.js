@@ -130,6 +130,8 @@ const UI = (() => {
   function shell(user, contentHtml, activeHash) {
     const effHash = NAV_ALIAS[activeHash.split('?')[0]] || activeHash;
     const nav = (user.role === 'ACCOUNTING' ? NAV_ACC : user.role === 'MANAGER' ? NAV_MGR : NAV_USER)
+      // เมนู Assumption: เฉพาะแผนกที่รับผิดชอบตั้งสมมติฐาน (บริการไร่/หม้อปั่น/ขายและการตลาด)
+      .filter(n => n.hash !== '#/assumption' || (Store.ASSUM_DEPTS || []).includes(String(Store.dept(user.departmentId)?.code || '')))
       .map(n => `<a href="${n.hash}" class="nav-item ${effHash.startsWith(n.hash) ? 'active' : ''}">
         <span class="nav-ic">${n.icon}</span>
         <span class="nav-tx">${n.label}<small>${n.sub || ''}</small></span></a>`).join('');
@@ -199,7 +201,7 @@ const UI = (() => {
                 switcher = `<div class="um-switch"><div class="um-switch-h">🔄 สลับบทบาท (${asg.length})</div><div class="um-switch-list">${asg.map(item).join('')}</div></div>`;
               }
               return `
-            <button class="user-chip uc-clickable" id="userMenuBtn" title="ตั้งค่าบัญชีของฉัน"><span class="uc-avatar">${avatar}</span>
+            <button class="user-chip uc-clickable" id="userMenuBtn" title="ตั้งค่าบัญชีของฉัน">
               <span class="uc-name">${esc(user.name)}</span><span class="uc-caret">▾</span></button>
             <div id="userMenu" class="user-menu" hidden>
               <div class="um-head">
