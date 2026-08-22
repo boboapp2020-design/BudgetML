@@ -235,25 +235,44 @@ const PagesAssum = (() => {
     });
   }
 
-  // ผูกช่องกรอก + ปุ่ม Submit/ยกเลิก — คีย์ pending = `${ปีบ้านจริง}_${แถว}_${คอลัมน์บ้านจริง}` (ใช้ร่วม admin/user)
-  function wireInputs(user, selector) {
+  // ผูกช่องกรอก — คีย์ pending = `${ปีบ้านจริง}_${แถว}_${คอลัมน์บ้านจริง}` (ใช้ร่วม admin/user)
+  //  opts.autosave = true → บันทึกทันทีเมื่อออกจากช่อง (ไม่ต้องกด Submit)
+  function wireInputs(user, selector, opts) {
+    const autosave = opts && opts.autosave;
     const subBtn = document.querySelector('[data-as-submit]'), canBtn = document.querySelector('[data-as-cancel]');
     const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const updateBtns = () => { const n = Object.keys(pending).length; if (subBtn) { subBtn.disabled = !n; subBtn.textContent = n ? `✔ Submit (${n})` : '✔ Submit'; } if (canBtn) canBtn.disabled = !n; };
-    document.querySelectorAll(selector).forEach(inp => {
-      inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
-      inp.addEventListener('blur', () => {
-        const i = +inp.dataset.r, hy = +inp.dataset.y, hc = +inp.dataset.hc;
-        const k = hy + '_' + i + '_' + hc;
-        const raw = inp.value.replace(/[,\s]/g, '').trim();
-        const v = raw === '' ? null : Number(raw);
-        if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
-        inp.value = v ? fmt(v) : '';
-        const cm = committedBy(hy); const ck = i + '_' + hc;
-        const cur = (ck in cm) ? cm[ck] : 0;   // template blank แล้ว — ฐาน = 0
-        if ((v == null ? 0 : v) === (cur == null ? 0 : cur)) { delete pending[k]; inp.classList.remove('as-pending'); }
+    const list = [...document.querySelectorAll(selector)];
+    const commit = inp => {
+      const i = +inp.dataset.r, hy = +inp.dataset.y, hc = +inp.dataset.hc;
+      const k = hy + '_' + i + '_' + hc;
+      const raw = inp.value.replace(/[,\s]/g, '').trim();
+      const v = raw === '' ? null : Number(raw);
+      if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
+      inp.value = v ? fmt(v) : '';
+      const cm = committedBy(hy); const ck = i + '_' + hc;
+      const cur = (ck in cm) ? cm[ck] : 0;   // template blank แล้ว — ฐาน = 0
+      const changed = (v == null ? 0 : v) !== (cur == null ? 0 : cur);
+      if (autosave) {
+        if (changed) { try { Store.assumSet(user, hy, i, hc, v); cm[ck] = v; inp.classList.remove('as-pending'); inp.classList.add('as-saved'); setTimeout(() => inp.classList.remove('as-saved'), 900); } catch (e) { UI.toast(e.message, 'err'); return; } }
+      } else {
+        if (!changed) { delete pending[k]; inp.classList.remove('as-pending'); }
         else { pending[k] = v; inp.classList.add('as-pending'); }
-        updateBtns(); recalcDom();
+        updateBtns();
+      }
+      recalcDom();
+    };
+    list.forEach((inp, idx) => {
+      inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
+      inp.addEventListener('blur', () => commit(inp));
+      inp.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault(); commit(inp);
+          // เลื่อนลงช่องถัดไปในคอลัมน์เดียวกัน (ไม่มีก็ช่องถัดไปในลิสต์)
+          const next = list.slice(idx + 1).find(x => x.dataset.c === inp.dataset.c) || list[idx + 1];
+          if (next) { next.focus(); next.scrollIntoView({ block: 'nearest' }); }
+          else inp.blur();
+        } else if (ev.key === 'Escape') { inp.blur(); }
       });
     });
     subBtn?.addEventListener('click', () => {
@@ -362,17 +381,14 @@ const PagesAssum = (() => {
     const th = `<tr><th class="as-ord" rowspan="2">ลำดับ</th><th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>${head1}</tr><tr>${head2}</tr>`;
     return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ส่วน 1 คาดการณ์ปีนี้ · ส่วน 2 งบทั้งปี ${year + 1} (บันทึกเป็นงบต้นปี ${year + 1}) · เลขวิ่งเข้าตาราง MTP/ต้นทุน อัตโนมัติ`,
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
-         <span class="pa-right">
-           <button data-as-cancel class="ghost-btn small" disabled>↺ ยกเลิก</button>
-           <button data-as-submit class="primary-btn small" disabled title="บันทึกขึ้นระบบ — เลขวิ่งเข้าตาราง MTP ทันที">✔ Submit</button>
-         </span>`)
+         <span class="pa-right">${locked ? '' : '<span class="asu-autosave">💾 บันทึกอัตโนมัติ · กด Enter เลื่อนลงช่องถัดไป</span>'}</span>`)
       + (locked ? `<div class="asu-locked-bar">🔒 Assumption ปี ${year} ถูกล็อกโดยแอดมิน — ดูได้อย่างเดียว กรอกไม่ได้</div>` : '')
       + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table asu-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
 
   function userBind(user) {
     pending = {};
-    if (!Store.assumLocked(UI.year())) wireInputs(user, '.asu-cell');
+    if (!Store.assumLocked(UI.year())) wireInputs(user, '.asu-cell', { autosave: true });
     wireFullscreen();
   }
 
