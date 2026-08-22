@@ -1973,27 +1973,35 @@ const PagesAcc = (() => {
     const budByDept = {}, budByGrp = {}; let budTotal = 0;
     budRows.forEach(b => { if (isRevenue(b.glId)) return; const s = b.months.reduce((x, v) => x + (v || 0), 0); budByDept[b.departmentId] = (budByDept[b.departmentId] || 0) + s; const grp = (gById[b.glId] || {}).glGroup || 'อื่นๆ'; budByGrp[grp] = (budByGrp[grp] || 0) + s; budTotal += s; });
     const usedPct = budTotal > 0 ? actTotal / budTotal * 100 : 0;
-    const flag = (act, bud) => act > bud && bud > 0 ? { c: '#d03b3b', t: '🔴 เกินงบ' } : bud > 0 && act / bud >= 0.9 ? { c: '#eda100', t: '🟡 ใกล้เต็ม' } : act > 0 ? { c: '#0ca30c', t: '🟢 ปกติ' } : { c: '#c3c2b7', t: '—' };
+    // งบ ≤ 0 (ไม่มีงบ/งบติดลบ) แต่มีค่าใช้จ่ายจริง = เกินงบเสมอ · % คิดได้เฉพาะงบ > 0
+    const flag = (act, bud) =>
+      bud > 0
+        ? (act > bud ? { c: '#d03b3b', t: '🔴 เกินงบ' } : act / bud >= 0.9 ? { c: '#eda100', t: '🟡 ใกล้เต็ม' } : act > 0 ? { c: '#0ca30c', t: '🟢 ปกติ' } : { c: '#c3c2b7', t: '—' })
+        : (act > 0 ? { c: '#d03b3b', t: '🔴 เกินงบ (ไม่มีงบ)' } : { c: '#c3c2b7', t: '—' });
+    const pctOf = (act, bud) => bud > 0 ? act / bud * 100 : null;
+    const pctCell = p => p == null ? '<span class="muted">—</span>' : p.toFixed(1) + '%';
 
     const deptRows = Store.activeDepartments().map(d => ({ d, bud: budByDept[d.id] || 0, act: actByDept[d.id] || 0 }))
       .filter(x => x.bud > 0 || x.act > 0).sort((a, b) => (b.act / (b.bud || 1)) - (a.act / (a.bud || 1))).map(x => {
-        const rem = x.bud - x.act, pct = x.bud > 0 ? x.act / x.bud * 100 : 0, f = flag(x.act, x.bud);
+        const rem = x.bud - x.act, pct = pctOf(x.act, x.bud), f = flag(x.act, x.bud);
+        const sortPct = pct == null ? (x.act > 0 ? 99999 : -1) : pct;
         return `<tr>
           <td data-v="${esc(x.d.name)}"><b>${UI.deptIcon(x.d)} ${esc(x.d.name)}</b><div class="muted small">${x.d.code}</div></td>
           <td class="num" data-v="${x.bud}">${fmt(x.bud)}</td>
           <td class="num" data-v="${x.act}">${fmt(x.act)}</td>
           <td class="num" data-v="${rem}" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
-          <td data-v="${pct}"><div class="comp-bar"><div class="comp-fill ${pct >= 100 ? '' : 'full'}" style="width:${Math.min(100, pct).toFixed(0)}%;background:${f.c}"></div></div>${pct.toFixed(1)}%</td>
-          <td data-v="${pct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
+          <td data-v="${sortPct}"><div class="comp-bar"><div class="comp-fill ${(pct ?? 101) >= 100 ? '' : 'full'}" style="width:${Math.min(100, pct == null ? (x.act > 0 ? 100 : 0) : pct).toFixed(0)}%;background:${f.c}"></div></div>${pctCell(pct)}</td>
+          <td data-v="${sortPct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
       }).join('');
     const grpName = g => (typeof PPT_MAP !== 'undefined' && PPT_MAP.codeName && PPT_MAP.codeName[g]) || '';
     const grpRows = Object.keys(budByGrp).map(grp => ({ grp, name: grpName(grp), bud: budByGrp[grp], act: actByGrp[grp] || 0 }))
       .sort((a, b) => b.bud - a.bud).map(x => {
-        const rem = x.bud - x.act, pct = x.bud > 0 ? x.act / x.bud * 100 : 0, f = flag(x.act, x.bud);
+        const rem = x.bud - x.act, pct = pctOf(x.act, x.bud), f = flag(x.act, x.bud);
+        const sortPct = pct == null ? (x.act > 0 ? 99999 : -1) : pct;
         return `<tr><td data-v="${esc(x.name || x.grp)}" class="grp-cell" data-tip="${esc('กลุ่มบัญชี ' + x.grp + ' — ' + (x.name || 'ไม่ระบุชื่อ'))}"><span class="grp-code">${esc(x.grp)}</span> <b>${esc(x.name || 'กลุ่ม ' + x.grp)}</b></td>
           <td class="num" data-v="${x.bud}">${fmt(x.bud)}</td><td class="num" data-v="${x.act}">${fmt(x.act)}</td>
           <td class="num" data-v="${rem}" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
-          <td data-v="${pct}">${pct.toFixed(1)}%</td><td data-v="${pct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
+          <td data-v="${sortPct}">${pctCell(pct)}</td><td data-v="${sortPct}"><span style="color:${f.c};font-weight:600">${f.t}</span></td></tr>`;
       }).join('');
 
     const emptyNote = actTotal === 0
