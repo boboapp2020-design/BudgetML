@@ -79,9 +79,74 @@ const PagesUser = (() => {
       + card(`แนวโน้มรายเดือน ปี ${c.year} เทียบปี ${c.prevYear} (กีบ)`, `<div id="chMonthly"></div>`)
       + card(`GL งบประมาณสูงสุด ปี ${c.year} (กีบ)`, `<div id="chTopGL"></div>`)
       + `</div>`
+      + card('📊 Insight เชิงบัญชี (วิเคราะห์อัตโนมัติ)', finInsights(c))
       + card('สิ่งที่ต้องทำ', todo.length ? `<ul class="todo-list">${todo.join('')}</ul>` : '<p>ไม่มี</p>')
       + card(`เปรียบเทียบราย GL — ปี ${c.year} เทียบปี ${c.prevYear}`, compareTable(c));
   }
+  /* ---------- Insight เชิงบัญชี: อ่านงบแผนกด้วยสายตานักบัญชี ---------- */
+  function finInsights(c) {
+    const out = [];
+    const li = (tone, ic, html) => out.push(`<li class="fi-${tone}"><span class="fi-ic">${ic}</span><span>${html}</span></li>`);
+    const cur = Store.deptTotal(c.year, c.deptId), prev = Store.deptTotal(c.prevYear, c.deptId);
+    const glVals = c.gls.map(g => ({ g, v: Store.glTotal(c.year, c.deptId, g.id), pv: Store.glTotal(c.prevYear, c.deptId, g.id) }));
+
+    // 1) YoY + ตัวขับหลัก
+    if (prev > 0 && cur > 0) {
+      const pct = (cur - prev) / prev * 100;
+      const drivers = glVals.map(x => ({ ...x, d: x.v - x.pv })).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 2).filter(x => x.d !== 0);
+      const drv = drivers.map(x => `GL ${x.g.code} (${x.d > 0 ? '+' : ''}${fmt(x.d)})`).join(' · ');
+      li(Math.abs(pct) > 15 ? 'warn' : 'info', '📈',
+        `งบปี ${c.year} ${pct >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'} <b>${Math.abs(pct).toFixed(1)}%</b> จากปีก่อน${Math.abs(pct) > 15 ? ' — เกิน 15% ควรมีเหตุผลประกอบชัดเจนต่อผู้อนุมัติ' : ' (อยู่ในกรอบปกติ)'}${drv ? ` · ตัวขับหลัก: ${drv} กีบ` : ''}`);
+    }
+    // 2) การกระจุกตัวของงบ (concentration)
+    const sorted = glVals.filter(x => x.v > 0).sort((a, b) => b.v - a.v);
+    if (cur > 0 && sorted.length >= 3) {
+      const top3 = sorted.slice(0, 3).reduce((s, x) => s + x.v, 0);
+      const pc = top3 / cur * 100;
+      li(pc >= 80 ? 'warn' : 'info', '🎯',
+        `งบกระจุกตัว: GL สูงสุด 3 ตัวแรก = <b>${pc.toFixed(0)}%</b> ของงบทั้งแผนก${pc >= 80 ? ' — ความคลาดเคลื่อนของ 3 ตัวนี้กระทบทั้งแผนก ควรตั้งสมมติฐานให้แน่น' : ''} (ใหญ่สุด: GL ${sorted[0].g.code} ${fmt(sorted[0].v)} กีบ)`);
+    }
+    // 3) รูปแบบรายเดือน: หาร 12 เท่ากันหมด vs กระจุกไตรมาส
+    const monthly = Store.deptMonthly(c.year, c.deptId);
+    const mSum = monthly.reduce((s, v) => s + (v || 0), 0);
+    if (mSum > 0) {
+      const mx = Math.max(...monthly), mn = Math.min(...monthly);
+      if (mx > 0 && (mx - mn) / mx < 0.05) {
+        li('warn', '🧮', `งบเกลี่ยเท่ากันแทบทุกเดือน (ลักษณะ "หาร 12") — ผู้สอบทานมักให้ทบทวนว่าสะท้อน pattern การใช้จริง/ฤดูกาลหรือไม่ (เช่น ฤดูหีบ)`);
+      } else {
+        const q = [0, 0, 0, 0]; monthly.forEach((v, i) => q[Math.floor(i / 3)] += v || 0);
+        const qi = q.indexOf(Math.max(...q));
+        li('info', '📅', `งบกระจุกใน <b>ไตรมาส ${qi + 1}</b> (${(q[qi] / mSum * 100).toFixed(0)}% ของปี) — วางแผนกระแสเงินสด/จัดซื้อล่วงหน้าให้สอดคล้อง`);
+      }
+    }
+    // 4) เกิดจริง vs งบ: %ใช้ไป + run-rate + GL ที่เกินงบ
+    const acts = (Store.db.actuals || []).filter(a => a.year === c.year && a.departmentId === c.deptId);
+    if (acts.length && cur > 0) {
+      let actT = 0, lastM = 0; const actByGl = {};
+      acts.forEach(a => { a.months.forEach((v, i) => { if (v) { actT += v; if (i + 1 > lastM) lastM = i + 1; } }); actByGl[a.glId] = (actByGl[a.glId] || 0) + a.months.reduce((s, v) => s + (v || 0), 0); });
+      if (actT > 0 && lastM > 0) {
+        const used = actT / cur * 100, run = actT / lastM * 12, runPct = run / cur * 100;
+        li(runPct > 105 ? 'crit' : runPct > 95 ? 'warn' : 'good', '💸',
+          `เกิดจริงสะสม ${lastM} เดือน = <b>${fmt(actT)}</b> กีบ (<b>${used.toFixed(1)}%</b> ของงบ) · run-rate เต็มปี ≈ <b>${fmt(Math.round(run))}</b> กีบ (${runPct.toFixed(0)}% ของงบ)${runPct > 105 ? ' — <b>แนวโน้มเกินงบ</b> ควรชะลอรายจ่าย/ขอปรับงบล่วงหน้า' : runPct > 95 ? ' — ชิดเพดาน เฝ้าระวังรายจ่ายไตรมาสท้าย' : ' — อยู่ในกรอบ'}`);
+        const over = glVals.filter(x => x.v > 0 && (actByGl[x.g.id] || 0) > x.v);
+        if (over.length) li('crit', '🚨', `มี <b>${over.length} GL</b> ที่เกิดจริงเกินงบแล้ว: ${over.slice(0, 3).map(x => 'GL ' + x.g.code).join(' · ')}${over.length > 3 ? ' …' : ''} — ต้องทำคำร้องปรับงบ/โยกงบก่อนใช้จ่ายเพิ่ม`);
+      }
+    }
+    // 5) เทียบงบต้นปีที่อนุมัติ (ORIGINAL)
+    const orig = Store.snapDeptTotal ? Store.snapDeptTotal(c.year, 'ORIGINAL', c.deptId) : 0;
+    if (orig > 0 && cur > 0 && Math.abs(cur - orig) > 0.005 * orig) {
+      const d = cur - orig;
+      li('info', '⚖', `งบปัจจุบันต่างจากงบต้นปีที่อนุมัติ <b>${d > 0 ? '+' : ''}${fmt(d)}</b> กีบ (${(d / orig * 100).toFixed(1)}%) — ควรมีหลักฐานการอนุมัติปรับครบทุกรายการ`);
+    }
+    // 6) GL ที่ปีก่อนมีงบแต่ปีนี้ยังว่าง
+    const dropped = glVals.filter(x => x.pv > 0 && x.v === 0);
+    if (dropped.length) li('warn', '🕳', `มี <b>${dropped.length} GL</b> ที่ปีก่อนมีงบแต่ปีนี้ยังเป็น 0 (เช่น GL ${dropped[0].g.code}) — ตรวจว่า "เลิกใช้จริง" หรือ "ลืมตั้งงบ"`);
+
+    if (!out.length) return '<p class="muted">ยังไม่มีข้อมูลพอสำหรับวิเคราะห์ — เริ่มกรอกงบก่อน</p>';
+    return `<ul class="fi-list">${out.join('')}</ul>
+      <p class="muted small" style="margin:8px 0 0">🤖 วิเคราะห์อัตโนมัติจากตัวเลขงบ/เกิดจริงของแผนกคุณ — เป็นข้อสังเกตประกอบ ไม่แทนดุลยพินิจของแผนกบัญชี</p>`;
+  }
+
   function dashboardBind(user) {
     const c = ctx(user);
     Charts.line(document.getElementById('chMonthly'), Store.MONTH_S, [
@@ -919,9 +984,9 @@ const PagesUser = (() => {
           <label class="fld"><span>อัตราการกินน้ำมัน</span><div class="suffix-wrap"><input id="trEff" inputmode="decimal" value="10"><span class="suffix">กม./ลิตร</span></div></label>
           <label class="fld"><span>จำนวนระยะทาง</span><div class="suffix-wrap"><input id="trKm" inputmode="decimal" value="100"><span class="suffix">กม.</span></div></label>
         </div>
-        <div class="green-card"><span class="gc-label">⛽ ใช้น้ำมัน</span>
-          <span class="gc-val"><b id="trLit">—</b> ลิตร</span>
-          <span class="gc-sub">ค่าน้ำมัน <b id="trCost">—</b> กีบ (× ราคากลางชนิดที่เลือก)</span></div>
+        <div class="purple-card"><span class="gc-label">💰 ค่าน้ำมันที่ต้องตั้งงบ</span>
+          <span class="pc-val"><b id="trCost">—</b> กีบ</span>
+          <span class="gc-sub">⛽ ใช้น้ำมัน <b id="trLit">—</b> ลิตร (× ราคากลางชนิดที่เลือก)</span></div>
       </section>
 
       <section class="ft-col ft-pane" data-ftpane="assume">

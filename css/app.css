@@ -1923,3 +1923,20 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 /* ชื่อหน่วยงานมุมขวาบน: กรอบน้ำเงินชัด */
 .user-chip, .user-chip.uc-clickable { border: 1.5px solid var(--navy-2) !important; border-radius: 999px; padding: 5px 14px; background: #fff; }
 .user-chip .uc-name { color: var(--navy); font-weight: 700; }
+
+/* ชื่อแผนก: แวววาว — แสงวิ่งผ่าน (shimmer) + เงาเรืองน้ำเงิน */
+.user-chip.uc-clickable { position: relative; overflow: hidden; box-shadow: 0 0 10px rgba(29,90,158,.25), 0 2px 6px rgba(14,47,92,.12) !important; }
+.user-chip.uc-clickable::after {
+  content: ""; position: absolute; top: 0; left: -80%; width: 55%; height: 100%;
+  background: linear-gradient(105deg, transparent 0%, rgba(120,170,255,.28) 45%, rgba(255,255,255,.75) 50%, rgba(120,170,255,.28) 55%, transparent 100%);
+  transform: skewX(-18deg); animation: chipShine 3.2s ease-in-out infinite; pointer-events: none;
+}
+@keyframes chipShine { 0%,55% { left: -80%; } 85%,100% { left: 130%; } }
+
+/* Insight เชิงบัญชี */
+.fi-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fi-list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; font-size: 13.5px; line-height: 1.55; }
+.fi-list .fi-ic { flex: none; font-size: 16px; }
+.fi-list li.fi-warn { background: #fdf6e7; border-color: #ecd9a8; }
+.fi-list li.fi-crit { background: #fbeded; border-color: #eec3c3; }
+.fi-list li.fi-good { background: #ecf7f0; border-color: #bfe0cb; }
