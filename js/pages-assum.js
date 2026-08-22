@@ -130,7 +130,7 @@ const PagesAssum = (() => {
   function page(user) {
     pending = {};   // เริ่มหน้าใหม่ = ไม่มีค้าง
     const year = UI.year();                       // ปีงบที่เลือก (ค.ศ.)
-    const thaiYr = yo => yo == null ? '' : (year + yo + 543);   // ปี พ.ศ. ตาม offset
+    const thaiYr = yo => yo == null ? '' : (year + yo);         // ปี ค.ศ. ตาม offset
     const { V, F, out } = compute();
     const committed = Store.assumEdits(year);
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
