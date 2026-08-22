@@ -1493,16 +1493,6 @@ const Store = (() => {
     }
     save();
   }
-  // รอบปัจจุบันของ Assumption ราย ปี — marker (year, r=-3, c=รอบ) · 0=งบต้นปี 1=Revise 2=คาดการณ์
-  function assumRound(year) { const y = Number(year); const m = (db.assumptionCells || []).find(a => a.year === y && a.r === -3); return m ? m.c : 0; }
-  function setAssumRound(actor, year, idx) {
-    assertAccounting(actor);
-    const y = Number(year);
-    db.assumptionCells = (db.assumptionCells || []).filter(a => !(a.year === y && a.r === -3));
-    if (idx > 0) db.assumptionCells.push({ year: y, r: -3, c: idx, v: 1, updatedAt: new Date().toISOString(), updatedBy: actor.name });
-    audit(actor, 'เปลี่ยนรอบ Assumption', { newValue: `ปี ${y} → รอบ ${['งบต้นปี', 'Revise', 'คาดการณ์'][idx] || idx}` });
-    save();
-  }
   function assertAssum(actor, year) {
     if (actor && actor.role === 'ACCOUNTING') return;   // แอดมินแก้ได้เสมอ (รวมตอนล็อก)
     const code = actor && actor.departmentId ? String((dept(actor.departmentId) || {}).code || '') : '';
@@ -2103,7 +2093,7 @@ const Store = (() => {
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, addCct, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
-    assumEdits, assumSet, assumClear, assumLocked, setAssumLock, assumSubmitted, setAssumSubmitted, ASSUM_DEPTS, assumRound, setAssumRound,
+    assumEdits, assumSet, assumClear, assumLocked, setAssumLock, assumSubmitted, setAssumSubmitted, ASSUM_DEPTS,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt, submitAllPpt, unlockAllPpt,
     myNotifications, markNotificationsRead, notify, postAnnouncement, isAnnouncement,
