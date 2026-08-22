@@ -341,10 +341,10 @@ const PagesAssum = (() => {
     const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
-    // 2 ส่วนตามวงจรจริง: ส่วน 1 = คาดการณ์ ก.ย.-ธ.ค. ปีนี้ (B อ่าน · C กรอก · D ผลรวม) · ส่วน 2 = งบทั้งปีถัดไป (เขียนเข้า grid ปีถัดไปเป็นงบต้นปี)
-    const cols = COLS.filter(c => [11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(c.j));
-    const head1 = `<th class="num as-h1 asu-sec1" colspan="7">ส่วน 1 · คาดการณ์ปี ${year} <span class="as-rng">(เกิดจริง ม.ค.-ส.ค. + คาดการณ์ ก.ย.-ธ.ค.)</span></th>
-      <th class="num as-h1 asu-sec2" colspan="3">ส่วน 2 · งบประมาณทั้งปี ${year + 1} <span class="as-rng">(ม.ค.-ธ.ค.${year + 1})</span></th>`;
+    // คาดการณ์ปีนี้เท่านั้น: เกิดจริง ม.ค-ส.ค (B อ่าน) · คาดการณ์ ก.ย-ธ.ค (C กรอก) · เกิดจริง+คาดการณ์ (D ผลรวม)
+    //  (งบปีถัดไปไม่แสดงที่นี่ — จะไปกรอกเป็น "งบต้นปี" ของปีนั้นเมื่อถึงรอบปีถัดไป)
+    const cols = COLS.filter(c => [11, 12, 13, 14, 15, 16, 17].includes(c.j));
+    const head1 = `<th class="num as-h1 asu-sec1" colspan="7">คาดการณ์ปี ${year} <span class="as-rng">(เกิดจริง ม.ค.-ส.ค. + คาดการณ์ ก.ย.-ธ.ค.)</span></th>`;
     const head2 = cols.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${esc(c.j === 11 ? 'เกิดจริง' : c.grp === 'คาดการณ์ ก.ย-ธ.ค' ? 'คาดฯ ' + scLbl(c.sc) : c.grp === 'เกิดจริง+คาดการณ์' ? 'รวม ' + scLbl(c.sc) : scLbl(c.sc))}</th>`).join('');
     // แบ่งบล็อกตามแถวหมวด (ลำดับเลขจำนวนเต็ม) — แสดงทั้งบล็อกถ้ามีแถวของแผนกนี้ (รวมแถวผลรวม อ่านอย่างเดียว)
     const blocks = []; let cur = null;
@@ -365,7 +365,7 @@ const PagesAssum = (() => {
         const j = c.j; const val = out[i][j];
         const home = homeOf(j); const hy = year + home.dy, hc = home.c;
         const f = F[i] && F[i][hc]; const ext = f && f.indexOf('!') >= 0;
-        const editableCol = (j >= 12 && j <= 14) || FUT[j];   // กรอกได้: คาดการณ์ (C) + งบปีถัดไป
+        const editableCol = (j >= 12 && j <= 14);   // กรอกได้เฉพาะ คาดการณ์ ก.ย-ธ.ค (C)
         // กรอกได้เฉพาะแถวของแผนกตัวเอง + คอลัมน์ที่เปิด + ปีนี้ยังไม่ถูกล็อก — นอกนั้นอ่านอย่างเดียว
         if ((f && !ext) || !mine || !editableCol || locked) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
         const edited = (i + '_' + hc) in committedBy(hy);
