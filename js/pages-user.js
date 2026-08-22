@@ -67,7 +67,13 @@ const PagesUser = (() => {
       ${kpi(`งบประมาณปี ${c.prevYear} (ปีก่อน)`, UI.fmtShort(prev) + ' <small>กีบ</small>', fmt(prev) + ' กีบ · baseline เปรียบเทียบ')}
       ${kpi('เพิ่ม / ลด เทียบปีก่อน', deltaBadge(cmp.diff, cmp.pct), (cmp.diff >= 0 ? '+' : '') + fmt(cmp.diff) + ' กีบ')}
       ${gaugeKpi('ความครบถ้วน', c.comp.pct, `${c.comp.filled}/${c.comp.total} ช่อง · เป้าหมาย 100%`)}
-      ${kpi('จำนวน GL · สัดส่วนงบ', `<span class="kpi-duo"><span>${c.gls.length} <small>GL</small></span><span>${share != null ? `${share < 0.1 ? share.toFixed(3) : share.toFixed(2)} <small>%</small>` : '— <small>%</small>'}</span></span>`, 'ที่ได้รับมอบหมาย · สัดส่วนของงบทั้งบริษัท')}
+      <div class="kpi">
+        <div class="kpi-label">จำนวน GL ที่ได้รับมอบหมาย</div>
+        <div class="kpi-value">${c.gls.length}</div>
+        <div class="kpi-label" style="margin-top:10px">สัดส่วนงบ</div>
+        <div class="kpi-value">${share != null ? (share < 0.1 ? share.toFixed(3) : share.toFixed(2)) : '—'}<small>%</small></div>
+        <div class="kpi-sub">ของทั้งบริษัท</div>
+      </div>
     </div>`;
 
     const todo = [];
