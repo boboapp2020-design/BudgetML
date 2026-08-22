@@ -135,8 +135,19 @@ const PagesAssum = (() => {
     const committed = Store.assumEdits(year);
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
-    // หัวตาราง 2 แถว — ปีคำนวณจากปีงบที่เลือก
-    const head1 = COLS.map(c => `<th class="num as-h1 ${scCls(c.sc)}">${esc(c.grp)}${c.yo != null ? `<div class="as-yr">${thaiYr(c.yo)}</div>` : ''}</th>`).join('');
+    // หัวตาราง 3 แถว (ตาม Excel): แถวรหัส A/A1/B/C… → แถบกลุ่ม+ช่วงเดือน → scenario
+    const CODE = { 4: '', 5: 'A', 6: 'A', 7: 'A', 8: 'A1', 9: 'A1', 10: 'A1', 11: 'B', 12: 'C1', 13: 'C2', 14: 'C3', 15: 'D1 = B+C1', 16: 'D2 = B+C2', 17: 'D3 = B+C3', 18: 'E1', 19: 'E2', 20: 'E3', 21: 'F = E2−D2', 22: 'G = F÷D2', 23: 'H1', 24: 'H2', 25: 'H3', 26: 'I1', 27: 'I2', 28: 'I3' };
+    const rangeOf = c => {
+      if (c.yo == null) return '';
+      const y = year + c.yo;
+      if (c.grp === 'เกิดจริง ม.ค-ส.ค') return `(ม.ค.-ส.ค.${y})`;
+      if (c.grp.startsWith('คาดการณ์')) return `(ก.ย.-ธ.ค.${y})`;
+      return `(ม.ค.-ธ.ค.${y})`;
+    };
+    // แถวรหัส — รวมช่องรหัสซ้ำติดกัน (A, A1) ด้วย colspan
+    let head0 = ''; for (let k = 0; k < COLS.length;) { const code = CODE[COLS[k].j] ?? ''; let span = 1; while (k + span < COLS.length && (CODE[COLS[k + span].j] ?? '') === code && code !== '' && !code.includes('=')) span++; head0 += `<th class="num as-h0" colspan="${span}">${esc(code)}</th>`; k += span; }
+    // แถบกลุ่ม — รวมกลุ่มเดียวกัน (grp+yo) ด้วย colspan + ช่วงเดือน
+    let head1 = ''; for (let k = 0; k < COLS.length;) { const c = COLS[k]; let span = 1; while (k + span < COLS.length && COLS[k + span].grp === c.grp && COLS[k + span].yo === c.yo) span++; head1 += `<th class="num as-h1" colspan="${span}">${esc(c.grp)}${c.yo != null ? ` <span class="as-rng">${rangeOf(c)}</span>` : ''}</th>`; k += span; }
     const head2 = COLS.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
     let body = '', subN = 0;
     for (let i = R0; i <= R1; i++) {
@@ -162,9 +173,9 @@ const PagesAssum = (() => {
         <td class="as-remark">${esc(remark ?? '')}</td></tr>`;
     }
     const th = `<tr>
-        <th class="as-note" rowspan="2">Note</th><th class="as-ord" rowspan="2">ลำดับ</th>
-        <th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>
-        ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
+        <th class="as-note" rowspan="3">Note</th><th class="as-ord" rowspan="3">ลำดับ</th>
+        <th class="as-name" rowspan="3">สมมุติฐาน</th><th class="as-unit" rowspan="3">หน่วย</th>
+        ${head0}<th class="as-remark" rowspan="3">ผู้รับผิดชอบ</th></tr><tr>${head1}</tr><tr>${head2}</tr>`;
     return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
          <span class="pa-right">
@@ -173,7 +184,7 @@ const PagesAssum = (() => {
            <button data-as-clear class="danger-btn small" title="ล้างค่าที่แก้ทั้งหมด กลับเป็นค่าต้นทาง">🗑 Clear</button>
            <button data-as-submit class="primary-btn small" disabled title="บันทึกค่าที่แก้ขึ้นระบบ (Supabase)">✔ Submit</button>
          </span>`)
-      + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
+      + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table mtp3"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
 
   function recalcDom() {
@@ -222,20 +233,26 @@ const PagesAssum = (() => {
       });
     });
 
-    /* ---- ขยาย/ย่อ เต็มจอ + ปุ่ม ✕ ลอย ---- */
+    document.querySelector('[data-as-edit]')?.addEventListener('click', () => { editAll = !editAll; pending = {}; App.render(); });
+    wireFullscreen();
+  }
+
+  /* ---- ขยาย/ย่อ เต็มจอ + ปุ่ม ✕ ลอย (ใช้ร่วม admin/user) ---- */
+  function wireFullscreen() {
     const wrap = document.getElementById('asWrap'), expBtn = document.querySelector('[data-as-expand]');
+    if (!wrap || !expBtn) return;
     let fsClose = document.getElementById('asFsClose');
-    if (!fsClose) { fsClose = document.createElement('button'); fsClose.id = 'asFsClose'; fsClose.type = 'button'; fsClose.innerHTML = '<span class="fs-x">✕</span> ย่อกลับ <kbd>Esc</kbd>'; document.body.appendChild(fsClose); }
+    if (fsClose) { const nf = fsClose.cloneNode(true); fsClose.replaceWith(nf); fsClose = nf; }   // ล้าง listener เก่าข้ามหน้า
+    else { fsClose = document.createElement('button'); fsClose.id = 'asFsClose'; fsClose.type = 'button'; fsClose.innerHTML = '<span class="fs-x">✕</span> ย่อกลับ <kbd>Esc</kbd>'; document.body.appendChild(fsClose); }
     const onMove = ev => { if (ev.clientY <= 70) fsClose.classList.add('show'); else fsClose.classList.remove('show'); };
     const setFs = on => {
       wrap.classList.toggle('as-fs', on); document.body.classList.toggle('edit-fs-lock', on);
-      if (expBtn) expBtn.innerHTML = on ? '⤡ ย่อ' : '⛶ ขยาย';
+      expBtn.innerHTML = on ? '⤡ ย่อ' : '⛶ ขยาย';
       fsClose.style.display = on ? 'inline-flex' : 'none'; fsClose.classList.add('show');
       if (on) { document.addEventListener('mousemove', onMove); setTimeout(() => { if (wrap.classList.contains('as-fs')) fsClose.classList.remove('show'); }, 1800); }
       else document.removeEventListener('mousemove', onMove);
     };
-    document.querySelector('[data-as-edit]')?.addEventListener('click', () => { editAll = !editAll; pending = {}; App.render(); });
-    expBtn?.addEventListener('click', () => setFs(!wrap.classList.contains('as-fs')));
+    expBtn.addEventListener('click', () => setFs(!wrap.classList.contains('as-fs')));
     fsClose.addEventListener('click', () => setFs(false));
     document.addEventListener('keydown', function esc(ev) { if (ev.key === 'Escape' && wrap && wrap.classList.contains('as-fs')) setFs(false); });
   }
@@ -283,7 +300,8 @@ const PagesAssum = (() => {
     }
     const th = `<tr><th class="as-ord" rowspan="2">ลำดับ</th><th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>${head1}</tr><tr>${head2}</tr>`;
     return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ช่องชมพู = กรอก · กรอกแล้วเลขวิ่งเข้าตาราง MTP อัตโนมัติ`,
-        `<span class="asu-rounds">
+        `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
+         <span class="asu-rounds">
            <button data-asu-round="1" class="ghost-btn small${userRound === 1 ? ' asu-on' : ''}">รอบ 1 · ตั้งงบ</button>
            <button data-asu-round="2" class="ghost-btn small${userRound === 2 ? ' asu-on' : ''}">รอบ 2 · Revise/คาดการณ์</button>
          </span>
@@ -291,7 +309,7 @@ const PagesAssum = (() => {
            <button data-as-cancel class="ghost-btn small" disabled>↺ ยกเลิก</button>
            <button data-as-submit class="primary-btn small" disabled title="บันทึกขึ้นระบบ — เลขวิ่งเข้าตาราง MTP ทันที">✔ Submit</button>
          </span>`)
-      + card('', `<div class="table-scroll as-scroll"><table class="as-table asu-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' });
+      + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table asu-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
 
   function userBind(user) {
@@ -324,6 +342,7 @@ const PagesAssum = (() => {
     });
     canBtn?.addEventListener('click', () => { if (Object.keys(pending).length) { pending = {}; App.render(); } });
     document.querySelectorAll('[data-asu-round]').forEach(b => b.addEventListener('click', () => { userRound = +b.dataset.asuRound; pending = {}; App.render(); }));
+    wireFullscreen();
   }
 
   // กริดค่าที่คำนวณแล้ว (ใช้ค่าที่ Submit แล้วจาก Supabase) — ให้หน้าอื่นดึงตัวเลขไปใช้ (เช่น ต้นทุนต่อหน่วย)

@@ -1773,6 +1773,13 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table th, .as-table td { border-right: 1px solid var(--line, #e4e8f1); border-bottom: 1px solid var(--line, #e4e8f1); padding: 3px 7px; }
 .as-table thead th { position: sticky; top: 0; z-index: 3; background: #1f3a5f; color: #fff; text-align: center; font-weight: 600; font-size: 11px; }
 .as-table thead tr:nth-child(2) th { top: 34px; }
+/* หัว 3 ชั้น (หน้า MTP แอดมิน): รหัส A/A1/B… → แถบกลุ่ม+ช่วงเดือน → scenario */
+.as-table thead tr:first-child th.as-h0 { top: 0; height: 22px; background: #16294a; color: #ffd66e; font-size: 10.5px; font-weight: 700; letter-spacing: .3px; }
+.as-table thead th.as-h1 { white-space: nowrap; }
+.as-table thead .as-rng { font-weight: 400; font-size: 10px; opacity: .85; }
+.as-table.mtp3 thead tr:nth-child(1) th { top: 0; }
+.as-table.mtp3 thead tr:nth-child(2) th { top: 23px; }
+.as-table.mtp3 thead tr:nth-child(3) th { top: 53px; }
 .as-h1 .as-yr { font-size: 10px; opacity: .85; font-weight: 400; }
 .as-h2 { font-size: 10px; font-weight: 400; }
 .as-table th.sc-o, .as-table td.sc-o { background-color: #eef7ff; } .as-table thead th.sc-o { background:#20507e; }
