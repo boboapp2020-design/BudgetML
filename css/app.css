@@ -1877,3 +1877,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 
 /* Assumption autosave — ไฟลชเขียวเมื่อบันทึก (ทั้งแอดมิน/user) */
 .as-table .as-cell.as-saved { background: #d7f5e3 !important; transition: background .3s; }
+
+/* Assumption ส่งแล้ว */
+.asu-sent { font-size: 13px; color: #1d7a4c; font-weight: 700; }
+.ghost-btn.asu-sent-chip { background:#e6f6ee; color:#1d7a4c; border-color:#b7e0c8; }

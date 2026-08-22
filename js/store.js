@@ -1471,11 +1471,34 @@ const Store = (() => {
     audit(actor, locked ? 'ล็อก Assumption' : 'ปลดล็อก Assumption', { newValue: `ปี ${y}` });
     save();
   }
+  // สถานะ "ส่ง Assumption แล้ว" ราย ปี×แผนก — marker (year, r=-2, c=ดัชนีแผนก) · ส่งแล้ว user แก้ไม่ได้ แอดมินปลดล็อกได้
+  function assumSubmitted(year, deptCode) {
+    const y = Number(year); const idx = ASSUM_DEPTS.indexOf(String(deptCode));
+    return idx >= 0 && (db.assumptionCells || []).some(a => a.year === y && a.r === -2 && a.c === idx);
+  }
+  function setAssumSubmitted(actor, year, deptCode, on) {
+    const y = Number(year); const idx = ASSUM_DEPTS.indexOf(String(deptCode));
+    if (idx < 0) throw new Error('แผนกไม่ถูกต้อง');
+    if (on) {
+      // ส่ง: user ของแผนกนั้นเอง หรือแอดมิน
+      const code = actor && actor.departmentId ? String((dept(actor.departmentId) || {}).code || '') : '';
+      if (!(actor && (actor.role === 'ACCOUNTING' || (actor.role === 'USER' && code === String(deptCode))))) throw new Error('ไม่มีสิทธิ์ส่งของแผนกนี้');
+      db.assumptionCells = db.assumptionCells || [];
+      if (!assumSubmitted(y, deptCode)) db.assumptionCells.push({ year: y, r: -2, c: idx, v: 1, updatedAt: new Date().toISOString(), updatedBy: actor.name });
+      audit(actor, 'ส่ง Assumption', { newValue: `ปี ${y} · แผนก ${deptCode}` });
+    } else {
+      assertAccounting(actor);   // ปลดล็อกได้เฉพาะแอดมิน
+      db.assumptionCells = (db.assumptionCells || []).filter(a => !(a.year === y && a.r === -2 && a.c === idx));
+      audit(actor, 'ปลดล็อก Assumption ที่ส่งแล้ว', { newValue: `ปี ${y} · แผนก ${deptCode}` });
+    }
+    save();
+  }
   function assertAssum(actor, year) {
     if (actor && actor.role === 'ACCOUNTING') return;   // แอดมินแก้ได้เสมอ (รวมตอนล็อก)
     const code = actor && actor.departmentId ? String((dept(actor.departmentId) || {}).code || '') : '';
     if (actor && actor.role === 'USER' && ASSUM_DEPTS.includes(code)) {
       if (year != null && assumLocked(year)) throw new Error('Assumption ปีนี้ถูกล็อกโดยแอดมิน — แก้ไม่ได้');
+      if (year != null && assumSubmitted(year, code)) throw new Error('ส่ง Assumption แล้ว — แก้ไม่ได้ ให้แอดมินปลดล็อก');
       return;
     }
     throw new Error('ไม่มีสิทธิ์แก้ Assumption');
@@ -2070,7 +2093,7 @@ const Store = (() => {
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, addCct, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
-    assumEdits, assumSet, assumClear, assumLocked, setAssumLock,
+    assumEdits, assumSet, assumClear, assumLocked, setAssumLock, assumSubmitted, setAssumSubmitted, ASSUM_DEPTS,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt, submitAllPpt, unlockAllPpt,
     myNotifications, markNotificationsRead, notify, postAnnouncement, isAnnouncement,

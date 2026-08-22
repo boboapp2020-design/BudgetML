@@ -218,6 +218,7 @@ const PagesAssum = (() => {
     return pageHead('Assumption MTP 2027–2029', 'ช่องขาว = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง · บันทึกอัตโนมัติ',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
          <button data-as-lock class="ghost-btn small${Store.assumLocked(year) ? ' as-locked' : ''}" title="ล็อก/ปลดล็อกการกรอกของ User (ปีนี้)">${Store.assumLocked(year) ? '🔒 ล็อกอยู่ (คลิกปลด)' : '🔓 เปิดให้กรอก'}</button>
+         ${Store.ASSUM_DEPTS.filter(c => Store.assumSubmitted(year, c)).map(c => { const d = (Store.db.departments || []).find(x => String(x.code) === String(c)); return `<button data-asu-unsend="${c}" class="ghost-btn small asu-sent-chip" title="แผนกนี้ส่งแล้ว — คลิกเพื่อปลดล็อกให้แก้ได้">✅ ${esc(d?.name || c)} ✕</button>`; }).join('')}
          <span class="pa-right">
            <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit: ปิด'}</button>
            <button data-as-clear class="danger-btn small" title="ล้างค่าที่แก้ทั้งหมด กลับเป็นค่าต้นทาง">🗑 Clear</button>
@@ -246,7 +247,7 @@ const PagesAssum = (() => {
       const k = hy + '_' + i + '_' + hc;
       const raw = inp.value.replace(/[,\s]/g, '').trim();
       const v = raw === '' ? null : Number(raw);
-      if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
+      if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง — คืนค่าเดิม', 'err'); inp.value = inp.dataset.prev ?? ''; return; }
       inp.value = v ? fmt(v) : '';
       const cm = committedBy(hy); const ck = i + '_' + hc;
       const cur = (ck in cm) ? cm[ck] : 0;   // template blank แล้ว — ฐาน = 0
@@ -261,7 +262,7 @@ const PagesAssum = (() => {
       recalcDom();
     };
     list.forEach((inp, idx) => {
-      inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
+      inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.dataset.prev = inp.value; inp.select(); });
       inp.addEventListener('blur', () => commit(inp));
       inp.addEventListener('keydown', ev => {
         if (ev.key === 'Enter') {
@@ -294,6 +295,12 @@ const PagesAssum = (() => {
     });
 
     document.querySelector('[data-as-edit]')?.addEventListener('click', () => { editAll = !editAll; pending = {}; App.render(); });
+    document.querySelectorAll('[data-asu-unsend]').forEach(b => b.addEventListener('click', () => {
+      const code = b.dataset.asuUnsend; const d = (Store.db.departments || []).find(x => String(x.code) === String(code));
+      UI.confirm2(`ปลดล็อกที่ส่งแล้ว — ${d?.name || code}`, `เปิดให้ ${d?.name || code} กลับมาแก้ Assumption ปี ${year} ได้อีกครั้ง`, '', () => {
+        try { Store.setAssumSubmitted(user, year, code, false); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+      });
+    }));
     document.querySelector('[data-as-lock]')?.addEventListener('click', () => {
       const year = UI.year(); const locked = Store.assumLocked(year);
       const msg = locked ? `ปลดล็อก Assumption ปี ${year}` : `ล็อก Assumption ปี ${year}`;
@@ -336,7 +343,9 @@ const PagesAssum = (() => {
     if (!section) return pageHead('Assumption', 'สมมติฐานประกอบงบประมาณ')
       + card('ไม่มีรายการของแผนกคุณ', '<p class="muted">หน้านี้สำหรับแผนกผู้รับผิดชอบสมมติฐาน: <b>แผนกบริการไร่</b> (ด้านอ้อย) · <b>แผนกหม้อปั่น</b> (ด้านโรงงาน) · <b>แผนกขายและการตลาด</b> (การตลาด)</p>');
     const year = UI.year();
-    const locked = Store.assumLocked(year);
+    const deptCode = String((Store.dept(user.departmentId) || {}).code || '');
+    const submitted = Store.assumSubmitted(year, deptCode);
+    const locked = Store.assumLocked(year) || submitted;   // ส่งแล้ว = อ่านอย่างเดียวเหมือนถูกล็อก
     const { V, F, out } = compute();
     const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
@@ -387,14 +396,25 @@ const PagesAssum = (() => {
     }));
     const th = `<tr><th class="as-ord" rowspan="2">ลำดับ</th><th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>${head1}</tr><tr>${head2}</tr>`;
     return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ส่วน 1 คาดการณ์ปีนี้ · ส่วน 2 งบทั้งปี ${year + 1} (บันทึกเป็นงบต้นปี ${year + 1}) · เลขวิ่งเข้าตาราง MTP/ต้นทุน อัตโนมัติ`,
-        `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>`)
-      + (locked ? `<div class="asu-locked-bar">🔒 Assumption ปี ${year} ถูกล็อกโดยแอดมิน — ดูได้อย่างเดียว กรอกไม่ได้</div>` : '')
+        `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
+         <span class="pa-right">${submitted
+           ? `<span class="asu-sent">✅ ส่งแล้ว</span>`
+           : (locked ? '' : `<button data-asu-send class="primary-btn small" title="ส่ง Assumption ของแผนก — ส่งแล้วแก้ไขไม่ได้">📤 ส่ง Assumption</button>`)}</span>`)
+      + (submitted ? `<div class="asu-locked-bar">✅ ส่ง Assumption ปี ${year} แล้ว — แก้ไขไม่ได้ · ต้องการแก้ให้ติดต่อแอดมินปลดล็อก</div>`
+         : locked ? `<div class="asu-locked-bar">🔒 Assumption ปี ${year} ถูกล็อกโดยแอดมิน — ดูได้อย่างเดียว กรอกไม่ได้</div>` : '')
       + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table asu-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
 
   function userBind(user) {
     pending = {};
-    if (!Store.assumLocked(UI.year())) wireInputs(user, '.asu-cell', { autosave: true });
+    const year = UI.year();
+    const deptCode = String((Store.dept(user.departmentId) || {}).code || '');
+    if (!Store.assumLocked(year) && !Store.assumSubmitted(year, deptCode)) wireInputs(user, '.asu-cell', { autosave: true });
+    document.querySelector('[data-asu-send]')?.addEventListener('click', () => {
+      UI.confirm2(`ส่ง Assumption ปี ${year}`, `ส่งข้อมูลสมมติฐานของ ${Store.dept(user.departmentId)?.name || ''} — หลังส่งแล้วจะแก้ไขไม่ได้`, 'ต้องการแก้ภายหลังต้องให้แอดมินปลดล็อก', () => {
+        try { Store.setAssumSubmitted(user, year, deptCode, true); UI.toast('ส่ง Assumption แล้ว'); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
+      });
+    });
     wireFullscreen();
   }
 
