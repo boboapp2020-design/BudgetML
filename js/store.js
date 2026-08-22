@@ -1457,9 +1457,17 @@ const Store = (() => {
     return { code, name, deptId };
   }
   // ---- Assumption (MTP) — ค่าที่แก้ (override) ราย ปี×cell (year,r,c) → ซิงค์ Supabase ----
+  // สิทธิ์กรอก: แอดมิน หรือ USER ของแผนกที่รับผิดชอบ (บริการไร่ 2712 · หม้อปั่น 3224 · ขายและการตลาด 1143)
+  const ASSUM_DEPTS = ['2712', '3224', '1143'];
+  function assertAssum(actor) {
+    if (actor && actor.role === 'ACCOUNTING') return;
+    const code = actor && actor.departmentId ? String((dept(actor.departmentId) || {}).code || '') : '';
+    if (actor && actor.role === 'USER' && ASSUM_DEPTS.includes(code)) return;
+    throw new Error('ไม่มีสิทธิ์แก้ Assumption');
+  }
   function assumEdits(year) { const y = Number(year); const m = {}; (db.assumptionCells || []).forEach(a => { if (a.year === y) m[a.r + '_' + a.c] = a.v; }); return m; }
   function assumSet(actor, year, r, c, v) {
-    assertAccounting(actor);
+    assertAssum(actor);
     const y = Number(year);
     db.assumptionCells = db.assumptionCells || [];
     const i = db.assumptionCells.findIndex(a => a.year === y && a.r === r && a.c === c);

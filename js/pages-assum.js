@@ -240,7 +240,93 @@ const PagesAssum = (() => {
     document.addEventListener('keydown', function esc(ev) { if (ev.key === 'Escape' && wrap && wrap.classList.contains('as-fs')) setFs(false); });
   }
 
+  /* ============ หน้า Assumption ฝั่ง User (แยกตามแผนกผู้รับผิดชอบ · กรอก 2 รอบ/ปี) ============ */
+  const SECTION_BY_DEPT = { '2712': 'ด้านอ้อย', '3224': 'ด้านโรงงาน', '1143': 'การตลาด' };
+  // รอบ 1 = ตั้งงบ (เกิดจริงปีก่อน · งบต้นปี · งบ MTP +1/+2/+3) · รอบ 2 = Revise + คาดการณ์
+  const ROUND_COLS = { 1: [4, 5, 6, 7, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28], 2: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17] };
+  let userRound = 1;
+
+  function userSection(user) {
+    const code = user && user.departmentId ? String((Store.dept(user.departmentId) || {}).code || '') : '';
+    return SECTION_BY_DEPT[code] || null;
+  }
+
+  function userPage(user) {
+    pending = {};
+    const section = userSection(user);
+    if (!section) return pageHead('Assumption', 'สมมติฐานประกอบงบประมาณ')
+      + card('ไม่มีรายการของแผนกคุณ', '<p class="muted">หน้านี้สำหรับแผนกผู้รับผิดชอบสมมติฐาน: <b>แผนกบริการไร่</b> (ด้านอ้อย) · <b>แผนกหม้อปั่น</b> (ด้านโรงงาน) · <b>แผนกขายและการตลาด</b> (การตลาด)</p>');
+    const year = UI.year();
+    const thaiYr = yo => yo == null ? '' : (year + yo);
+    const { V, F, out } = compute();
+    const committed = Store.assumEdits(year);
+    const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
+    const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
+    const cols = COLS.filter(c => ROUND_COLS[userRound].includes(c.j));
+    const head1 = cols.map(c => `<th class="num as-h1 ${scCls(c.sc)}">${esc(c.grp)}${c.yo != null ? `<div class="as-yr">${thaiYr(c.yo)}</div>` : ''}</th>`).join('');
+    const head2 = cols.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
+    let body = '', n = 0;
+    for (let i = R0; i <= R1; i++) {
+      const remark = String(V[i][REMARK_J] ?? '').trim();
+      if (remark !== section) continue;
+      n++;
+      const cells = cols.map(c => {
+        const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
+        if (f && !ext) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
+        const edited = (i + '_' + j) in committed;
+        return `<td class="num as-in asu-in ${scCls(c.sc)}"><input class="as-cell asu-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"></td>`;
+      }).join('');
+      body += `<tr class="as-sub${n % 2 === 0 ? ' as-alt' : ''}">
+        <td class="as-ord">${esc(V[i][1] ?? '')}</td>
+        <td class="as-name" title="${esc(V[i][2] ?? '')}">${esc(V[i][2] ?? '')}</td>
+        <td class="as-unit">${esc(V[i][3] ?? '')}</td>${cells}</tr>`;
+    }
+    const th = `<tr><th class="as-ord" rowspan="2">ลำดับ</th><th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>${head1}</tr><tr>${head2}</tr>`;
+    return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ช่องชมพู = กรอก · กรอกแล้วเลขวิ่งเข้าตาราง MTP อัตโนมัติ`,
+        `<span class="asu-rounds">
+           <button data-asu-round="1" class="ghost-btn small${userRound === 1 ? ' asu-on' : ''}">รอบ 1 · ตั้งงบ</button>
+           <button data-asu-round="2" class="ghost-btn small${userRound === 2 ? ' asu-on' : ''}">รอบ 2 · Revise/คาดการณ์</button>
+         </span>
+         <span class="pa-right">
+           <button data-as-cancel class="ghost-btn small" disabled>↺ ยกเลิก</button>
+           <button data-as-submit class="primary-btn small" disabled title="บันทึกขึ้นระบบ — เลขวิ่งเข้าตาราง MTP ทันที">✔ Submit</button>
+         </span>`)
+      + card('', `<div class="table-scroll as-scroll"><table class="as-table asu-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' });
+  }
+
+  function userBind(user) {
+    pending = {};
+    const year = UI.year();
+    const committed = Store.assumEdits(year);
+    const subBtn = document.querySelector('[data-as-submit]'), canBtn = document.querySelector('[data-as-cancel]');
+    const baseNum = (i, j) => { const V = window.ASSUMPTION_MTP.v; const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); };
+    const updateBtns = () => { const nn = Object.keys(pending).length; if (subBtn) { subBtn.disabled = !nn; subBtn.textContent = nn ? `✔ Submit (${nn})` : '✔ Submit'; } if (canBtn) canBtn.disabled = !nn; };
+    document.querySelectorAll('.asu-cell').forEach(inp => {
+      inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
+      inp.addEventListener('blur', () => {
+        const i = +inp.dataset.r, j = +inp.dataset.c, k = i + '_' + j;
+        const raw = inp.value.replace(/[,\s]/g, '').trim();
+        const v = raw === '' ? null : Number(raw);
+        if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
+        inp.value = v ? fmt(v) : '';
+        const cur = (k in committed) ? committed[k] : baseNum(i, j);
+        if ((v == null ? 0 : v) === (cur == null ? 0 : cur)) { delete pending[k]; inp.classList.remove('as-pending'); }
+        else { pending[k] = v; inp.classList.add('as-pending'); }
+        updateBtns(); recalcDom();
+      });
+    });
+    subBtn?.addEventListener('click', () => {
+      const nn = Object.keys(pending).length; if (!nn) return;
+      UI.confirm2(`Submit ค่าที่กรอก ${nn} ช่อง`, 'บันทึกขึ้นระบบ — ตัวเลขจะวิ่งเข้าตาราง Assumption MTP ของแอดมินทันที', 'ค่าเดิมจะถูกทับ', () => {
+        let ok = 0; try { for (const k in pending) { const [i, j] = k.split('_').map(Number); Store.assumSet(user, year, i, j, pending[k]); ok++; } } catch (e) { UI.toast(e.message, 'err'); return; }
+        pending = {}; UI.toast(`บันทึกแล้ว ${ok} ช่อง`); App.render();
+      });
+    });
+    canBtn?.addEventListener('click', () => { if (Object.keys(pending).length) { pending = {}; App.render(); } });
+    document.querySelectorAll('[data-asu-round]').forEach(b => b.addEventListener('click', () => { userRound = +b.dataset.asuRound; pending = {}; App.render(); }));
+  }
+
   // กริดค่าที่คำนวณแล้ว (ใช้ค่าที่ Submit แล้วจาก Supabase) — ให้หน้าอื่นดึงตัวเลขไปใช้ (เช่น ต้นทุนต่อหน่วย)
   function grid() { return compute().out; }
-  return { page, bind, grid };
+  return { page, bind, grid, userPage, userBind };
 })();

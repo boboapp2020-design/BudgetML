@@ -1824,3 +1824,13 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table td.as-fcell .as-cell { background:#eef1f6; color:#334; }
 .as-table td.as-fcell .as-cell:hover { background:#e3e8f0; }
 .as-table td.as-fcell .as-cell:focus { background:#fff; outline:2px solid #7a889a; }
+
+/* Assumption ฝั่ง User — ช่องกรอกสีชมพู (ตรงกับไฟล์ Excel) + ปุ่มรอบ */
+.asu-table td.asu-in .as-cell { background: #fbe4f3; }
+.asu-table td.asu-in .as-cell:hover { background: #f6d0ea; }
+.asu-table td.asu-in .as-cell:focus { background: #fff; outline: 2px solid #d4537e; }
+.asu-table th.as-ord, .asu-table td.as-ord { left: 0; width: 46px; }
+.asu-table th.as-name, .asu-table td.as-name { left: 46px; }
+.asu-table th.as-unit, .asu-table td.as-unit { left: 256px; }
+.asu-rounds { display: inline-flex; gap: 6px; }
+.asu-rounds .asu-on { background: #1f3a5f; color: #fff; border-color: #1f3a5f; font-weight: 700; }

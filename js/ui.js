@@ -73,6 +73,7 @@ const UI = (() => {
   /* ---------- layout shell ---------- */
   const NAV_USER = [
     { hash: '#/budget',    icon: '📝', label: 'กรอกงบประมาณ',    sub: 'Budget Input' },
+    { hash: '#/assumption', icon: '🧮', label: 'Assumption',      sub: 'สมมติฐาน (แผนกคุณ)' },
     { hash: '#/unitcost',  icon: '🏭', label: 'ต้นทุนต่อหน่วย',  sub: 'กีบ/ตันอ้อย · น้ำตาล' },
     { hash: '#/requests',  icon: '📝', label: 'คำร้องปรับงบ',    sub: 'ขอเพิ่ม/ลด/โยก' },
     { hash: '#/dashboard', icon: '📊', label: 'Dashboard',        sub: 'ภาพรวมหน่วยงาน' },
