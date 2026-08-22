@@ -1948,3 +1948,25 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 /* การ์ด GL: แบ่งครึ่งบน-ล่าง — บน จำนวน GL · ล่าง สัดส่วน % (ตัวใหญ่เท่ากัน ไม่มีเส้นแบ่ง) */
 .kpi-duo { display: flex; flex-direction: column; gap: 2px; }
 .kpi-duo > span { white-space: nowrap; line-height: 1.25; }
+
+/* ============ Skeleton loading (ตอนเปิด/รีเฟรช ระหว่างดึงข้อมูล) ============ */
+.boot-sync.boot-skel { display: flex; align-items: stretch; justify-content: flex-start; background: var(--bg); }
+.boot-skel .sk { position: relative; overflow: hidden; background: #e6ebf2; border-radius: 8px; }
+.boot-skel .sk::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+  animation: skShine 1.4s ease-in-out infinite; }
+@keyframes skShine { 100% { transform: translateX(100%); } }
+.boot-skel .sk-side { width: 236px; flex: none; background: #0c2749; padding: 18px 14px; display: flex; flex-direction: column; gap: 12px; }
+.boot-skel .sk-side .sk { background: rgba(255,255,255,.12); }
+.boot-skel .sk-side .sk::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent); }
+.boot-skel .sk-logo { height: 44px; margin-bottom: 12px; }
+.boot-skel .sk-nav { height: 34px; }
+.boot-skel .sk-main { flex: 1; padding: 18px 26px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.boot-skel .sk-top { display: flex; gap: 12px; }
+.boot-skel .sk-chip { width: 140px; height: 34px; border-radius: 999px; }
+.boot-skel .sk-title { width: 320px; height: 26px; }
+.boot-skel .sk-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.boot-skel .sk-kpi { height: 92px; }
+.boot-skel .sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.boot-skel .sk-card { height: 220px; }
+.boot-skel .sk-table { flex: 1; min-height: 160px; }

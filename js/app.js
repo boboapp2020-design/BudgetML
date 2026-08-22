@@ -216,8 +216,21 @@ const App = (() => {
     let ov = null;
     if (useOverlay) {
       ov = document.createElement('div');
-      ov.className = 'boot-sync';
-      ov.innerHTML = '<div class="bs-card"><div class="bs-spin"></div></div>';
+      ov.className = 'boot-sync boot-skel';
+      ov.innerHTML = `
+        <div class="sk-side">
+          <div class="sk sk-logo"></div>
+          ${'<div class="sk sk-nav"></div>'.repeat(7)}
+        </div>
+        <div class="sk-main">
+          <div class="sk-top"><div class="sk sk-chip"></div><div class="sk sk-chip" style="width:180px;margin-left:auto"></div></div>
+          <div class="sk sk-title"></div>
+          <div class="sk-kpis">${'<div class="sk sk-kpi"></div>'.repeat(4)}</div>
+          <div class="sk-grid">
+            <div class="sk sk-card"></div><div class="sk sk-card"></div>
+          </div>
+          <div class="sk sk-table"></div>
+        </div>`;
       document.body.appendChild(ov);
     } else {
       safeRender();
