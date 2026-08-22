@@ -104,8 +104,14 @@ const PagesCost = (() => {
     const perCane = (a, div) => { const d = DIV[div]; return (a == null || d == null || d <= 0) ? null : a / d; };
     const perSugar = a => (a == null || DIV.sugar == null || DIV.sugar <= 0) ? null : a / DIV.sugar;
     const divCell = v => v == null ? '<span class="muted">— ยังไม่ส่ง</span>' : fmt(Math.round(v));
-    const tonCell = (a, div) => `<td class="num uc-ton">${perCane(a, div) === null ? '—' : fmt(Math.round(perCane(a, div)))}</td>
-        <td class="num uc-ton">${perSugar(a) === null ? '—' : fmt(Math.round(perSugar(a)))}</td>`;
+    // อัตรา THB (กีบ/บาท) จากหน้า Budget Control — เปลี่ยนอัตราแล้ว บาท/ตัน เปลี่ยนตาม
+    const thbRate = (Store.db.exchangeRates || []).find(x => x.year === year && x.currency === 'THB')?.rateToLAK || 0;
+    const toBaht = v => (v == null || thbRate <= 0) ? null : v / thbRate;
+    const tonCell = (a, div) => {
+      const kc = perCane(a, div), ks = perSugar(a);
+      const cell = v => `<td class="num uc-ton">${v === null ? '—' : fmt(Math.round(v))}</td>`;
+      return cell(kc) + cell(ks) + cell(toBaht(kc)) + cell(toBaht(ks));
+    };
     const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท · Assumption เกิดจริง+คาดการณ์)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม · Assumption เกิดจริง+คาดการณ์)</small>' : '';
 
     // ตารางต้นทุน (อ่านอย่างเดียว — ทุก user เห็นชุดเดียวกัน)
@@ -138,13 +144,18 @@ const PagesCost = (() => {
       if (!arr.length) return '';
       return metricSubmitted(key) ? ' <span class="uc-st uc-st-ok">✅ ส่งแล้ว</span>' : ' <span class="uc-st uc-st-wait">⏳ ยังไม่ส่ง</span>';
     };
-    // อ่านอย่างเดียว — ปริมาณดึงจาก Assumption (ตัวหาร) / เกิดจริงแสดงค่าที่มี · ไม่กรอกในหน้านี้แล้ว
+    // อ่านอย่างเดียว — ปริมาณดึงจาก Assumption: คาดการณ์ (col13) · เกิดจริง+คาดการณ์ (col16) · ไม่กรอกในหน้านี้แล้ว
+    const AS_FC_COL = 13;  // คาดการณ์ ก.ย-ธ.ค · Realistic
+    const asVal = (m, col) => { const r = AS_ROW[m]; if (r == null) return null; const g = asGrid(); return (g && g[r]) ? (g[r][col] || 0) : null; };
+    const volCell = v => v == null ? '<span class="muted">—</span>' : `<b>${fmt(Math.round(v))}</b>`;
     const volRows = Store.VOLUME_METRICS.map(m => {
-      const v = Store.volume(year, m.key), pv = Store.volume(year - 1, m.key);
+      const pv = Store.volume(year - 1, m.key);
       return `<tr><td>${esc(m.label)}</td>
-        <td class="num"><b>${v.actual == null ? '—' : fmt(v.actual)}</b></td>
+        <td class="num">${volCell(asVal(m.key, AS_FC_COL))}</td>
+        <td class="num">${volCell(asVal(m.key, AS_COL))}</td>
         <td class="num muted">${(pv.actual ?? pv.plan) == null ? '—' : fmt(pv.actual ?? pv.plan)}</td></tr>`;
     }).join('');
+    const volSum = (keys, col) => { const vs = keys.map(k => asVal(k, col)); return vs.every(x => x == null) ? null : vs.reduce((s, x) => s + (x || 0), 0); };
     const vPlan = m => Store.volume(year, m).plan || 0;
     const caneAllPlan = vPlan('caneCompany') + vPlan('caneCommunity');
     const sugarAllPlan = vPlan('sugarProduce') + vPlan('sugarTrading');
@@ -177,10 +188,10 @@ const PagesCost = (() => {
       + card(`ต้นทุนการผลิต`, `
           <div class="uc-hint-calc">🧮 ตัวหาร (ปริมาณ) ดึงจากหน้า <b>Assumption (MTP) · เกิดจริง+คาดการณ์</b> อัตโนมัติ — ไม่ต้องกรอกในหน้านี้ · <b>กีบ/ตัน</b> = จำนวนเงิน ÷ ปริมาณ</div>
           <div class="table-scroll"><table class="data-table small"><thead>
-            <tr><th>ปริมาณ ปี ${year}</th><th class="num">เกิดจริง (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
+            <tr><th>ปริมาณ ปี ${year}</th><th class="num">คาดการณ์ (ตัน)</th><th class="num">เกิดจริง+คาดการณ์ (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
             <tbody>${volRows}
-              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${caneAllActual == null ? '—' : fmt(Math.round(caneAllActual))}</td><td class="num muted">—</td></tr>
-              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${sugarAllActual == null ? '—' : fmt(Math.round(sugarAllActual))}</td><td class="num muted">—</td></tr>
+              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_COL))}</td><td class="num muted">—</td></tr>
+              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_COL))}</td><td class="num muted">—</td></tr>
             </tbody></table></div>${fillFoot}`)
       + `<div class="kpi-grid kpi-grid-4">
           <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท (Assumption เกิดจริง+คาดการณ์)</div></div>
@@ -190,7 +201,7 @@ const PagesCost = (() => {
         </div>`
       + card('', `<p class="muted small" style="margin:0 0 8px">💡 จำนวนเงินทุกหมวด <span class="uc-auto" style="padding:1px 6px;border-radius:4px;background:#eef3ff">ดึง auto จาก GL ตามงบ</span> · <span style="background:#fff7cc;padding:1px 6px;border-radius:4px">เหลือง=รวมหมวด</span> · <span style="background:#fbe0ec;padding:1px 6px;border-radius:4px">ชมพู=รวมใหญ่</span> · กีบ/ตัน = จำนวนเงิน ÷ ปริมาณ &nbsp; ${srcNote}</p>
           <div class="table-scroll"><table class="data-table uc-table">
-          <thead><tr><th style="min-width:300px">รายการ (หมวด PPT)</th><th class="num">จำนวนเงิน (กีบ)</th><th class="num">กีบ/ตันอ้อย</th><th class="num">กีบ/ตันน้ำตาล</th></tr></thead>
+          <thead><tr><th style="min-width:300px">รายการ (หมวด PPT)</th><th class="num">จำนวนเงิน (กีบ)</th><th class="num">กีบ/ตันอ้อย</th><th class="num">กีบ/ตันน้ำตาล</th><th class="num">บาท/ตันอ้อย</th><th class="num">บาท/ตันน้ำตาล</th></tr></thead>
           <tbody>${body}</tbody></table></div>`, { cls: 'card-flush' });
   }
 
