@@ -110,7 +110,8 @@ const PagesCost = (() => {
     const tonCell = (a, div) => {
       const kc = perCane(a, div), ks = perSugar(a);
       const cell = v => `<td class="num uc-ton">${v === null ? '—' : fmt(Math.round(v))}</td>`;
-      return cell(kc) + cell(ks) + cell(toBaht(kc)) + cell(toBaht(ks));
+      // เรียงคู่กัน: กีบ/ตันอ้อย · บาท/ตันอ้อย · กีบ/ตันน้ำตาล · บาท/ตันน้ำตาล
+      return cell(kc) + cell(toBaht(kc)) + cell(ks) + cell(toBaht(ks));
     };
     const divTag = div => div === 'co' ? ' <small class="muted">(÷ ตันไร่บริษัท · Assumption เกิดจริง+คาดการณ์)</small>' : div === 'comm' ? ' <small class="muted">(÷ ตันไร่ส่งเสริม · Assumption เกิดจริง+คาดการณ์)</small>' : '';
 
@@ -156,6 +157,9 @@ const PagesCost = (() => {
         <td class="num muted">${(pv.actual ?? pv.plan) == null ? '—' : fmt(pv.actual ?? pv.plan)}</td></tr>`;
     }).join('');
     const volSum = (keys, col) => { const vs = keys.map(k => asVal(k, col)); return vs.every(x => x == null) ? null : vs.reduce((s, x) => s + (x || 0), 0); };
+    // ผลรวมปีก่อน (ปี 2025) จากปริมาณที่บันทึกไว้
+    const pvVal = k => { const p = Store.volume(year - 1, k); return p.actual ?? p.plan; };
+    const pvSum = keys => { const vs = keys.map(pvVal); return vs.every(x => x == null) ? null : vs.reduce((s, x) => s + (x || 0), 0); };
     const vPlan = m => Store.volume(year, m).plan || 0;
     const caneAllPlan = vPlan('caneCompany') + vPlan('caneCommunity');
     const sugarAllPlan = vPlan('sugarProduce') + vPlan('sugarTrading');
@@ -190,8 +194,8 @@ const PagesCost = (() => {
           <div class="table-scroll"><table class="data-table small"><thead>
             <tr><th>ปริมาณ ปี ${year}</th><th class="num">คาดการณ์ (ตัน)</th><th class="num">เกิดจริง+คาดการณ์ (ตัน)</th><th class="num">ปี ${year - 1}</th></tr></thead>
             <tbody>${volRows}
-              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_COL))}</td><td class="num muted">—</td></tr>
-              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_COL))}</td><td class="num muted">—</td></tr>
+              <tr class="tr-sum"><td>รวมตันอ้อยทั้งหมด <small class="muted">(53+54)</small></td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['caneCompany','caneCommunity'], AS_COL))}</td><td class="num muted">${pvSum(['caneCompany','caneCommunity']) == null ? '—' : fmt(Math.round(pvSum(['caneCompany','caneCommunity'])))}</td></tr>
+              <tr class="tr-sum"><td>รวมตันน้ำตาลทั้งหมด <small class="muted">(56+57)</small></td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_FC_COL))}</td><td class="num">${volCell(volSum(['sugarProduce','sugarTrading'], AS_COL))}</td><td class="num muted">${pvSum(['sugarProduce','sugarTrading']) == null ? '—' : fmt(Math.round(pvSum(['sugarProduce','sugarTrading'])))}</td></tr>
             </tbody></table></div>${fillFoot}`)
       + `<div class="kpi-grid kpi-grid-4">
           <div class="kpi kpi-tint-blue"><div class="kpi-label">🌾 ต้นทุนอ้อย ไร่บริษัท / ตัน</div><div class="kpi-value">${caneCo == null ? '—' : fmt(Math.round(caneCo))} <small>กีบ/ตัน</small></div><div class="kpi-sub">ค่าอ้อย+จัดหา (1-3) ÷ ตันไร่บริษัท (Assumption เกิดจริง+คาดการณ์)</div></div>
@@ -201,7 +205,7 @@ const PagesCost = (() => {
         </div>`
       + card('', `<p class="muted small" style="margin:0 0 8px">💡 จำนวนเงินทุกหมวด <span class="uc-auto" style="padding:1px 6px;border-radius:4px;background:#eef3ff">ดึง auto จาก GL ตามงบ</span> · <span style="background:#fff7cc;padding:1px 6px;border-radius:4px">เหลือง=รวมหมวด</span> · <span style="background:#fbe0ec;padding:1px 6px;border-radius:4px">ชมพู=รวมใหญ่</span> · กีบ/ตัน = จำนวนเงิน ÷ ปริมาณ &nbsp; ${srcNote}</p>
           <div class="table-scroll"><table class="data-table uc-table">
-          <thead><tr><th style="min-width:300px">รายการ (หมวด PPT)</th><th class="num">จำนวนเงิน (กีบ)</th><th class="num">กีบ/ตันอ้อย</th><th class="num">กีบ/ตันน้ำตาล</th><th class="num">บาท/ตันอ้อย</th><th class="num">บาท/ตันน้ำตาล</th></tr></thead>
+          <thead><tr><th style="min-width:300px">รายการ (หมวด PPT)</th><th class="num">จำนวนเงิน (กีบ)</th><th class="num">กีบ/ตันอ้อย</th><th class="num">บาท/ตันอ้อย</th><th class="num">กีบ/ตันน้ำตาล</th><th class="num">บาท/ตันน้ำตาล</th></tr></thead>
           <tbody>${body}</tbody></table></div>`, { cls: 'card-flush' });
   }
 
