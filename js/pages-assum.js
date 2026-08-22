@@ -173,8 +173,7 @@ const PagesAssum = (() => {
     const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
-    // หัวตาราง 3 แถว (ตาม Excel): แถวรหัส A/A1/B/C… → แถบกลุ่ม+ช่วงเดือน → scenario
-    const CODE = { 4: '', 5: 'A', 6: 'A', 7: 'A', 8: 'A1', 9: 'A1', 10: 'A1', 11: 'B', 12: 'C1', 13: 'C2', 14: 'C3', 15: 'D1 = B+C1', 16: 'D2 = B+C2', 17: 'D3 = B+C3', 18: 'E1', 19: 'E2', 20: 'E3', 21: 'F = E2−D2', 22: 'G = F÷D2', 23: 'H1', 24: 'H2', 25: 'H3', 26: 'I1', 27: 'I2', 28: 'I3' };
+    // หัวตาราง 2 แถว: แถบกลุ่ม+ช่วงเดือน → scenario
     const rangeOf = c => {
       if (c.yo == null) return '';
       const y = year + c.yo;
@@ -182,8 +181,6 @@ const PagesAssum = (() => {
       if (c.grp.startsWith('คาดการณ์')) return `(ก.ย.-ธ.ค.${y})`;
       return `(ม.ค.-ธ.ค.${y})`;
     };
-    // แถวรหัส — รวมช่องรหัสซ้ำติดกัน (A, A1) ด้วย colspan
-    let head0 = ''; for (let k = 0; k < COLS.length;) { const code = CODE[COLS[k].j] ?? ''; let span = 1; while (k + span < COLS.length && (CODE[COLS[k + span].j] ?? '') === code && code !== '' && !code.includes('=')) span++; head0 += `<th class="num as-h0" colspan="${span}">${esc(code)}</th>`; k += span; }
     // แถบกลุ่ม — รวมกลุ่มเดียวกัน (grp+yo) ด้วย colspan + ช่วงเดือน
     let head1 = ''; for (let k = 0; k < COLS.length;) { const c = COLS[k]; let span = 1; while (k + span < COLS.length && COLS[k + span].grp === c.grp && COLS[k + span].yo === c.yo) span++; head1 += `<th class="num as-h1" colspan="${span}">${esc(c.grp)}${c.yo != null ? ` <span class="as-rng">${rangeOf(c)}</span>` : ''}</th>`; k += span; }
     const head2 = COLS.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
@@ -215,9 +212,9 @@ const PagesAssum = (() => {
         <td class="as-remark">${esc(remark ?? '')}</td></tr>`;
     }
     const th = `<tr>
-        <th class="as-note" rowspan="3">Note</th><th class="as-ord" rowspan="3">ลำดับ</th>
-        <th class="as-name" rowspan="3">สมมุติฐาน</th><th class="as-unit" rowspan="3">หน่วย</th>
-        ${head0}<th class="as-remark" rowspan="3">ผู้รับผิดชอบ</th></tr><tr>${head1}</tr><tr>${head2}</tr>`;
+        <th class="as-note" rowspan="2">Note</th><th class="as-ord" rowspan="2">ลำดับ</th>
+        <th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>
+        ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
     return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
          <span class="pa-right">
