@@ -1943,3 +1943,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 
 /* การ์ดค่าน้ำมันเดินทาง (ในแท็บน้ำมัน): ชิดซ้ายเหมือนการ์ดเขียว */
 [data-ftpane="fuel"] .purple-card { text-align: left; padding: 10px 14px; }
+
+/* การ์ด GL: แบ่งครึ่งบน-ล่าง — บน จำนวน GL · ล่าง สัดส่วน % (ตัวใหญ่เท่ากัน ไม่มีเส้นแบ่ง) */
+.kpi-duo { display: flex; flex-direction: column; gap: 2px; }
+.kpi-duo > span { white-space: nowrap; line-height: 1.25; }

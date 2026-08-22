@@ -218,6 +218,26 @@ const PagesAcc = (() => {
     if (costPerTon) insights.push({ sev: 'info', ic: '🏭',
       t: `<b>ต้นทุน/ตันอ้อย (YTD):</b> ${fmt(Math.round(costPerTon))} กีบ/ตัน (ปริมาณ ${fmt(Math.round(volCane))} ตัน) — <a class="link" href="#/unitcost">ดูรายละเอียดต้นทุนต่อหน่วย →</a>` });
     else insights.push({ sev: 'info', ic: '🏭', t: `ยังไม่ได้กรอกปริมาณอ้อยปี ${year} — <a class="link" href="#/unitcost">กรอกที่หน้าต้นทุนต่อหน่วย</a> เพื่อดูต้นทุน กีบ/ตันอ้อย · กีบ/ตันน้ำตาล` });
+    // ---------- Insight เชิงบัญชีเพิ่มเติม (มุมผู้สอบทาน) ----------
+    {
+      const _g2 = {}; Store.db.glAccounts.forEach(g => { _g2[g.id] = g.code || ''; });
+      const expSum = ys => Store.db.budgets.filter(b => b.year === ys && !/^(44|45|82)/.test(_g2[b.glId] || ''))
+        .reduce((s, b) => s + b.months.reduce((x, v) => x + (v || 0), 0), 0);
+      const curE = expSum(year), prevE = expSum(prevYear);
+      if (prevE > 0 && curE > 0) {
+        const yoy = (curE - prevE) / prevE * 100;
+        insights.push({ sev: Math.abs(yoy) > 15 ? 'med' : 'info', ic: '📊',
+          t: `<b>YoY (ฝั่งค่าใช้จ่าย):</b> งบปี ${year} ${yoy >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'} <b>${Math.abs(yoy).toFixed(1)}%</b> จากปี ${prevYear}${Math.abs(yoy) > 15 ? ' — เกิน 15% ควรมีคำอธิบายระดับบริษัทประกอบการอนุมัติ' : ''}` });
+      }
+      const dts = depts.map(d => ({ d, t: Store.deptTotal(year, d.id) })).filter(x => x.t > 0).sort((a, b) => b.t - a.t);
+      if (curE > 0 && dts.length >= 3) {
+        const top3 = dts.slice(0, 3).reduce((s, x) => s + x.t, 0), pc3 = top3 / curE * 100;
+        insights.push({ sev: pc3 >= 60 ? 'med' : 'info', ic: '🎯',
+          t: `<b>การกระจุกตัว:</b> 3 แผนกใหญ่สุด (${dts.slice(0, 3).map(x => esc(x.d.name.replace('แผนก', ''))).join(' · ')}) = <b>${pc3.toFixed(0)}%</b> ของงบทั้งบริษัท — ความแม่นของสมมติฐาน 3 แผนกนี้ชี้ขาดทั้งงบ` });
+      }
+      if (waiting.length) insights.push({ sev: waiting.length > depts.length / 2 ? 'hi' : 'med', ic: '⏳',
+        t: `<b>ความครบถ้วน:</b> ${waiting.length}/${depts.length} แผนกยังไม่ส่งงบ — ยอดรวมบริษัทยังไม่นิ่ง ปิดงบไม่ได้จนกว่าจะครบ` });
+    }
     const insHtml = insights.map(i => `<div class="fpa-ins fpa-${i.sev}"><span class="fi-ic">${i.ic}</span><span>${i.t}</span></div>`).join('');
 
     // ---------- ตาราง Variance รายสังกัด ----------
@@ -2184,6 +2204,15 @@ const PagesAcc = (() => {
       + (custom ? '' : `<div class="lock-banner" style="background:#eef4fc;border-color:#cfe0f5;color:#2b3654">ℹ️ กำลังใช้รายชื่อค่าเริ่มต้นจากระบบ — เมื่อแก้ครั้งแรกจะบันทึกทั้งชุด (ต้องรัน <b>supabase/user-accounts.sql</b>)</div>`)
       + `<div class="ud-bar2">
           <input id="udSearch" placeholder="🔍 ค้นหา อีเมล / หน่วยงาน / รหัส…" autocomplete="off">
+          <select id="udDept" title="กรองตามหน่วยงาน — เช่น ใครกรอกงบของหน่วยงานนี้">
+            <option value="">🏢 ทุกหน่วยงาน</option>
+            ${Store.activeDepartments().slice().sort((a, b) => String(a.code).localeCompare(String(b.code))).map(d => `<option value="${esc(String(d.code))}">${esc(d.name)} (${esc(String(d.code))})</option>`).join('')}
+          </select>
+          <select id="udRole" title="กรองตามบทบาท">
+            <option value="">🎭 ทุกบทบาท</option>
+            <option value="fill">📝 ผู้กรอกงบ</option>
+            <option value="mgr">✅ ผู้อนุมัติ / ผู้ดู</option>
+          </select>
           <select id="udSort" title="เรียงลำดับ">
             <option value="role-desc">เรียง: บทบาทมาก→น้อย</option>
             <option value="role-asc">เรียง: บทบาทน้อย→มาก</option>
@@ -2266,13 +2295,38 @@ const PagesAcc = (() => {
       row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
     });
     const q = document.getElementById('udSearch'), grid = document.getElementById('udGrid'), cnt = document.getElementById('udCount'), sortSel = document.getElementById('udSort');
+    const deptSel = document.getElementById('udDept'), roleSel = document.getElementById('udRole');
     const rows = [...grid.querySelectorAll('.ur2')];
+    // แผนที่ email → บทบาท (ไว้กรอง "ใครกรอกงบของหน่วยงานนี้")
+    const dirMap = {}; Store.directory().forEach(a => { dirMap[a.email] = a.roles; });
+    // หน่วย MGR → รหัสแผนกที่ครอบ (subtree) — ผู้อนุมัติ/ผู้ดูของหน่วยงานนั้น
+    const mgrCover = {};
+    try { (Store.oversight() || []).forEach(u => { mgrCover[String(u.id)] = new Set((Store.subtreeDepartments(u.id) || []).map(d => String(d.code))); }); } catch (e) {}
+    const roleHits = (email, deptCode, kind) => {
+      const roles = dirMap[email] || [];
+      return roles.some(r => {
+        const t = r.kind === 'filler' ? 'fill' : 'mgr';
+        if (kind && t !== kind) return false;
+        if (!deptCode) return true;
+        if (t === 'fill') return String(r.id) === deptCode;
+        const cov = mgrCover[String(r.id).replace(/^MGR:/, '')] || mgrCover[String(r.id)];
+        return cov ? cov.has(deptCode) : false;
+      });
+    };
     const filt = () => {
       const f = (q.value || '').trim().toLowerCase();
+      const dc = deptSel?.value || '', rk = roleSel?.value || '';
       let n = 0;
-      rows.forEach(c => { const hit = !f || c.textContent.toLowerCase().includes(f); c.style.display = hit ? '' : 'none'; if (hit) n++; });
+      rows.forEach(c => {
+        const textHit = !f || c.textContent.toLowerCase().includes(f);
+        const roleHit = (!dc && !rk) || roleHits(c.dataset.email, dc, rk);
+        const hit = textHit && roleHit;
+        c.style.display = hit ? '' : 'none'; if (hit) n++;
+      });
       cnt.textContent = n + ' / ' + rows.length + ' คน';
     };
+    deptSel?.addEventListener('change', filt);
+    roleSel?.addEventListener('change', filt);
     const sortRows = () => {
       const m = sortSel.value;
       const rn = el => Number(el.dataset.rn || 0), em = el => el.dataset.email || '';
