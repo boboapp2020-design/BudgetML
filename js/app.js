@@ -48,7 +48,7 @@ const App = (() => {
     depts.forEach(d => { const s = d.side || (d.code || '')[0] || '?'; (bySide[s] = bySide[s] || []).push(d); });
     const deptOpts = Object.keys(bySide).sort().map(s => {
       const opts = bySide[s].sort((a, b) => a.code.localeCompare(b.code))
-        .map(d => `<option value="${d.code}">${UI.deptIcon(d)} ${UI.esc(d.name)} (${d.code})</option>`).join('');
+        .map(d => `<option value="${d.code}">${UI.esc(d.name)} (${d.code})</option>`).join('');
       return `<optgroup label="${UI.esc(sides[s] || 'อื่นๆ')}">${opts}</optgroup>`;
     }).join('');
     // ผู้บริหาร/ผู้จัดการ (ดู rollup) — เรียงแบบต้นไม้ เยื้องตามชั้น + ไอคอนต่อระดับ
@@ -60,11 +60,11 @@ const App = (() => {
     const LV_ICON = ['🏢', '🏭', '⭐', '📁', '📄'];
     const LV_NAME = ['บริษัท', 'สังกัด', 'ฝ่าย', 'ฝ่ายย่อย', 'แผนก'];
     const mgrOpts = ordered.map(({ u, d }) => {
-      const icon = LV_ICON[d] || '·';
+      const icon = '';
       const pad = '　'.repeat(d);                       // full-width space — เยื้องจริงใน <option>
       const nDept = Store.subtreeDepartments(u.id).length;  // จำนวนหน่วยงานในสายนี้
       const tag = u.approver ? ' ✓อนุมัติ' : '';
-      return `<option value="MGR:${UI.esc(u.id)}">${pad}${icon} ${UI.esc(u.name)}${tag} · ${nDept} หน่วยงาน</option>`;
+      return `<option value="MGR:${UI.esc(u.id)}">${pad}${UI.esc(u.name)}${tag} · ${nDept} หน่วยงาน</option>`;
     }).join('');
 
     const rowCount = (Store.db.budgets || []).length;

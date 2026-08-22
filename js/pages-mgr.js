@@ -79,7 +79,7 @@ const PagesMgr = (() => {
       const stOrd = ['DRAFT', 'IN_PROGRESS', 'NEED_REVISION', 'COMPLETED', 'SUBMITTED', 'LOCKED'].indexOf(st);
       const revCol = rv.on ? `<td class="num" data-v="${o}">${fmt(o)}</td>` : `<td class="num" data-v="${p}">${fmt(p)}</td>`;
       return `<tr>
-        <td data-v="${esc(d.name)}"><a class="link" href="#/mgr/dept?d=${d.id}"><b>${UI.deptIcon(d)} ${esc(d.name)}</b></a><div class="muted small">${d.code}</div></td>
+        <td data-v="${esc(d.name)}"><a class="link" href="#/mgr/dept?d=${d.id}"><b>${esc(d.name)}</b></a><div class="muted small">${d.code}</div></td>
         ${revCol}
         <td class="num" data-v="${c}">${fmt(c)}</td>
         <td data-v="${cc.diff}">${deltaBadge(cc.diff, cc.pct)}</td>
@@ -245,7 +245,7 @@ const PagesMgr = (() => {
         <td class="num"><b>${fmt(tot)}</b></td></tr>`;
     }).join('');
 
-    return pageHead(`${UI.deptIcon(d)} ${esc(d.name)}`, `รายย่อยงบปี ${year} · ${asOf()}`,
+    return pageHead(`${esc(d.name)}`, `รายย่อยงบปี ${year} · ${asOf()}`,
         `<a class="ghost-btn" href="#/mgr/dashboard">← กลับภาพรวมฝ่าย</a>`)
       + `<div class="breadcrumb"><a href="#/mgr/dashboard">← กลับภาพรวม${esc(unitName)}</a> › <b>${esc(d.name)}</b></div>`
       + `<div class="kpi-grid kpi-grid-4">

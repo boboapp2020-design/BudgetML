@@ -1986,7 +1986,7 @@ const PagesAcc = (() => {
         const rem = x.bud - x.act, pct = pctOf(x.act, x.bud), f = flag(x.act, x.bud);
         const sortPct = pct == null ? (x.act > 0 ? 99999 : -1) : pct;
         return `<tr>
-          <td data-v="${esc(x.d.name)}"><b>${UI.deptIcon(x.d)} ${esc(x.d.name)}</b><div class="muted small">${x.d.code}</div></td>
+          <td data-v="${esc(x.d.name)}"><b>${esc(x.d.name)}</b><div class="muted small">${x.d.code}</div></td>
           <td class="num" data-v="${x.bud}">${fmt(x.bud)}</td>
           <td class="num" data-v="${x.act}">${fmt(x.act)}</td>
           <td class="num" data-v="${rem}" style="color:${rem < 0 ? '#d03b3b' : '#0ca30c'}">${fmt(rem)}</td>
