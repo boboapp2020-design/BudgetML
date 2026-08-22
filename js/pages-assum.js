@@ -75,8 +75,6 @@ const PagesAssum = (() => {
   }
 
   /* ---------- โหลด grid + คำนวณ ---------- */
-  // override ที่ commit แล้ว (Supabase, รายปี) + pending (ยังไม่ submit); pending=null → คืนค่าเดิม
-  function edits() { const m = Object.assign({}, Store.assumEdits(UI.year())); for (const k in pending) { if (pending[k] == null) delete m[k]; else m[k] = pending[k]; } return m; }
   function baseVal(V, i, j) { const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); }
 
   /* ---- แถวอัตราแลกเปลี่ยน (24.x) — ดึงอัตโนมัติจาก Budget Control (exchange_rates) ---- */
@@ -96,27 +94,49 @@ const PagesAssum = (() => {
   }
   const isFxCell = (i, j) => FX_ROWS[i] !== undefined && JYO()[j] === 0;
 
-  // คำนวณทั้งกริด → คืน number[][] (memoized + กัน circular)
+  // คอลัมน์งบปีอนาคต (E/H/I) = "หน้าต่างมองข้ามปี" → ดึงจาก grid ของปีนั้นๆ คอลัมน์งบต้นปี (A)
+  // ตัวเลขแต่ละปีมีบ้านเดียว (grid ปีนั้น) — แก้ที่ไหนก็ตรงกันทุกหน้า
+  const FUT = { 18: { yo: 1, a: 5 }, 19: { yo: 1, a: 6 }, 20: { yo: 1, a: 7 }, 23: { yo: 2, a: 5 }, 24: { yo: 2, a: 6 }, 25: { yo: 2, a: 7 }, 26: { yo: 3, a: 5 }, 27: { yo: 3, a: 6 }, 28: { yo: 3, a: 7 } };
+  // ช่องกรอก → ปี+คอลัมน์ "บ้านจริง" ของข้อมูล (future col → ปีถัดไป คอลัมน์ A)
+  const homeOf = j => FUT[j] ? { dy: FUT[j].yo, c: FUT[j].a } : { dy: 0, c: j };
+
+  // คำนวณกริดหลายปี (memoized ราย ปี) — pending คีย์ `${ปี}_${แถว}_${คอลัมน์}`
   function compute() {
     const D = window.ASSUMPTION_MTP; const V = D.v, F = D.f, R = V.length, C = D.cols;
-    const ov = edits();
-    const cache = Array.from({ length: R }, () => new Array(C).fill(undefined));
-    const busy = new Set();
-    const isBlank = (i, j) => { if (isFxCell(i, j)) return fxVal(i, j) == null; const ek = i + '_' + j; if (ek in ov) return false; const f = F[i] && F[i][j]; if (f && f.indexOf('!') < 0) return false; return (V[i] ? V[i][j] : null) == null; };
-    function get(i, j) {
-      if (i < 0 || i >= R || j < 0 || j >= C) return 0;
-      if (cache[i][j] !== undefined) return cache[i][j];
-      if (isFxCell(i, j)) { const n = fxVal(i, j); cache[i][j] = (n == null ? 0 : n); return cache[i][j]; }   // FX auto จาก Budget Control (ชนะทุกอย่าง)
-      const ek = i + '_' + j;
-      if (ek in ov) { const n = +ov[ek]; cache[i][j] = n; return n; }   // ค่าที่แก้มือ (override) — ทับสูตร/ค่าเดิมเสมอ
-      const f = F[i] && F[i][j];
-      // ช่องกรอก หรือ สูตรลิงก์ไฟล์ภายนอก (มี '!') → ใช้ค่าที่ Excel เก็บไว้ (คำนวณเองไม่ได้)
-      if (!f || f.indexOf('!') >= 0) { const n = baseVal(V, i, j); cache[i][j] = n; return n; }
-      const key = i + '|' + j; if (busy.has(key)) return 0; busy.add(key);
-      let r; try { r = evalBody(f.slice(1), get, isBlank); } catch (e) { r = 0; } busy.delete(key);
-      if (!isFinite(r)) r = 0; cache[i][j] = r; return r;
+    const baseYear = UI.year();
+    const years = {};
+    function build(y) {
+      if (years[y]) return years[y];
+      const ov = Object.assign({}, Store.assumEdits(y));
+      for (const k in pending) { const p = k.split('_'); if (+p[0] === y) { const kk = p[1] + '_' + p[2]; if (pending[k] == null) delete ov[kk]; else ov[kk] = pending[k]; } }
+      const cache = Array.from({ length: R }, () => new Array(C).fill(undefined));
+      const busy = new Set();
+      const H = {}; years[y] = H;
+      const fxHere = (i, j) => y === baseYear && isFxCell(i, j);
+      H.isBlank = (i, j) => {
+        if (FUT[j]) return build(y + FUT[j].yo).isBlank(i, FUT[j].a);
+        if (fxHere(i, j)) return fxVal(i, j) == null;
+        const ek = i + '_' + j; if (ek in ov) return false;
+        const f = F[i] && F[i][j]; if (f && f.indexOf('!') < 0) return false;
+        return !(ek in ov);   // template blank แล้ว — มีค่าเฉพาะที่กรอก
+      };
+      H.get = function get(i, j) {
+        if (i < 0 || i >= R || j < 0 || j >= C) return 0;
+        if (cache[i][j] !== undefined) return cache[i][j];
+        if (FUT[j]) { const t = FUT[j]; const n = build(y + t.yo).get(i, t.a); cache[i][j] = n; return n; }   // หน้าต่างข้ามปี
+        if (fxHere(i, j)) { const n = fxVal(i, j); cache[i][j] = (n == null ? 0 : n); return cache[i][j]; }   // FX auto (เฉพาะปีที่เลือก)
+        const ek = i + '_' + j;
+        if (ek in ov) { const n = +ov[ek]; cache[i][j] = n; return n; }
+        const f = F[i] && F[i][j];
+        if (!f || f.indexOf('!') >= 0) { const n = baseVal(V, i, j); cache[i][j] = n; return n; }
+        const key = i + '|' + j; if (busy.has(key)) return 0; busy.add(key);
+        let r; try { r = evalBody(f.slice(1), H.get, H.isBlank); } catch (e) { r = 0; } busy.delete(key);
+        if (!isFinite(r)) r = 0; cache[i][j] = r; return r;
+      };
+      return H;
     }
-    const out = Array.from({ length: R }, (_, i) => Array.from({ length: C }, (_, j) => get(i, j)));
+    const base = build(baseYear);
+    const out = Array.from({ length: R }, (_, i) => Array.from({ length: C }, (_, j) => base.get(i, j)));
     return { V, F, out };
   }
 
@@ -150,7 +170,7 @@ const PagesAssum = (() => {
     const year = UI.year();                       // ปีงบที่เลือก (ค.ศ.)
     const thaiYr = yo => yo == null ? '' : (year + yo);         // ปี ค.ศ. ตาม offset
     const { V, F, out } = compute();
-    const committed = Store.assumEdits(year);
+    const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
     // หัวตาราง 3 แถว (ตาม Excel): แถวรหัส A/A1/B/C… → แถบกลุ่ม+ช่วงเดือน → scenario
@@ -175,14 +195,16 @@ const PagesAssum = (() => {
       if (isMain) subN = 0; else subN++;
       const rowCls = isMain ? 'as-main' : ('as-sub' + (subN % 2 === 0 ? ' as-alt' : ''));
       const cells = COLS.map(c => {
-        const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
+        const j = c.j; const val = out[i][j];
+        const home = homeOf(j); const hy = year + home.dy, hc = home.c;   // บ้านจริงของข้อมูล (future col → ปีถัดไป คอลัมน์งบต้นปี)
+        const f = F[i] && F[i][hc]; const ext = f && f.indexOf('!') >= 0;
         const isFormula = f && !ext;
         // แถวอัตราแลกเปลี่ยน — auto จาก Budget Control (อ่านอย่างเดียวเสมอ)
         if (isFxCell(i, j)) return `<td class="num as-calc as-fx ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="ดึงจาก Budget Control (อัตราแลกเปลี่ยน)">${val ? fmt(val) : ''}</td>`;
         // โหมดปกติ: ช่องสูตร = อ่านอย่างเดียว · โหมด Edit (editAll): แก้ได้ทุกช่อง (พิมพ์ทับสูตร)
         if (isFormula && !editAll) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}" title="${esc(f)}">${val ? fmt(val) : ''}</td>`;
-        const edited = (i + '_' + j) in committed;
-        return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}${isFormula ? ' as-fcell' : ''}"><input class="as-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"${isFormula ? ` title="สูตร: ${esc(f)}"` : ''}></td>`;
+        const edited = (i + '_' + hc) in (committedBy(hy));
+        return `<td class="num as-in ${scCls(c.sc)}${ext ? ' as-ext' : ''}${isFormula ? ' as-fcell' : ''}"><input class="as-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" data-y="${hy}" data-hc="${hc}" inputmode="decimal" value="${val ? fmt(val) : ''}"${isFormula ? ` title="สูตร: ${esc(f)}"` : (home.dy ? ` title="บันทึกเป็น งบต้นปี ${hy}"` : '')}></td>`;
       }).join('');
       body += `<tr class="${rowCls}">
         <td class="as-note">${esc(note ?? '')}</td>
@@ -215,38 +237,41 @@ const PagesAssum = (() => {
     });
   }
 
-  function bind(user) {
-    pending = {};
-    const year = UI.year();
-    const committed = Store.assumEdits(year);
+  // ผูกช่องกรอก + ปุ่ม Submit/ยกเลิก — คีย์ pending = `${ปีบ้านจริง}_${แถว}_${คอลัมน์บ้านจริง}` (ใช้ร่วม admin/user)
+  function wireInputs(user, selector) {
     const subBtn = document.querySelector('[data-as-submit]'), canBtn = document.querySelector('[data-as-cancel]');
-    const baseNum = (i, j) => { const V = window.ASSUMPTION_MTP.v; const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); };
+    const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const updateBtns = () => { const n = Object.keys(pending).length; if (subBtn) { subBtn.disabled = !n; subBtn.textContent = n ? `✔ Submit (${n})` : '✔ Submit'; } if (canBtn) canBtn.disabled = !n; };
-
-    document.querySelectorAll('.as-cell').forEach(inp => {
+    document.querySelectorAll(selector).forEach(inp => {
       inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
       inp.addEventListener('blur', () => {
-        const i = +inp.dataset.r, j = +inp.dataset.c, k = i + '_' + j;
+        const i = +inp.dataset.r, hy = +inp.dataset.y, hc = +inp.dataset.hc;
+        const k = hy + '_' + i + '_' + hc;
         const raw = inp.value.replace(/[,\s]/g, '').trim();
         const v = raw === '' ? null : Number(raw);
         if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
         inp.value = v ? fmt(v) : '';
-        // เทียบกับค่าที่ commit แล้ว (หรือค่าต้นทาง) — ถ้าเท่าเดิม เอาออกจาก pending
-        const cur = (k in committed) ? committed[k] : baseNum(i, j);
+        const cm = committedBy(hy); const ck = i + '_' + hc;
+        const cur = (ck in cm) ? cm[ck] : 0;   // template blank แล้ว — ฐาน = 0
         if ((v == null ? 0 : v) === (cur == null ? 0 : cur)) { delete pending[k]; inp.classList.remove('as-pending'); }
         else { pending[k] = v; inp.classList.add('as-pending'); }
         updateBtns(); recalcDom();
       });
     });
-
     subBtn?.addEventListener('click', () => {
       const n = Object.keys(pending).length; if (!n) return;
-      UI.confirm2(`Submit ค่าที่แก้ ${n} ช่อง`, 'บันทึกค่าที่แก้ขึ้นระบบ (Supabase) — มีผลกับสมมติฐานที่ใช้คำนวณ', 'ค่าเดิมจะถูกทับ', () => {
-        let ok = 0; try { for (const k in pending) { const [i, j] = k.split('_').map(Number); Store.assumSet(user, year, i, j, pending[k]); ok++; } } catch (e) { UI.toast(e.message, 'err'); return; }
+      UI.confirm2(`Submit ค่าที่แก้ ${n} ช่อง`, 'บันทึกขึ้นระบบ (Supabase) — เลขวิ่งเข้าตาราง MTP/ต้นทุน ของปีที่เกี่ยวข้องทันที', 'ค่าเดิมจะถูกทับ', () => {
+        let ok = 0; try { for (const k in pending) { const [y, i, j] = k.split('_').map(Number); Store.assumSet(user, y, i, j, pending[k]); ok++; } } catch (e) { UI.toast(e.message, 'err'); return; }
         pending = {}; UI.toast(`บันทึกแล้ว ${ok} ช่อง`); App.render();
       });
     });
     canBtn?.addEventListener('click', () => { if (!Object.keys(pending).length) return; pending = {}; App.render(); });
+  }
+
+  function bind(user) {
+    pending = {};
+    const year = UI.year();
+    wireInputs(user, '.as-cell');
     document.querySelector('[data-as-clear]')?.addEventListener('click', () => {
       UI.confirm2('ล้างค่าที่แก้ทั้งหมด', 'ลบค่าที่แก้ทั้งหมด (ที่ Submit แล้ว) กลับเป็นค่าต้นทางจากไฟล์ Assumption', 'ย้อนกลับไม่ได้', () => {
         try { pending = {}; Store.assumClear(user, year); App.render(); } catch (e) { UI.toast(e.message, 'err'); }
@@ -279,10 +304,6 @@ const PagesAssum = (() => {
 
   /* ============ หน้า Assumption ฝั่ง User (แยกตามแผนกผู้รับผิดชอบ · กรอก 2 รอบ/ปี) ============ */
   const SECTION_BY_DEPT = { '2712': 'ด้านอ้อย', '3224': 'ด้านโรงงาน', '1143': 'การตลาด' };
-  // รอบ 1 = ตั้งงบ (เกิดจริงปีก่อน · งบต้นปี · งบ MTP +1/+2/+3) · รอบ 2 = Revise + คาดการณ์
-  const ROUND_COLS = { 1: [4, 5, 6, 7, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28], 2: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17] };
-  let userRound = 1;
-
   function userSection(user) {
     const code = user && user.departmentId ? String((Store.dept(user.departmentId) || {}).code || '') : '';
     return SECTION_BY_DEPT[code] || null;
@@ -294,14 +315,15 @@ const PagesAssum = (() => {
     if (!section) return pageHead('Assumption', 'สมมติฐานประกอบงบประมาณ')
       + card('ไม่มีรายการของแผนกคุณ', '<p class="muted">หน้านี้สำหรับแผนกผู้รับผิดชอบสมมติฐาน: <b>แผนกบริการไร่</b> (ด้านอ้อย) · <b>แผนกหม้อปั่น</b> (ด้านโรงงาน) · <b>แผนกขายและการตลาด</b> (การตลาด)</p>');
     const year = UI.year();
-    const thaiYr = yo => yo == null ? '' : (year + yo);
     const { V, F, out } = compute();
-    const committed = Store.assumEdits(year);
+    const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
     const scLbl = sc => sc === 'O' ? 'Opt' : sc === 'R' ? 'Real' : sc === 'P' ? 'Pess' : '';
-    const cols = COLS.filter(c => ROUND_COLS[userRound].includes(c.j));
-    const head1 = cols.map(c => `<th class="num as-h1 ${scCls(c.sc)}">${esc(c.grp)}${c.yo != null ? `<div class="as-yr">${thaiYr(c.yo)}</div>` : ''}</th>`).join('');
-    const head2 = cols.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${scLbl(c.sc)}</th>`).join('');
+    // 2 ส่วนตามวงจรจริง: ส่วน 1 = คาดการณ์ ก.ย.-ธ.ค. ปีนี้ (B อ่าน · C กรอก · D ผลรวม) · ส่วน 2 = งบทั้งปีถัดไป (เขียนเข้า grid ปีถัดไปเป็นงบต้นปี)
+    const cols = COLS.filter(c => [11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(c.j));
+    const head1 = `<th class="num as-h1 asu-sec1" colspan="7">ส่วน 1 · คาดการณ์ปี ${year} <span class="as-rng">(เกิดจริง ม.ค.-ส.ค. + คาดการณ์ ก.ย.-ธ.ค.)</span></th>
+      <th class="num as-h1 asu-sec2" colspan="3">ส่วน 2 · งบประมาณทั้งปี ${year + 1} <span class="as-rng">(ม.ค.-ธ.ค.${year + 1})</span></th>`;
+    const head2 = cols.map(c => `<th class="num as-h2 ${scCls(c.sc)}">${esc(c.j === 11 ? 'เกิดจริง' : c.grp === 'คาดการณ์ ก.ย-ธ.ค' ? 'คาดฯ ' + scLbl(c.sc) : c.grp === 'เกิดจริง+คาดการณ์' ? 'รวม ' + scLbl(c.sc) : scLbl(c.sc))}</th>`).join('');
     // แบ่งบล็อกตามแถวหมวด (ลำดับเลขจำนวนเต็ม) — แสดงทั้งบล็อกถ้ามีแถวของแผนกนี้ (รวมแถวผลรวม อ่านอย่างเดียว)
     const blocks = []; let cur = null;
     for (let i = R0; i <= R1; i++) {
@@ -318,11 +340,14 @@ const PagesAssum = (() => {
       const mine = String(V[i][REMARK_J] ?? '').trim() === section;
       if (isMain) n = 0; else n++;
       const cells = cols.map(c => {
-        const j = c.j; const f = F[i] && F[i][j]; const ext = f && f.indexOf('!') >= 0; const val = out[i][j];
-        // กรอกได้เฉพาะแถวของแผนกตัวเอง (ช่องไม่มีสูตร/ลิงก์ภายนอก) — แถวผลรวม/แถวแผนกอื่น = อ่านอย่างเดียว
-        if ((f && !ext) || !mine) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
-        const edited = (i + '_' + j) in committed;
-        return `<td class="num as-in asu-in ${scCls(c.sc)}"><input class="as-cell asu-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" inputmode="decimal" value="${val ? fmt(val) : ''}"></td>`;
+        const j = c.j; const val = out[i][j];
+        const home = homeOf(j); const hy = year + home.dy, hc = home.c;
+        const f = F[i] && F[i][hc]; const ext = f && f.indexOf('!') >= 0;
+        const editableCol = (j >= 12 && j <= 14) || FUT[j];   // กรอกได้: คาดการณ์ (C) + งบปีถัดไป
+        // กรอกได้เฉพาะแถวของแผนกตัวเอง + คอลัมน์ที่เปิด — แถวผลรวม/สูตร/B/D = อ่านอย่างเดียว
+        if ((f && !ext) || !mine || !editableCol) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
+        const edited = (i + '_' + hc) in committedBy(hy);
+        return `<td class="num as-in asu-in ${scCls(c.sc)}"><input class="as-cell asu-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" data-y="${hy}" data-hc="${hc}" inputmode="decimal" value="${val ? fmt(val) : ''}"${home.dy ? ` title="บันทึกเป็น งบต้นปี ${hy}"` : ''}></td>`;
       }).join('');
       body += `<tr class="${isMain ? 'as-main' : 'as-sub' + (n % 2 === 0 ? ' as-alt' : '')}">
         <td class="as-ord">${esc(order ?? '')}</td>
@@ -330,12 +355,8 @@ const PagesAssum = (() => {
         <td class="as-unit">${esc(V[i][3] ?? '')}</td>${cells}</tr>`;
     }));
     const th = `<tr><th class="as-ord" rowspan="2">ลำดับ</th><th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>${head1}</tr><tr>${head2}</tr>`;
-    return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ช่องชมพู = กรอก · กรอกแล้วเลขวิ่งเข้าตาราง MTP อัตโนมัติ`,
+    return pageHead(`Assumption — ${esc(section)}`, `${esc(Store.dept(user.departmentId)?.name || '')} · ปีงบ ${year} · ส่วน 1 คาดการณ์ปีนี้ · ส่วน 2 งบทั้งปี ${year + 1} (บันทึกเป็นงบต้นปี ${year + 1}) · เลขวิ่งเข้าตาราง MTP/ต้นทุน อัตโนมัติ`,
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
-         <span class="asu-rounds">
-           <button data-asu-round="1" class="ghost-btn small${userRound === 1 ? ' asu-on' : ''}">รอบ 1 · ตั้งงบ</button>
-           <button data-asu-round="2" class="ghost-btn small${userRound === 2 ? ' asu-on' : ''}">รอบ 2 · Revise/คาดการณ์</button>
-         </span>
          <span class="pa-right">
            <button data-as-cancel class="ghost-btn small" disabled>↺ ยกเลิก</button>
            <button data-as-submit class="primary-btn small" disabled title="บันทึกขึ้นระบบ — เลขวิ่งเข้าตาราง MTP ทันที">✔ Submit</button>
@@ -345,34 +366,7 @@ const PagesAssum = (() => {
 
   function userBind(user) {
     pending = {};
-    const year = UI.year();
-    const committed = Store.assumEdits(year);
-    const subBtn = document.querySelector('[data-as-submit]'), canBtn = document.querySelector('[data-as-cancel]');
-    const baseNum = (i, j) => { const V = window.ASSUMPTION_MTP.v; const v = V[i] && V[i][j]; return (typeof v === 'number') ? v : (v == null ? 0 : (isFinite(+v) ? +v : 0)); };
-    const updateBtns = () => { const nn = Object.keys(pending).length; if (subBtn) { subBtn.disabled = !nn; subBtn.textContent = nn ? `✔ Submit (${nn})` : '✔ Submit'; } if (canBtn) canBtn.disabled = !nn; };
-    document.querySelectorAll('.asu-cell').forEach(inp => {
-      inp.addEventListener('focus', () => { inp.value = inp.value.replace(/,/g, ''); inp.select(); });
-      inp.addEventListener('blur', () => {
-        const i = +inp.dataset.r, j = +inp.dataset.c, k = i + '_' + j;
-        const raw = inp.value.replace(/[,\s]/g, '').trim();
-        const v = raw === '' ? null : Number(raw);
-        if (raw !== '' && !isFinite(v)) { UI.toast('ตัวเลขไม่ถูกต้อง', 'err'); return; }
-        inp.value = v ? fmt(v) : '';
-        const cur = (k in committed) ? committed[k] : baseNum(i, j);
-        if ((v == null ? 0 : v) === (cur == null ? 0 : cur)) { delete pending[k]; inp.classList.remove('as-pending'); }
-        else { pending[k] = v; inp.classList.add('as-pending'); }
-        updateBtns(); recalcDom();
-      });
-    });
-    subBtn?.addEventListener('click', () => {
-      const nn = Object.keys(pending).length; if (!nn) return;
-      UI.confirm2(`Submit ค่าที่กรอก ${nn} ช่อง`, 'บันทึกขึ้นระบบ — ตัวเลขจะวิ่งเข้าตาราง Assumption MTP ของแอดมินทันที', 'ค่าเดิมจะถูกทับ', () => {
-        let ok = 0; try { for (const k in pending) { const [i, j] = k.split('_').map(Number); Store.assumSet(user, year, i, j, pending[k]); ok++; } } catch (e) { UI.toast(e.message, 'err'); return; }
-        pending = {}; UI.toast(`บันทึกแล้ว ${ok} ช่อง`); App.render();
-      });
-    });
-    canBtn?.addEventListener('click', () => { if (Object.keys(pending).length) { pending = {}; App.render(); } });
-    document.querySelectorAll('[data-asu-round]').forEach(b => b.addEventListener('click', () => { userRound = +b.dataset.asuRound; pending = {}; App.render(); }));
+    wireInputs(user, '.asu-cell');
     wireFullscreen();
   }
 
