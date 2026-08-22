@@ -1962,19 +1962,21 @@ const PagesAcc = (() => {
   function variance(user, embed) {
     const year = UI.year();
     const rv = Store.revisePhase(year);
-    const acts = (Store.db.actuals || []).filter(a => a.year === year);
-    const actByDept = {}, gById = {}; Store.db.glAccounts.forEach(g => { gById[g.id] = g; });
-    const actByGrp = {}; let actTotal = 0;
+    const gById = {}; Store.db.glAccounts.forEach(g => { gById[g.id] = g; });
+    const isRevenue = glId => /^(44|45)/.test((gById[glId] || {}).code || '');   // แยกรายได้ (440/450) ออกจากการควบคุมงบค่าใช้จ่าย
+    const acts = (Store.db.actuals || []).filter(a => a.year === year && !isRevenue(a.glId));
+    const actByDept = {}, actByGrp = {}; let actTotal = 0;
     acts.forEach(a => { const s = a.months.reduce((x, v) => x + (v || 0), 0); actByDept[a.departmentId] = (actByDept[a.departmentId] || 0) + s; const grp = (gById[a.glId] || {}).glGroup || 'อื่นๆ'; actByGrp[grp] = (actByGrp[grp] || 0) + s; actTotal += s; });
-    const budTotal = Store.companyTotal(year);
+    // งบทั้งปี = "งบต้นปี" (snapshot ORIGINAL ตอนอนุมัติ) — ไม่ใช่งบปัจจุบันที่ถูกเกิดจริงทับ · ถ้าปีไหนไม่มี snapshot ใช้งบปัจจุบันแทน
+    const snap = Store.snapshotFor(year);
+    const budRows = snap ? snap.rows : Store.db.budgets.filter(b => b.year === year);
+    const budByDept = {}, budByGrp = {}; let budTotal = 0;
+    budRows.forEach(b => { if (isRevenue(b.glId)) return; const s = b.months.reduce((x, v) => x + (v || 0), 0); budByDept[b.departmentId] = (budByDept[b.departmentId] || 0) + s; const grp = (gById[b.glId] || {}).glGroup || 'อื่นๆ'; budByGrp[grp] = (budByGrp[grp] || 0) + s; budTotal += s; });
     const usedPct = budTotal > 0 ? actTotal / budTotal * 100 : 0;
     const flag = (act, bud) => act > bud && bud > 0 ? { c: '#d03b3b', t: '🔴 เกินงบ' } : bud > 0 && act / bud >= 0.9 ? { c: '#eda100', t: '🟡 ใกล้เต็ม' } : act > 0 ? { c: '#0ca30c', t: '🟢 ปกติ' } : { c: '#c3c2b7', t: '—' };
 
-    const budByGrp = {};
-    Store.db.budgets.filter(b => b.year === year).forEach(b => { const grp = (gById[b.glId] || {}).glGroup || 'อื่นๆ'; budByGrp[grp] = (budByGrp[grp] || 0) + b.months.reduce((s, v) => s + (v || 0), 0); });
-
-    const deptRows = Store.activeDepartments().map(d => ({ d, bud: Store.deptTotal(year, d.id), act: actByDept[d.id] || 0 }))
-      .filter(x => x.bud > 0).sort((a, b) => (b.act / (b.bud || 1)) - (a.act / (a.bud || 1))).map(x => {
+    const deptRows = Store.activeDepartments().map(d => ({ d, bud: budByDept[d.id] || 0, act: actByDept[d.id] || 0 }))
+      .filter(x => x.bud > 0 || x.act > 0).sort((a, b) => (b.act / (b.bud || 1)) - (a.act / (a.bud || 1))).map(x => {
         const rem = x.bud - x.act, pct = x.bud > 0 ? x.act / x.bud * 100 : 0, f = flag(x.act, x.bud);
         return `<tr>
           <td data-v="${esc(x.d.name)}"><b>${UI.deptIcon(x.d)} ${esc(x.d.name)}</b><div class="muted small">${x.d.code}</div></td>
@@ -2002,7 +2004,7 @@ const PagesAcc = (() => {
         `<button class="ghost-btn" onclick="window.print()">🖨 พิมพ์ / PDF</button>`))
       + emptyNote
       + `<div class="kpi-grid kpi-grid-4">
-        ${kpiC('💰', '#e6f0fb', 'kpi-tint-blue', `งบทั้งปี ${year}`, `${UI.fmtShort(budTotal)} <small>กีบ</small>`, fmt(budTotal) + ' กีบ')}
+        ${kpiC('💰', '#e6f0fb', 'kpi-tint-blue', `งบต้นปี ${year}`, `${UI.fmtShort(budTotal)} <small>กีบ</small>`, fmt(budTotal) + ' กีบ')}
         ${kpiC('💸', '#e6f7f0', 'kpi-tint-teal', 'เกิดจริงสะสม', `${UI.fmtShort(actTotal)} <small>กีบ</small>`, fmt(actTotal) + ' กีบ')}
         ${kpiC('🏦', '#eaf6ea', 'kpi-tint-green', 'คงเหลือ', `${UI.fmtShort(budTotal - actTotal)} <small>กีบ</small>`, fmt(budTotal - actTotal) + ' กีบ')}
         ${kpiC('🎯', usedPct >= 100 ? '#fdecec' : '#fff7e6', usedPct >= 100 ? 'kpi-tint-red' : 'kpi-tint-amber', '% ใช้ไป', `${usedPct.toFixed(1)} <small>%</small>`, usedPct >= 100 ? 'เกินงบ ⚠' : 'ของงบทั้งปี')}
