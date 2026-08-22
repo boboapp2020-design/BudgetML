@@ -1123,7 +1123,7 @@ const PagesAcc = (() => {
       return `<tr class="${d.active ? '' : 'tr-notused'}">
         <td><b>${esc(d.name)}</b><div class="muted small">${d.code}</div></td>
         <td>${d.active ? '<span class="status-badge st-completed">เปิดใช้งาน</span>' : '<span class="status-badge st-draft">ยังไม่เปิดใช้</span>'}</td>
-        <td>${gls.length} GL${zeroN ? `<div class="small" style="color:#b32d2d;font-weight:700">🔴 ${zeroN} ไม่ตั้งงบ</div>` : ''}</td>
+        <td>${gls.length} GL${zeroN ? `<div class="small" style="color:#b32d2d;font-weight:700" title="GL ที่ยังไม่ได้ตั้งงบ (ยอด = 0)">🔴 ${zeroN}</div>` : ''}</td>
         <td class="small">${gls.map(g => { const zero = Store.glTotal(glYear, d.id, g.id) === 0;
           return `<span class="gl-chip${zero ? ' gl-chip-zero' : ''}" title="${zero ? 'GL นี้ยังไม่ได้ตั้งงบปี ' + glYear + ' (ยอด = 0)' : ''}">${g.code}<button class="chip-x" data-unassign="${d.id}|${g.id}" title="ถอด GL">✕</button></span>`; }).join(' ')}</td>
         <td class="td-actions">
