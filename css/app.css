@@ -1419,7 +1419,8 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
 /* v18.3 — รายการผู้ใช้แบบ list บาง ตัวเล็ก ไม่มีไอคอน (กดแล้วเด้ง popup) */
 .ud-bar2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
 .ud-bar2 #udSearch{flex:1;min-width:220px;font:inherit;font-size:13.5px;padding:9px 13px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--ink)}
-.ud-bar2 #udSort{font:inherit;font-size:13px;font-weight:600;padding:9px 12px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.ud-bar2 #udSort,.ud-bar2 #udDept,.ud-bar2 #udRole{font:inherit;font-size:13px;font-weight:600;padding:9px 12px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.ud-bar2 #udDept{max-width:260px}
 .ud-bar2 input:focus,.ud-bar2 select:focus{outline:none;border-color:var(--blue)}
 .ud-bar2 .count{font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap;margin-left:auto}
 .ud-add{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;margin:0 0 14px;background:#f5f8fd;border:1px solid var(--border);border-radius:12px}
