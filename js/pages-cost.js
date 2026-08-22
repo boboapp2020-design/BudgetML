@@ -145,8 +145,9 @@ const PagesCost = (() => {
       if (!arr.length) return '';
       return metricSubmitted(key) ? ' <span class="uc-st uc-st-ok">✅ ส่งแล้ว</span>' : ' <span class="uc-st uc-st-wait">⏳ ยังไม่ส่ง</span>';
     };
-    // อ่านอย่างเดียว — ปริมาณดึงจาก Assumption: คาดการณ์ (col13) · เกิดจริง+คาดการณ์ (col16) · ไม่กรอกในหน้านี้แล้ว
-    const AS_FC_COL = 13;  // คาดการณ์ ก.ย-ธ.ค · Realistic
+    // อ่านอย่างเดียว — ปริมาณดึงจาก Assumption: คาดการณ์ = งบต้นปี Opt (col5) · เกิดจริง+คาดการณ์ (col16)
+    // แถวที่แมพ: ปริมาณอ้อย-ไร่บริษัท (i21) · ไร่ส่งเสริม (i36) · ปริมาณน้ำตาล-ผลิต (i81)
+    const AS_FC_COL = 6;   // งบต้นปี · Realistic (ตามที่ผู้ใช้ระบุ)
     const asVal = (m, col) => { const r = AS_ROW[m]; if (r == null) return null; const g = asGrid(); return (g && g[r]) ? (g[r][col] || 0) : null; };
     const volCell = v => v == null ? '<span class="muted">—</span>' : `<b>${fmt(Math.round(v))}</b>`;
     const volRows = Store.VOLUME_METRICS.map(m => {
