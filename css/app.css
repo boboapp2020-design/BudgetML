@@ -1842,10 +1842,9 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table td.as-fcell .as-cell:focus { background:#fff; outline:2px solid #7a889a; }
 
 /* Assumption ฝั่ง User — ช่องกรอกสีชมพู (ตรงกับไฟล์ Excel) + ปุ่มรอบ */
-/* หน้า User MTP — ทุกช่องพื้นขาว ยกเว้นช่องกรอก = ชมพู */
-.as-table.asu-table tbody td { background: #fff !important; }
-.as-table.asu-table tbody tr.as-main td { background: #fff !important; }
-.as-table.asu-table tbody td.asu-in { background: #fbe4f3 !important; }
+/* หน้า User MTP — แถวย่อยพื้นขาว · แถวรวม (main) คงสีเดิม · ช่องกรอก = ชมพู */
+.as-table.asu-table tbody tr.as-sub td { background: #fff !important; }
+.as-table.asu-table tbody tr.as-sub td.asu-in, .as-table.asu-table tbody td.asu-in { background: #fbe4f3 !important; }
 .asu-table td.asu-in .as-cell { background: transparent; }
 .asu-table td.asu-in .as-cell:hover { background: #f6d0ea; }
 .asu-table td.asu-in .as-cell:focus { background: #fff; outline: 2px solid #d4537e; }
