@@ -67,8 +67,8 @@ const PagesCost = (() => {
     const yearLocked = !Store.isYearEditable(year);
     const metricSubmitted = key => { const eds = editorsCfg[key] || []; return eds.length > 0 && eds.every(c => Store.pptSubmitted(year, c)); };
     const committed = key => yearLocked || metricSubmitted(key);
-    // ตัวหาร /ตัน = ปริมาณ "เกิดจริง+คาดการณ์ (Realistic)" ดึงจากหน้า Assumption (MTP) — ไม่กรอกในหน้านี้แล้ว
-    const AS_COL = 16; // เกิดจริง+คาดการณ์ · Realistic
+    // ตัวหาร /ตัน + คอลัมน์แสดง = ปริมาณ "เกิดจริง+คาดการณ์ (Pess)" ดึงจากหน้า Assumption (MTP) — ไม่กรอกในหน้านี้แล้ว
+    const AS_COL = 17; // เกิดจริง+คาดการณ์ · Pessimistic (ตามที่ผู้ใช้ระบุ)
     const AS_ROW = { caneCompany: 21, caneCommunity: 36, sugarProduce: 81 }; // แถว 4/5/13 (0-based)
     let _asGrid, _asTried = false;
     const asGrid = () => { if (!_asTried) { _asTried = true; try { _asGrid = (typeof PagesAssum !== 'undefined' && PagesAssum.grid) ? PagesAssum.grid() : null; } catch (e) { _asGrid = null; } } return _asGrid; };
