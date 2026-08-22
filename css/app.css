@@ -1794,8 +1794,8 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table th.as-name, .as-table td.as-name { position: sticky; left: 70px; z-index: 2; background: #fff; min-width: 210px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; text-align:left; }
 .as-table th.as-unit, .as-table td.as-unit { position: sticky; left: 280px; z-index: 2; background: #fbfcfe; min-width: 78px; text-align:left; color:#667; }
 .as-table thead th.as-note, .as-table thead th.as-ord, .as-table thead th.as-name, .as-table thead th.as-unit, .as-table thead th.as-remark { background:#1f3a5f; z-index:4; color:#fff !important; }
-/* ผู้รับผิดชอบ — ย้ายมาตรึงซ้ายหลัง "หน่วย" (เห็นตลอด) */
-.as-table th.as-remark, .as-table td.as-remark { position: sticky; left: 358px; z-index: 2; min-width: 92px; text-align: left; }
+/* ผู้รับผิดชอบ — คอลัมน์ท้ายสุด (ไม่ freeze) */
+.as-table th.as-remark, .as-table td.as-remark { min-width: 92px; text-align: left; }
 .as-table.mtp3 thead th.as-remark { top: 0; height: 58px; }
 .as-table tr.as-main td.as-remark { background: #d6dff8 !important; }
 .as-table tr.as-sub.as-alt td.as-remark { background: #f2f5fb; }

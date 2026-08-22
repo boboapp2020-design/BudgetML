@@ -208,18 +208,18 @@ const PagesAssum = (() => {
         <td class="as-ord">${esc(order ?? '')}</td>
         <td class="as-name" title="${esc(name ?? '')}">${esc(name ?? '')}</td>
         <td class="as-unit">${esc(unit ?? '')}</td>
-        <td class="as-remark">${esc(remark ?? '')}</td>
-        ${cells}</tr>`;
+        ${cells}
+        <td class="as-remark">${esc(remark ?? '')}</td></tr>`;
     }
     const th = `<tr>
         <th class="as-note" rowspan="2">Note</th><th class="as-ord" rowspan="2">ลำดับ</th>
         <th class="as-name" rowspan="2">สมมุติฐาน</th><th class="as-unit" rowspan="2">หน่วย</th>
-        <th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th>${head1}</tr><tr>${head2}</tr>`;
+        ${head1}<th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th></tr><tr>${head2}</tr>`;
     return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
          <button data-as-lock class="ghost-btn small${Store.assumLocked(year) ? ' as-locked' : ''}" title="ล็อก/ปลดล็อกการกรอกของ User (ปีนี้)">${Store.assumLocked(year) ? '🔒 ล็อกอยู่ (คลิกปลด)' : '🔓 เปิดให้กรอก'}</button>
          <span class="pa-right">
-           <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit'}</button>
+           <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit: ปิด'}</button>
            <button data-as-cancel class="ghost-btn small" disabled title="ยกเลิกการแก้ที่ยังไม่ Submit">↺ ยกเลิก</button>
            <button data-as-clear class="danger-btn small" title="ล้างค่าที่แก้ทั้งหมด กลับเป็นค่าต้นทาง">🗑 Clear</button>
            <button data-as-submit class="primary-btn small" disabled title="บันทึกค่าที่แก้ขึ้นระบบ (Supabase)">✔ Submit</button>
