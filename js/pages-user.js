@@ -1111,6 +1111,8 @@ const PagesUser = (() => {
         disp.classList.remove('calcu-err');
       } catch (e) { disp.classList.add('calcu-err'); toast('นิพจน์ไม่ถูกต้อง', 'err'); }
     };
+    // แสดงเครื่องหมายแบบจริง: × ÷ − (ภายในคำนวณแปลงกลับเป็น * / - ให้เอง)
+    const pretty = k => k === '*' ? '×' : k === '/' ? '÷' : k === '-' ? '−' : k;
     document.querySelectorAll('[data-ck]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.ck;
       disp.classList.remove('calcu-err');
@@ -1118,11 +1120,17 @@ const PagesUser = (() => {
       else if (k === 'CE') disp.value = disp.value.replace(/[\d.,]+\s*$/, ''); // ล้างตัวเลขล่าสุด
       else if (k === '⌫') disp.value = disp.value.slice(0, -1);
       else if (k === '=') evaluate();
-      else disp.value += k;
+      else disp.value += pretty(k);
       disp.focus();
     }));
     disp.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); evaluate(); }
+    });
+    // พิมพ์จากคีย์บอร์ดก็แปลงเป็นสัญลักษณ์จริงทันที
+    disp.addEventListener('input', () => {
+      const p = disp.selectionStart;
+      const nv = disp.value.replace(/[*x]/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
+      if (nv !== disp.value) { disp.value = nv; disp.setSelectionRange(p, p); }
     });
     document.getElementById('calcuCopy')?.addEventListener('click', () => {
       if (!disp.value) return;
