@@ -112,12 +112,8 @@ const UI = (() => {
     ['กจ\\.|ผอ\\.|ผจก|ผจ\\.|ผู้อำนวยการ|ผู้จัดการ|สำนักงาน', '👔'],
   ];
   const SIDE_ICONS = { '1': '🏢', '2': '🌾', '3': '🏭', '4': '🗂️' };
-  function deptIcon(d) {
-    if (!d) return '👤';
-    const name = d.name || '';
-    for (const [re, ic] of DEPT_ICONS) if (new RegExp(re).test(name)) return ic;
-    return SIDE_ICONS[d.side || (d.code || '')[0]] || '🏢';
-  }
+  // เลิกใช้ไอคอนรายหน่วยงาน (โทนทางการ) — คืนค่าว่าง ชื่อหน่วยงานเด่นด้วย CSS แทน
+  function deptIcon(d) { return ''; }
 
   let selectedYear = null;
   function year() {
@@ -191,7 +187,7 @@ const UI = (() => {
               const roleLabel = user.role === 'ACCOUNTING' ? '👑 ผู้ดูแลระบบ (Admin)'
                 : user.role === 'MANAGER' ? '✅ ผู้อนุมัติ / ผู้ดู — ' + esc(user.name || '')
                 : '📝 ผู้กรอกงบ — ' + esc(Store.dept(user.departmentId)?.name || '');
-              const avatar = user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : deptIcon(Store.dept(user.departmentId));
+              const avatar = user.role === 'ACCOUNTING' ? '🧮' : user.role === 'MANAGER' ? '👔' : '👤';
               // รายการสลับบทบาท (เฉพาะคนหลายบทบาท)
               let switcher = '';
               if (asg.length > 1) {
@@ -286,8 +282,9 @@ const UI = (() => {
         { label: '🔑 บันทึกรหัสผ่านใหม่', cls: 'primary-btn', onClick: close => {
             const o = document.getElementById('pwOld').value, n = document.getElementById('pwNew').value, n2 = document.getElementById('pwNew2').value;
             if (n !== n2) { toast('รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน', 'err'); return; }
-            try { Store.setUserPassword(email, o, n); toast('เปลี่ยนรหัสผ่านเรียบร้อย — ใช้รหัสใหม่ในการเข้าครั้งถัดไป'); close(); }
-            catch (e) { toast(e.message, 'err'); }
+            Store.setUserPassword(email, o, n)
+              .then(() => { toast('เปลี่ยนรหัสผ่านเรียบร้อย — ใช้รหัสใหม่ในการเข้าครั้งถัดไป'); close(); })
+              .catch(e => toast(e.message, 'err'));
           } },
       ]);
     });

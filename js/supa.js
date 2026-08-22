@@ -358,7 +358,12 @@ const Supa = (() => {
           const row = JSON.parse(j);
           dels.push(Object.fromEntries(t.pk.map(f => [f, row[f]])));
         }
-        if (dels.length) await delMany(t.name, dels);
+        // 🛡 mass-delete guard: จะลบเกิน 30% ของตาราง (และเกิน 50 แถว) = ผิดปกติ (เครื่องนี้อาจโหลดข้อมูลไม่ครบ)
+        //    → ไม่ลบอัตโนมัติ กันข้อมูล server หาย · แถวจะถูกลบได้เมื่อ push จากเครื่องที่ข้อมูลครบ
+        if (dels.length > 50 && prev.size > 0 && dels.length / prev.size > 0.3) {
+          console.warn(`[Supa] ข้ามการลบ ${dels.length}/${prev.size} แถวของ ${t.name} — เกิน mass-delete guard`);
+          for (const [k, j] of prev) if (!cur.has(k)) cur.set(k, j);   // คง baseline ของแถวที่ไม่ลบ (กันลบรอบหน้า)
+        } else if (dels.length) await delMany(t.name, dels);
       }
       baseline[t.name] = cur;
     }

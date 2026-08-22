@@ -85,26 +85,46 @@ const Store = (() => {
     sessionStorage.setItem(SES_KEY, u.id);
     return u;
   }
-  function logout() { sessionStorage.removeItem(SES_KEY); }
+  function logout() {
+    sessionStorage.removeItem(SES_KEY);
+    sessionStorage.removeItem('abp_email'); sessionStorage.removeItem('abp_roleid');
+  }
 
-  /* ---------- รหัสผ่าน (ค่าเริ่มต้น 'a' · admin key '__admin__' ค่าเริ่มต้น 1234) ----------
-   * เก็บใน db.userPasswords [{email, pass, changedAt}] → sync ตาราง user_passwords (optional) */
+  /* ---------- รหัสผ่าน — เก็บเป็น SHA-256 hash (คำนำหน้า sha256:) ไม่เก็บ plaintext ----------
+   * ค่าเริ่มต้น 'a' · admin key '__admin__' ค่าเริ่มต้น 1234
+   * แถวเก่าที่เป็น plaintext: อัปเกรดเป็น hash อัตโนมัติเมื่อ login สำเร็จครั้งถัดไป */
   const DEFAULT_EMAIL_PASS = 'a';
   const pwDefault = key => key === '__admin__' ? '1234' : DEFAULT_EMAIL_PASS;
+  async function hashPw(s) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('ibud:' + String(s)));
+    return 'sha256:' + [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
   function passwordFor(email) {
     const key = String(email || '').trim().toLowerCase();
     return (db.userPasswords || []).find(x => x.email === key)?.pass || pwDefault(key);
   }
-  function setUserPassword(email, oldPass, newPass) {
+  // ตรวจรหัส (รองรับทั้ง hash และ plaintext เก่า) — plaintext ที่ตรง → อัปเกรดเป็น hash ทันที
+  async function verifyPassword(email, plain) {
+    const key = String(email || '').trim().toLowerCase();
+    const stored = passwordFor(key);
+    if (String(stored).startsWith('sha256:')) return (await hashPw(plain)) === stored;
+    const ok = String(plain) === String(stored);
+    if (ok) {   // lazy migration: แทน plaintext บนระบบด้วย hash
+      const row = (db.userPasswords || []).find(x => x.email === key);
+      if (row) { row.pass = await hashPw(plain); row.changedAt = new Date().toISOString(); save(); }
+    }
+    return ok;
+  }
+  async function setUserPassword(email, oldPass, newPass) {
     const key = String(email || '').trim().toLowerCase();
     if (!key) throw new Error('ไม่พบอีเมลของผู้ใช้');
-    if (String(oldPass) !== passwordFor(key)) throw new Error('รหัสผ่านปัจจุบันไม่ถูกต้อง');
+    if (!(await verifyPassword(key, oldPass))) throw new Error('รหัสผ่านปัจจุบันไม่ถูกต้อง');
     newPass = String(newPass || '');
     if (newPass.length < 4) throw new Error('รหัสผ่านใหม่ต้องยาวอย่างน้อย 4 ตัวอักษร');
     if (!db.userPasswords) db.userPasswords = [];
     let row = db.userPasswords.find(x => x.email === key);
-    if (!row) { row = { email: key, pass: newPass, changedAt: null }; db.userPasswords.push(row); }
-    row.pass = newPass;
+    if (!row) { row = { email: key, pass: '', changedAt: null }; db.userPasswords.push(row); }
+    row.pass = await hashPw(newPass);
     row.changedAt = new Date().toISOString();
     save();
   }
@@ -2076,7 +2096,7 @@ const Store = (() => {
   return {
     get db() { return db; },
     save, saveSilent, setAfterSave, adoptDb, resetDemo,
-    login, loginByUsername, logout, currentUser, passwordFor, setUserPassword,
+    login, loginByUsername, logout, currentUser, passwordFor, setUserPassword, verifyPassword,
     directory, baseDirectory, directoryAccount, addUserAccount, removeUserAccount, addUserRole, removeUserRole, resetUserPassword,
     dept, gl, glByCode, period, activeDepartments, deptGLs,
     oversight, oversightUnit, childUnits, subtreeDeptCodes, subtreeDepartments, subtreeUnits, unitOfDept,

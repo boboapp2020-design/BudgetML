@@ -131,20 +131,20 @@ const App = (() => {
       enter(user);
     };
 
-    const doLogin = () => {
+    const doLogin = async () => {
       const raw = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('deptPin').value;
       if (!raw) { UI.toast('กรุณากรอกอีเมล (หรือ admin)', 'err'); return; }
-      // ผู้ดูแลระบบ — ไม่ใช้อีเมล: admin / (รหัสเริ่มต้น 1234 · เปลี่ยนได้)
+      // ผู้ดูแลระบบ — ไม่ใช้อีเมล: admin / (รหัสเริ่มต้น 1234 · เปลี่ยนได้) — ตรวจแบบ hash
       if (raw.toLowerCase() === 'admin') {
-        if (pw !== Store.passwordFor('__admin__')) { UI.toast('รหัสผ่าน admin ไม่ถูกต้อง', 'err'); return; }
+        if (!(await Store.verifyPassword('__admin__', pw))) { UI.toast('รหัสผ่าน admin ไม่ถูกต้อง', 'err'); return; }
         return loginAs('accounting', null);
       }
       if (!raw.includes('@')) { UI.toast('กรอกอีเมลบริษัท เช่น yourname@mitrphol.com', 'err'); return; }
       const email = EmailAuth.norm(raw);
       const asg = EmailAuth.assignmentsFor(email);
       if (!asg.length) { UI.toast('ไม่พบอีเมลนี้ในระบบ — ติดต่อแผนกบัญชี (ผู้ดูแลระบบ)', 'err'); return; }
-      if (pw !== Store.passwordFor(email)) { UI.toast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
+      if (!(await Store.verifyPassword(email, pw))) { UI.toast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
       // เข้าเลย — บทบาทเริ่มต้น = อันแรก (ผู้กรอกก่อน ตาม sort) · สลับบทบาทได้ในเมนูโปรไฟล์
       loginAs(asg[0].id, email);
     };

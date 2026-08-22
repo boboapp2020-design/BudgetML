@@ -1899,3 +1899,7 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .card { border: 1px solid var(--border); }
 /* KPI: ตัวเลขเข้ม อ่านเป็นทางการ */
 .kpi-value { color: var(--navy); font-weight: 700; }
+
+/* ชื่อหน่วยงานในตาราง: เข้ม ชัด เด่น (แทนไอคอนที่เอาออก) */
+.data-table td b, .data-table td > b { color: #12203b; font-weight: 700; letter-spacing: .005em; }
+.data-table td .muted.small { color: #8b96a8; font-size: 11px; letter-spacing: .03em; }
