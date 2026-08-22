@@ -2286,7 +2286,7 @@ const PagesAcc = (() => {
       try {
         Store.addUserAccount(user, email);
         const [k, id] = rl.value.split('|'); Store.addUserRole(user, email, k, id);
-        toast('เพิ่มผู้ใช้แล้ว'); el.value = ''; rl.value = ''; openUserModal(user, email);
+        toast('เพิ่มผู้ใช้แล้ว ✓'); el.value = ''; rl.value = ''; App.render();
       } catch (e) { toast(e.message, 'err'); }
     });
     document.querySelectorAll('.ur2').forEach(row => {
