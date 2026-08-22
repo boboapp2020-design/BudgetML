@@ -162,7 +162,7 @@ const Charts = (() => {
         const h = (H - padB - padT) * v / max;
         const x = cx - barW * series.length / 2 + si * barW + (si > 0 ? 2 : 0);
         const r = el('rect', { x, y: H - padB - h, width: barW - (series.length > 1 ? 2 : 0), height: Math.max(h, v > 0 ? 2 : 0), fill: barGrad(svg, s.color, true), rx: 3 });
-        r.addEventListener('mousemove', ev => showTip(ev, `<b>${lab}</b><br>${s.name}: <b>${fmtFull(v)}</b> กีบ`));
+        r.addEventListener('mousemove', ev => showTip(ev, `<b>${lab}</b><br>${UI.esc(s.name)}: <b>${fmtFull(v)}</b> กีบ`));
         r.addEventListener('mouseleave', hideTip);
         svg.appendChild(r);
       });
@@ -194,7 +194,7 @@ const Charts = (() => {
       svg.appendChild(el('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round' }));
       s.values.forEach((v, i) => {
         const c = el('circle', { cx: px(i), cy: py(v ?? 0), r: 3.5, fill: s.color, stroke: '#fcfcfb', 'stroke-width': 1.5 });
-        c.addEventListener('mousemove', ev => showTip(ev, `<b>${labels[i]}</b><br>${s.name}: <b>${fmtFull(v ?? 0)}</b> กีบ`));
+        c.addEventListener('mousemove', ev => showTip(ev, `<b>${labels[i]}</b><br>${UI.esc(s.name)}: <b>${fmtFull(v ?? 0)}</b> กีบ`));
         c.addEventListener('mouseleave', hideTip);
         svg.appendChild(c);
       });
@@ -275,7 +275,7 @@ const Charts = (() => {
   function legend(container, series) {
     const lg = document.createElement('div');
     lg.className = 'chart-legend';
-    lg.innerHTML = series.map(s => `<span class="lg-item"><span class="dl-dot" style="background:${s.color}"></span>${s.name}</span>`).join('');
+    lg.innerHTML = series.map(s => `<span class="lg-item"><span class="dl-dot" style="background:${s.color}"></span>${UI.esc(s.name)}</span>`).join('');
     container.appendChild(lg);
     addTools(container);
   }

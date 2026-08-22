@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>รายงานตรวจช่องโหว่ความปลอดภัย — iBud</title>
+<style>
+body{font-family:"IBM Plex Sans Thai","Segoe UI","Leelawadee UI",sans-serif;background:#f3f5f8;color:#14181f;margin:0;padding:32px;line-height:1.65}
+.wrap{max-width:900px;margin:0 auto}
+h1{color:#0e2f5c;font-size:24px;margin:0 0 4px}
+.sub{color:#7d8695;margin-bottom:24px}
+.card{background:#fff;border:1px solid #dde2ea;border-radius:8px;padding:18px 22px;margin-bottom:14px;box-shadow:0 1px 2px rgba(14,47,92,.06)}
+.sev{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;margin-right:8px}
+.s1{background:#fbeded;color:#b32d2d}.s2{background:#fdf6e7;color:#c98a00}.s3{background:#e8f3ec;color:#1c7a3a}
+h2{font-size:16px;margin:0 0 6px;display:flex;align-items:center}
+code{background:#eef1f6;padding:1px 6px;border-radius:4px;font-size:12.5px}
+.fix{margin-top:8px;padding:10px 14px;background:#f0f5fb;border-left:3px solid #1f5da8;border-radius:0 6px 6px 0;font-size:13.5px}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+td,th{border:1px solid #dde2ea;padding:6px 10px;text-align:left}
+th{background:#0e2f5c;color:#fff;font-weight:600}
+</style></head><body><div class="wrap">
+<h1>🛡 รายงานตรวจช่องโหว่ความปลอดภัย — ระบบงบประมาณ iBud</h1>
+<div class="sub">ตรวจ ณ 22 ส.ค. 2026 (v20.18) · ขอบเขต: โค้ดฝั่งเว็บทั้งหมด + โครง Supabase + นโยบาย RLS</div>
+
+<div class="card"><h2><span class="sev s1">วิกฤต</span> 1. ฐานข้อมูลเปิดให้เขียนแบบไม่ต้องยืนยันตัวตน (anon full access)</h2>
+ทุกตารางใช้ policy <code>using (true) with check (true)</code> สำหรับ anon key ซึ่ง<b>ฝังอยู่ในซอร์สหน้าเว็บ</b> — ใครที่เปิดเว็บได้ ก็คัดลอก key แล้วอ่าน/แก้/ลบข้อมูลทุกตารางผ่าน REST ได้โดยตรง (งบ เกิดจริง audit log รหัสผ่าน)
+<div class="fix"><b>วิธีแก้ (เตรียมไว้แล้วในโปรเจกต์):</b> รัน <code>supabase/auth-setup.sql</code> — เปิด Supabase Auth + RLS ตามบทบาท (<code>is_acct()</code> เขียนได้ทุกตาราง · user เขียนได้เฉพาะแผนกตน · anon อ่าน/เขียนไม่ได้เลย) แล้วให้แอปล็อกอินผ่าน <code>Supa.signIn</code> · มี <code>auth-revert.sql</code> ไว้ย้อนกลับ · <u>นี่คือช่องโหว่ที่ควรปิดก่อนใช้งานจริงข้ามองค์กร</u></div></div>
+
+<div class="card"><h2><span class="sev s1">วิกฤต</span> 2. รหัสผ่านเก็บเป็นข้อความล้วน (plaintext) และค่าเริ่มต้นเดาง่าย</h2>
+ผู้ใช้ทุกคนรหัส <code>1234</code> (ผู้กรอกงบ default <code>a</code>) เก็บ plaintext ใน <code>users</code>/<code>user_passwords</code> และ sync ขึ้น Supabase — ประกอบกับข้อ 1 = ใครก็อ่านรหัสทุกคนได้
+<div class="fix"><b>วิธีแก้:</b> ย้ายไปใช้ Supabase Auth (ทำพร้อมข้อ 1 — รหัสถูก hash โดยระบบ) · ระหว่างรอ: บังคับเปลี่ยนรหัสครั้งแรก + อย่าใช้รหัสร่วมชุดเดียว</div></div>
+
+<div class="card"><h2><span class="sev s2">สูง</span> 3. การตรวจสิทธิ์ทั้งหมดอยู่ฝั่ง client</h2>
+<code>assertAccounting / assertAssum / canEditVolume</code> ตรวจใน JavaScript — ผู้ใช้เปิด DevTools เรียก <code>Store.*</code> ตรงๆ หรือยิง REST ข้ามได้ (ล็อก/ส่งแล้ว กันได้เฉพาะคนใช้งานปกติ ไม่กันคนตั้งใจ)
+<div class="fix"><b>วิธีแก้:</b> RLS ตามบทบาท (ข้อ 1) คือคำตอบจริง — สิทธิ์ต้องบังคับที่ฐานข้อมูล ไม่ใช่หน้าจอ</div></div>
+
+<div class="card"><h2><span class="sev s2">สูง</span> 4. Sync แบบ "ลบสิ่งที่ไม่มีในเครื่อง" (delete-missing)</h2>
+<code>pushDiff</code> upsert + ลบแถวที่เครื่องไม่มี — ถ้าเครื่องไหนโหลด db ไม่ครบแล้ว push จะ<b>ลบข้อมูลบน server</b> (มี guard ตรวจความครบอยู่บางส่วนแล้ว แต่ยังพึ่ง heuristic)
+<div class="fix"><b>วิธีแก้:</b> คง guard + เพิ่ม: ห้าม push ถ้าจำนวนแถวลดลงเกิน N% จากรอบก่อน · สำรองอัตโนมัติก่อน push ใหญ่ (มี backup มือทำอยู่แล้วใน <code>backup/</code>)</div></div>
+
+<div class="card"><h2><span class="sev s2">กลาง</span> 5. Audit log แก้ไข/ลบได้จาก client</h2>
+ตาราง audit เขียนจาก client โดยตรง — ผู้ไม่หวังดี (ข้อ 1) ลบร่องรอยตัวเองได้
+<div class="fix"><b>วิธีแก้:</b> policy ให้ตาราง audit_logs เป็น <code>insert-only</code> (ห้าม update/delete จากทุก role ยกเว้น service key)</div></div>
+
+<div class="card"><h2><span class="sev s2">กลาง</span> 6. ข้อมูลทั้งฐานเก็บใน localStorage</h2>
+เครื่องสาธารณะ/เครื่องร่วม — คนถัดไปเปิดเว็บเจอข้อมูลงบทั้งบริษัท (รวมรหัสผ่านใน db.users)
+<div class="fix"><b>วิธีแก้:</b> ปุ่ม logout ควรล้าง localStorage · หลังใช้ Auth จริง เก็บเฉพาะ token ไม่เก็บรหัส</div></div>
+
+<div class="card"><h2><span class="sev s3">ต่ำ · แก้แล้ว ✓</span> 7. XSS จุดเล็กใน tooltip กราฟ</h2>
+ชื่อ series/GL ใน tooltip กราฟ (<code>charts.js</code>) แสดงโดยไม่ escape — แก้แล้ว (v20.18) ครอบ <code>UI.esc()</code> ครบ 3 จุด · ส่วนอื่นของแอปครอบ <code>esc()</code> อยู่แล้วทั่วถึง (ตรวจ ~แถวชื่อ/เหตุผล/โน้ตทั้งหมด)</div>
+
+<div class="card"><h2>📋 สรุปลำดับความสำคัญ</h2>
+<table><tr><th>#</th><th>เรื่อง</th><th>ความเสี่ยง</th><th>สถานะ</th></tr>
+<tr><td>1</td><td>เปิด RLS ตามบทบาท (auth-setup.sql)</td><td>วิกฤต</td><td>⏳ รอตัดสินใจ — ต้องย้ายผู้ใช้เข้า Supabase Auth</td></tr>
+<tr><td>2</td><td>เลิกรหัสผ่าน plaintext</td><td>วิกฤต</td><td>⏳ ทำพร้อมข้อ 1</td></tr>
+<tr><td>3</td><td>สิทธิ์บังคับที่ DB</td><td>สูง</td><td>⏳ ได้พร้อมข้อ 1</td></tr>
+<tr><td>4</td><td>กัน push ลบข้อมูล</td><td>สูง</td><td>🟡 มี guard บางส่วน</td></tr>
+<tr><td>5</td><td>Audit log insert-only</td><td>กลาง</td><td>⏳ SQL 3 บรรทัด</td></tr>
+<tr><td>6</td><td>ล้าง localStorage ตอน logout</td><td>กลาง</td><td>⏳ แก้เล็ก</td></tr>
+<tr><td>7</td><td>XSS tooltip กราฟ</td><td>ต่ำ</td><td>✅ แก้แล้ว v20.18</td></tr></table>
+<p style="margin-top:10px;color:#4a5160">ข้อ 1–3 คือแกนเดียวกัน: ระบบนี้ออกแบบเป็น trust-ภายในองค์กร ใช้ในวงปิดได้ แต่ถ้าจะเปิดใช้กว้าง (อินเทอร์เน็ต/หลายสาขา) ต้องเปิด Supabase Auth + RLS ก่อน — สคริปต์พร้อมอยู่แล้ว บอกได้เลยครับเดี๋ยวช่วย migrate</p></div>
+</div></body></html>

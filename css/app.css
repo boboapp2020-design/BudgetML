@@ -4,14 +4,14 @@
  * ============================================================= */
 
 :root {
-  --navy: #0d366b; --navy-2: #104281; --blue: #256abf; --blue-soft: #86b6ef;
-  --bg: #f9f9f7; --surface: #fcfcfb; --border: #e1e0d9; --border-strong: #c3c2b7;
-  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
-  --up: #d03b3b; --down: #006300; --warn-bg: #fff7e6; --warn-bd: #eda100;
-  --crit-bg: #fdecec; --crit-bd: #d03b3b; --ok: #0ca30c;
-  --radius: 10px;
-  --shadow: 0 1px 2px rgba(13,54,107,.05), 0 4px 16px rgba(13,54,107,.07);
-  --shadow-lg: 0 4px 10px rgba(13,54,107,.08), 0 12px 32px rgba(13,54,107,.14);
+  --navy: #0e2f5c; --navy-2: #123a70; --blue: #1f5da8; --blue-soft: #8fb3dd;
+  --bg: #f3f5f8; --surface: #ffffff; --border: #dde2ea; --border-strong: #b9c2cf;
+  --ink: #14181f; --ink-2: #4a5160; --muted: #7d8695;
+  --up: #b32d2d; --down: #1c6b34; --warn-bg: #fdf6e7; --warn-bd: #c98a00;
+  --crit-bg: #fbeded; --crit-bd: #b32d2d; --ok: #1c7a3a;
+  --radius: 8px;
+  --shadow: 0 1px 2px rgba(14,47,92,.06), 0 2px 8px rgba(14,47,92,.05);
+  --shadow-lg: 0 2px 6px rgba(14,47,92,.08), 0 8px 22px rgba(14,47,92,.10);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
@@ -29,7 +29,7 @@ a { color: var(--blue); }
 .app { display: flex; min-height: 100vh; }
 .sidebar {
   width: 236px; flex-shrink: 0; color: #fff;
-  background: linear-gradient(175deg, #1c3faa 0%, #0d366b 45%, #123c8f 100%);
+  background: linear-gradient(175deg, #10315f 0%, #0c2749 55%, #0e2f5c 100%);
   display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto;
   box-shadow: 4px 0 20px rgba(6, 22, 58, .22); z-index: 40;
 }
@@ -1676,12 +1676,12 @@ td.copyable.muted{color:#a9b4c4;cursor:default}
  *  บล็อกนี้อยู่ท้ายไฟล์ = ชนะทุก rule ก่อนหน้า (รวม glossy !important)
  * ============================================================= */
 :root{
-  --navy:#12203b; --navy-2:#1b2a47; --blue:#2e7cf6; --blue-soft:#8ab5f9;
-  --bg:#f5f7fb; --surface:#ffffff; --border:#e8edf5; --border-strong:#d4dcea;
+  --navy:#12203b; --navy-2:#1b2f52; --blue:#1d5a9e; --blue-soft:#9db8dc;
+  --bg:#f4f6f9; --surface:#ffffff; --border:#e3e8f0; --border-strong:#ccd5e2;
   --ink:#0d1526; --ink-2:#44536b; --muted:#7b899e;
-  --radius:12px;
-  --shadow:0 1px 2px rgba(31,43,67,.06),0 4px 12px rgba(31,43,67,.09),0 12px 24px rgba(31,43,67,.06);
-  --shadow-lg:0 2px 4px rgba(31,43,67,.08),0 10px 24px rgba(31,43,67,.13),0 24px 48px rgba(31,43,67,.10);
+  --radius:8px;
+  --shadow:0 1px 2px rgba(31,43,67,.06),0 3px 10px rgba(31,43,67,.07);
+  --shadow-lg:0 2px 4px rgba(31,43,67,.07),0 8px 20px rgba(31,43,67,.11);
 }
 body{background:var(--bg)}
 
@@ -1693,7 +1693,7 @@ body{background:var(--bg)}
 .brand-link:hover{background:#f2f6fd}
 .nav-item{color:#4a5a74;font-weight:600}
 .nav-item:hover{background:#eef4fe;color:var(--blue)}
-.nav-item.active{background:linear-gradient(135deg,#2e7cf6,#2168e6) !important;color:#fff !important;font-weight:700;box-shadow:0 6px 16px rgba(46,124,246,.32) !important}
+.nav-item.active{background:linear-gradient(135deg,#1b3a68,#12294d) !important;color:#fff !important;font-weight:700;box-shadow:0 4px 12px rgba(18,41,77,.28) !important}
 .nav-item.active .nav-ic{filter:none}
 .nav-tx small{color:#9aa7bb}
 .nav-item.active .nav-tx small{color:rgba(255,255,255,.82)}
@@ -1706,7 +1706,7 @@ body{background:var(--bg)}
 .pc-badge.closed{background:#dbe6f7;color:#3a5788}
 .pc-range{color:#7286a8}
 .pc-bar{background:#d3e0f5}
-.pc-fill{background:linear-gradient(90deg,#2e7cf6,#5b9bfa)}
+.pc-fill{background:linear-gradient(90deg,#1d5a9e,#3f7cbf)}
 
 /* ---------- Topbar: ขาวแบน เงาจาง ---------- */
 .topbar{background:#fff !important;border-bottom:1px solid var(--border-strong);box-shadow:0 1px 8px rgba(31,43,67,.05) !important;backdrop-filter:none}
@@ -1723,7 +1723,7 @@ body{background:var(--bg)}
 .card svg{filter:drop-shadow(0 4px 8px rgba(31,43,67,.12))}
 .kpi,.kpi-c{background:linear-gradient(180deg,#ffffff,#fbfcff) !important;border:1px solid var(--border) !important;border-radius:14px;box-shadow:var(--shadow) !important;transition:transform .16s ease,box-shadow .2s ease}
 .kpi:hover,.kpi-c:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg) !important}
-.kpi-tint-blue{box-shadow:0 2px 4px rgba(46,124,246,.10),0 10px 22px rgba(46,124,246,.16),0 20px 40px rgba(31,43,67,.06) !important}
+.kpi-tint-blue{box-shadow:0 2px 4px rgba(29,90,158,.08),0 8px 18px rgba(29,90,158,.12),0 20px 40px rgba(31,43,67,.06) !important}
 .kpi-tint-teal{box-shadow:0 2px 4px rgba(13,148,136,.10),0 10px 22px rgba(13,148,136,.16),0 20px 40px rgba(31,43,67,.06) !important}
 .kpi-tint-green{box-shadow:0 2px 4px rgba(22,163,74,.10),0 10px 22px rgba(22,163,74,.15),0 20px 40px rgba(31,43,67,.06) !important}
 .kpi-tint-amber{box-shadow:0 2px 4px rgba(217,119,6,.10),0 10px 22px rgba(217,119,6,.16),0 20px 40px rgba(31,43,67,.06) !important}
@@ -1741,8 +1741,8 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .uc-fill-foot.done .uc-st-ok{font-size:13.5px}
 
 /* ---------- ปุ่ม: ทึบสีเดียว มน ไม่มี gradient ---------- */
-.primary-btn{background:var(--blue) !important;background-image:none !important;border:none;border-radius:11px;font-weight:700;box-shadow:0 1px 2px rgba(46,124,246,.25)}
-.primary-btn:hover{transform:none;background:#2470e8 !important;box-shadow:0 4px 12px rgba(46,124,246,.3)}
+.primary-btn{background:var(--blue) !important;background-image:none !important;border:none;border-radius:11px;font-weight:700;box-shadow:0 1px 2px rgba(29,90,158,.25)}
+.primary-btn:hover{transform:none;background:#164a85 !important;box-shadow:0 3px 10px rgba(22,74,133,.3)}
 .ghost-btn{border-radius:11px;border-color:var(--border-strong);box-shadow:none}
 .ghost-btn:hover{transform:none;border-color:var(--blue);color:var(--blue);box-shadow:none}
 .danger-btn{border-radius:11px}
@@ -1885,3 +1885,17 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 /* หน้าต้นทุน: ปุ่มสลับชุดตัวหาร */
 .uc-divmode { display:flex; gap:6px; margin: 0 0 10px; }
 .uc-divmode .uc-dm-on { background:#1f3a5f; color:#fff; border-color:#1f3a5f; font-weight:700; }
+
+/* ============ Formal financial polish (v20.17) ============ */
+/* ตัวเลขการเงิน: tabular figures — หลักตรงคอลัมน์ทุกตาราง */
+.data-table td.num, .data-table th.num, .kpi-value, .as-table td, .uc-table td.num,
+.cmp-kpi b, .ehs-value, td[class*=num] { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* หัวตาราง: ขรึม สม่ำเสมอ */
+.data-table thead th { text-transform: none; letter-spacing: .01em; font-weight: 600; }
+/* ปุ่มหลักโทนเนวี่ */
+.primary-btn { background: var(--navy-2); border-color: var(--navy-2); }
+.primary-btn:hover { background: var(--navy); border-color: var(--navy); }
+/* การ์ด: เส้นขอบชัด เงาเบา */
+.card { border: 1px solid var(--border); }
+/* KPI: ตัวเลขเข้ม อ่านเป็นทางการ */
+.kpi-value { color: var(--navy); font-weight: 700; }
