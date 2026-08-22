@@ -749,7 +749,7 @@ const PagesUser = (() => {
     document.getElementById('calcOpenBtn')?.addEventListener('click', () => {
       const back = UI.modal(`<span class="mt-ic mt-rainbow">🧮</span><span class="mt-tx">เครื่องมือคำนวณ<small>Financial Tools &amp; Calculators</small></span>`,
         calcCards(user), [{ label: 'ปิด', cls: 'ghost-btn' }]);
-      back.querySelector('.modal').classList.add('modal-wide');
+      back.querySelector('.modal').classList.add('modal-tools');
       calculatorsBind(user);
     });
     document.getElementById('ioViewBtn')?.addEventListener('click', () => {

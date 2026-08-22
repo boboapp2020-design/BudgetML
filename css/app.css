@@ -1916,3 +1916,10 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .ft-grid input, .ft-grid select, .ft-grid .suffix-wrap { border: 1.5px solid var(--border-strong) !important; border-radius: 8px; background: #fff; }
 .ft-grid .suffix-wrap input { border: none !important; }
 .ft-grid input:focus, .ft-grid select:focus, .ft-grid .suffix-wrap:focus-within { border-color: var(--blue) !important; outline: none; box-shadow: 0 0 0 2px rgba(29,90,158,.15); }
+
+/* เครื่องมือคำนวณ: modal พอดีเนื้อหา (แท็บเดียวต่อครั้ง) */
+.modal.modal-tools { width: min(680px, 94vw); }
+.modal.modal-tools .ft-pane.active { max-width: none; }
+/* ชื่อหน่วยงานมุมขวาบน: กรอบน้ำเงินชัด */
+.user-chip, .user-chip.uc-clickable { border: 1.5px solid var(--navy-2) !important; border-radius: 999px; padding: 5px 14px; background: #fff; }
+.user-chip .uc-name { color: var(--navy); font-weight: 700; }
