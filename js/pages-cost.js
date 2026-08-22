@@ -107,8 +107,11 @@ const PagesCost = (() => {
     const perCane = (a, div) => { const d = DIV[div]; return (a == null || d == null || d <= 0) ? null : a / d; };
     const perSugar = a => (a == null || DIV.sugar == null || DIV.sugar <= 0) ? null : a / DIV.sugar;
     const divCell = v => v == null ? '<span class="muted">— ยังไม่ส่ง</span>' : fmt(Math.round(v));
-    // อัตรา THB (กีบ/บาท) จากหน้า Budget Control — เปลี่ยนอัตราแล้ว บาท/ตัน เปลี่ยนตาม
-    const thbRate = (Store.db.exchangeRates || []).find(x => x.year === year && x.currency === 'THB')?.rateToLAK || 0;
+    // อัตรา THB (กีบ/บาท) "ประจำรอบ" — จากแถว LAK:THB (24.3, i175) ของ Assumption:
+    //  ÷คาดการณ์ ใช้อัตราคอลัมน์งบต้นปี (snapshot ตอนล็อกรอบ) · ÷เกิดจริง+คาดการณ์ ใช้อัตราคอลัมน์คาดการณ์ (สดจาก Budget Control จนกว่าจะล็อก)
+    const bcRate = (Store.db.exchangeRates || []).find(x => x.year === year && x.currency === 'THB')?.rateToLAK || 0;
+    const fxOf = col => { const g = asGrid(); const v = (g && g[175]) ? g[175][col] : 0; return v > 0 ? v : 0; };
+    const thbRate = (divMode === 'fc' ? fxOf(BUD_COL) : fxOf(ACT_COL)) || bcRate;
     const toBaht = v => (v == null || thbRate <= 0) ? null : v / thbRate;
     const tonCell = (a, div) => {
       const kc = perCane(a, div), ks = perSugar(a);

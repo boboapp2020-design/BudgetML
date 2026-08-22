@@ -82,17 +82,19 @@ const PagesAssum = (() => {
   const FX_ROWS = { 173: ['USD', 'THB'], 174: ['EUR', 'THB'], 175: ['LAK', 'THB'], 176: ['LAK', 'USD'], 177: ['LAK', 'EUR'] };
   let _JYO = null;
   const JYO = () => { if (!_JYO) { _JYO = {}; COLS.forEach(c => { _JYO[c.j] = c.yo; }); } return _JYO; };
-  function fxVal(i, j) {
-    const pair = FX_ROWS[i]; if (!pair) return undefined;
-    const yo = JYO()[j]; if (yo !== 0) return undefined;             // ดึงเฉพาะคอลัมน์ปีงบปัจจุบัน — ปีก่อน/อนาคต กรอกเอง
-    const y = UI.year() + yo;
+  function fxRate(i, y) {
+    const pair = FX_ROWS[i]; if (!pair) return null;
     const rate = cur => (Store.db.exchangeRates || []).find(x => x.year === y && x.currency === cur)?.rateToLAK ?? null;
     const [a, b] = pair;
-    if (a === 'LAK') { return rate(b); }                             // LAK:X = กีบต่อ 1 หน่วย X
+    if (a === 'LAK') return rate(b);                                 // LAK:X = กีบต่อ 1 หน่วย X
     const ra = rate(a), rb = rate(b);
     return (ra != null && rb != null && rb !== 0) ? ra / rb : null;  // A:B = rate(A)/rate(B)
   }
-  const isFxCell = (i, j) => FX_ROWS[i] !== undefined && JYO()[j] === 0;
+  function fxVal(i, j) { return isFxCell(i, j) ? fxRate(i, UI.year()) : undefined; }
+  // อัตราประจำรอบ: ช่อง FX ดึงสดจาก Budget Control เฉพาะ "คอลัมน์ของรอบที่เปิดอยู่" — รอบที่ล็อกไปแล้ว = ค่า snapshot แช่แข็ง
+  const FX_ROUND_COLS = { 0: [5, 6, 7], 1: [8, 9, 10], 2: [11, 12, 13, 14, 15, 16, 17] };
+  const ROUND_NAMES = ['งบต้นปี', 'Revise', 'คาดการณ์'];
+  const isFxCell = (i, j) => FX_ROWS[i] !== undefined && (FX_ROUND_COLS[Store.assumRound(UI.year())] || FX_ROUND_COLS[0]).includes(j);
 
   // คอลัมน์งบปีอนาคต (E/H/I) = "หน้าต่างมองข้ามปี" → ดึงจาก grid ของปีนั้นๆ คอลัมน์งบต้นปี (A)
   // ตัวเลขแต่ละปีมีบ้านเดียว (grid ปีนั้น) — แก้ที่ไหนก็ตรงกันทุกหน้า
@@ -218,6 +220,7 @@ const PagesAssum = (() => {
     return pageHead('Assumption MTP 2027–2029', 'ช่องขาว = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง · บันทึกอัตโนมัติ',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
          <button data-as-lock class="ghost-btn small${Store.assumLocked(year) ? ' as-locked' : ''}" title="ล็อก/ปลดล็อกการกรอกของ User (ปีนี้)">${Store.assumLocked(year) ? '🔒 ล็อกอยู่ (คลิกปลด)' : '🔓 เปิดให้กรอก'}</button>
+         <span class="asu-rounds">${['งบต้นปี', 'Revise', 'คาดการณ์'].map((n, ix) => `<button data-as-round="${ix}" class="ghost-btn small${Store.assumRound(year) === ix ? ' asu-on' : ''}" title="รอบปัจจุบัน — อัตราแลกเปลี่ยนดึงสดเฉพาะคอลัมน์รอบนี้ · เปลี่ยนรอบ = แช่แข็งอัตรารอบเดิม">${ix + 1}·${n}</button>`).join('')}</span>
          ${Store.ASSUM_DEPTS.filter(c => Store.assumSubmitted(year, c)).map(c => { const d = (Store.db.departments || []).find(x => String(x.code) === String(c)); return `<button data-asu-unsend="${c}" class="ghost-btn small asu-sent-chip" title="แผนกนี้ส่งแล้ว — คลิกเพื่อปลดล็อกให้แก้ได้">✅ ${esc(d?.name || c)} ✕</button>`; }).join('')}
          <span class="pa-right">
            <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit: ปิด'}</button>
@@ -295,6 +298,20 @@ const PagesAssum = (() => {
     });
 
     document.querySelector('[data-as-edit]')?.addEventListener('click', () => { editAll = !editAll; pending = {}; App.render(); });
+    document.querySelectorAll('[data-as-round]').forEach(b => b.addEventListener('click', () => {
+      const to = +b.dataset.asRound, cur = Store.assumRound(year);
+      if (to === cur) return;
+      UI.confirm2(`เปลี่ยนรอบเป็น "${ROUND_NAMES[to]}"`,
+        `อัตราแลกเปลี่ยนของรอบ "${ROUND_NAMES[cur]}" จะถูกบันทึกแช่แข็ง (snapshot) · รอบใหม่จะดึงอัตราสดจาก Budget Control`,
+        'ตัวเลขรอบที่ปิดจะนิ่ง ไม่ขยับตามอัตราอีก', () => {
+          try {
+            // snapshot อัตราปัจจุบัน (ที่แสดงอยู่จริง) แช่แข็งเข้าช่อง FX ของรอบเดิม
+            for (const iStr in FX_ROWS) { const i = +iStr; const v = fxRate(i, year); if (v == null) continue;
+              (FX_ROUND_COLS[cur] || []).forEach(j => Store.assumSet(user, year, i, j, v)); }
+            Store.setAssumRound(user, year, to); App.render();
+          } catch (e) { UI.toast(e.message, 'err'); }
+        });
+    }));
     document.querySelectorAll('[data-asu-unsend]').forEach(b => b.addEventListener('click', () => {
       const code = b.dataset.asuUnsend; const d = (Store.db.departments || []).find(x => String(x.code) === String(code));
       UI.confirm2(`ปลดล็อกที่ส่งแล้ว — ${d?.name || code}`, `เปิดให้ ${d?.name || code} กลับมาแก้ Assumption ปี ${year} ได้อีกครั้ง`, '', () => {
