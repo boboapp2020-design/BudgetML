@@ -1785,9 +1785,10 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 .as-table.mtp3 thead th.as-note, .as-table.mtp3 thead th.as-ord, .as-table.mtp3 thead th.as-name, .as-table.mtp3 thead th.as-unit, .as-table.mtp3 thead th.as-remark { top: 0; height: 58px; }
 .as-h1 .as-yr { font-size: 10px; opacity: .85; font-weight: 400; }
 .as-h2 { font-size: 10px; font-weight: 400; }
-.as-table th.sc-o, .as-table td.sc-o { background-color: #eef7ff; } .as-table thead th.sc-o { background:#20507e; }
-.as-table th.sc-r, .as-table td.sc-r { background-color: #fff; } .as-table thead th.sc-r { background:#1f3a5f; }
-.as-table th.sc-p, .as-table td.sc-p { background-color: #fdf1ee; } .as-table thead th.sc-p { background:#7a3b2e; }
+/* scenario tint เฉพาะ "หัวตาราง" (Opt ฟ้า / Real น้ำเงิน / Pess น้ำตาล) — body ไม่ลงสี ให้ช่องค่าสีเดียว */
+.as-table thead th.sc-o { background:#20507e; }
+.as-table thead th.sc-r { background:#1f3a5f; }
+.as-table thead th.sc-p { background:#7a3b2e; }
 /* sticky ป้ายซ้าย 4 คอลัมน์ */
 .as-table th.as-note, .as-table td.as-note { position: sticky; left: 0; z-index: 2; background: #f4f6fb; width: 28px; text-align:center; color:#8a94a6; }
 .as-table th.as-ord, .as-table td.as-ord  { position: sticky; left: 28px; z-index: 2; background: #f4f6fb; width: 42px; color:#556; }
@@ -1861,8 +1862,9 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 /* Assumption: ช่องอัตราแลกเปลี่ยน auto จาก Budget Control */
 .as-table td.as-fx { background:#e6f6ee !important; color:#0b6b47; font-weight:600; }
 
-/* หน้าแอดมิน MTP: ช่องที่ "กรอกได้" = พื้นขาว (แยกจากช่องสูตร/แถวรวมที่คงสีเดิม) */
-.as-table.mtp3 tbody tr td.as-in { background: #fff; }
+/* หน้าแอดมิน MTP — ช่องค่า 3 แบบ สีเดียวชัดเจน: กรอกได้=ขาว · สูตร=เทา · แถวรวม=คราม */
+.as-table.mtp3 tbody td.as-calc { background: #eef1f5; }                 /* สูตร (อ่านอย่างเดียว) = เทาเดียว */
+.as-table.mtp3 tbody tr td.as-in { background: #fff; }                   /* กรอกได้ = ขาว */
 .as-table.mtp3 tbody tr.as-alt td.as-in { background: #fff; }
 .as-table.mtp3 td.as-in .as-cell { background: transparent; }
 .as-table.mtp3 td.as-in .as-cell:focus { background: #fff; outline: 2px solid #6f8dd6; }
