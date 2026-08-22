@@ -1860,3 +1860,13 @@ canvas{filter:drop-shadow(0 3px 8px rgba(31,43,67,.10))}
 
 /* Assumption: ช่องอัตราแลกเปลี่ยน auto จาก Budget Control */
 .as-table td.as-fx { background:#e6f6ee !important; color:#0b6b47; font-weight:600; }
+
+/* หน้าแอดมิน MTP: ช่องที่ "กรอกได้" = พื้นขาว (แยกจากช่องสูตร/แถวรวมที่คงสีเดิม) */
+.as-table.mtp3 tbody tr td.as-in { background: #fff; }
+.as-table.mtp3 tbody tr.as-alt td.as-in { background: #fff; }
+.as-table.mtp3 td.as-in .as-cell { background: transparent; }
+.as-table.mtp3 td.as-in .as-cell:focus { background: #fff; outline: 2px solid #6f8dd6; }
+.as-table.mtp3 td.as-in.as-fcell .as-cell { background: #eef1f6; }   /* โหมด Edit: ช่องที่จริงเป็นสูตร ยังเทาไว้ */
+/* แถบแจ้งล็อกฝั่ง user */
+.asu-locked-bar { margin: 8px 0 -4px; padding: 8px 12px; border-radius: 8px; background: #fbeaea; color: #a12727; font-weight: 600; border: 1px solid #f0c2c2; }
+.ghost-btn.as-locked { background: #fbeaea; color: #a12727; border-color: #eaa; font-weight: 700; }

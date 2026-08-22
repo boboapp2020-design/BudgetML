@@ -217,6 +217,7 @@ const PagesAssum = (() => {
         <th class="as-remark" rowspan="2">ผู้รับผิดชอบ</th>${head1}</tr><tr>${head2}</tr>`;
     return pageHead('Assumption MTP 2027–2029', 'ช่องเหลือง = กรอกได้ · ช่องเทา = สูตรคำนวณอัตโนมัติ · กด ✏️ Edit เพื่อแก้ได้ทุกช่อง (พิมพ์ทับสูตร)',
         `<button data-as-expand class="ghost-btn small" title="ขยาย/ย่อ เต็มจอ">⛶ ขยาย</button>
+         <button data-as-lock class="ghost-btn small${Store.assumLocked(year) ? ' as-locked' : ''}" title="ล็อก/ปลดล็อกการกรอกของ User (ปีนี้)">${Store.assumLocked(year) ? '🔒 ล็อกอยู่ (คลิกปลด)' : '🔓 เปิดให้กรอก'}</button>
          <span class="pa-right">
            <button data-as-edit class="ghost-btn small${editAll ? ' as-edit-on' : ''}" title="เปิด/ปิด แก้ได้ทุกช่อง (พิมพ์ทับสูตรได้)">${editAll ? '✏️ Edit: เปิด' : '✏️ Edit'}</button>
            <button data-as-cancel class="ghost-btn small" disabled title="ยกเลิกการแก้ที่ยังไม่ Submit">↺ ยกเลิก</button>
@@ -276,6 +277,12 @@ const PagesAssum = (() => {
     });
 
     document.querySelector('[data-as-edit]')?.addEventListener('click', () => { editAll = !editAll; pending = {}; App.render(); });
+    document.querySelector('[data-as-lock]')?.addEventListener('click', () => {
+      const year = UI.year(); const locked = Store.assumLocked(year);
+      const msg = locked ? `ปลดล็อก Assumption ปี ${year}` : `ล็อก Assumption ปี ${year}`;
+      const detail = locked ? 'เปิดให้ User (บริการไร่ · หม้อปั่น · ขายและการตลาด) กรอกได้อีกครั้ง' : 'User จะกรอก/แก้ Assumption ปีนี้ไม่ได้ · แอดมินยังแก้ได้';
+      UI.confirm2(msg, detail, '', () => { try { Store.setAssumLock(user, year, !locked); App.render(); } catch (e) { UI.toast(e.message, 'err'); } });
+    });
     wireFullscreen();
   }
 
@@ -312,6 +319,7 @@ const PagesAssum = (() => {
     if (!section) return pageHead('Assumption', 'สมมติฐานประกอบงบประมาณ')
       + card('ไม่มีรายการของแผนกคุณ', '<p class="muted">หน้านี้สำหรับแผนกผู้รับผิดชอบสมมติฐาน: <b>แผนกบริการไร่</b> (ด้านอ้อย) · <b>แผนกหม้อปั่น</b> (ด้านโรงงาน) · <b>แผนกขายและการตลาด</b> (การตลาด)</p>');
     const year = UI.year();
+    const locked = Store.assumLocked(year);
     const { V, F, out } = compute();
     const _cm = {}; const committedBy = y => (_cm[y] = _cm[y] || Store.assumEdits(y));
     const scCls = sc => sc === 'O' ? 'sc-o' : sc === 'R' ? 'sc-r' : sc === 'P' ? 'sc-p' : '';
@@ -341,8 +349,8 @@ const PagesAssum = (() => {
         const home = homeOf(j); const hy = year + home.dy, hc = home.c;
         const f = F[i] && F[i][hc]; const ext = f && f.indexOf('!') >= 0;
         const editableCol = (j >= 12 && j <= 14) || FUT[j];   // กรอกได้: คาดการณ์ (C) + งบปีถัดไป
-        // กรอกได้เฉพาะแถวของแผนกตัวเอง + คอลัมน์ที่เปิด — แถวผลรวม/สูตร/B/D = อ่านอย่างเดียว
-        if ((f && !ext) || !mine || !editableCol) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
+        // กรอกได้เฉพาะแถวของแผนกตัวเอง + คอลัมน์ที่เปิด + ปีนี้ยังไม่ถูกล็อก — นอกนั้นอ่านอย่างเดียว
+        if ((f && !ext) || !mine || !editableCol || locked) return `<td class="num as-calc ${scCls(c.sc)}" data-r="${i}" data-c="${j}">${val ? fmt(val) : ''}</td>`;
         const edited = (i + '_' + hc) in committedBy(hy);
         return `<td class="num as-in asu-in ${scCls(c.sc)}"><input class="as-cell asu-cell${edited ? ' as-edited' : ''}" data-r="${i}" data-c="${j}" data-y="${hy}" data-hc="${hc}" inputmode="decimal" value="${val ? fmt(val) : ''}"${home.dy ? ` title="บันทึกเป็น งบต้นปี ${hy}"` : ''}></td>`;
       }).join('');
@@ -358,12 +366,13 @@ const PagesAssum = (() => {
            <button data-as-cancel class="ghost-btn small" disabled>↺ ยกเลิก</button>
            <button data-as-submit class="primary-btn small" disabled title="บันทึกขึ้นระบบ — เลขวิ่งเข้าตาราง MTP ทันที">✔ Submit</button>
          </span>`)
+      + (locked ? `<div class="asu-locked-bar">🔒 Assumption ปี ${year} ถูกล็อกโดยแอดมิน — ดูได้อย่างเดียว กรอกไม่ได้</div>` : '')
       + `<div id="asWrap">` + card('', `<div class="table-scroll as-scroll"><table class="as-table asu-table"><thead>${th}</thead><tbody>${body}</tbody></table></div>`, { cls: 'card-flush' }) + `</div>`;
   }
 
   function userBind(user) {
     pending = {};
-    wireInputs(user, '.asu-cell');
+    if (!Store.assumLocked(UI.year())) wireInputs(user, '.asu-cell');
     wireFullscreen();
   }
 

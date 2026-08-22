@@ -1459,15 +1459,30 @@ const Store = (() => {
   // ---- Assumption (MTP) — ค่าที่แก้ (override) ราย ปี×cell (year,r,c) → ซิงค์ Supabase ----
   // สิทธิ์กรอก: แอดมิน หรือ USER ของแผนกที่รับผิดชอบ (บริการไร่ 2712 · หม้อปั่น 3224 · ขายและการตลาด 1143)
   const ASSUM_DEPTS = ['2712', '3224', '1143'];
-  function assertAssum(actor) {
-    if (actor && actor.role === 'ACCOUNTING') return;
+  // ล็อกการกรอก Assumption ราย ปี — เก็บเป็น marker row (year, r=-1, c=-1) ในตารางเดียวกัน (ซิงค์อัตโนมัติ)
+  function assumLocked(year) { const y = Number(year); return (db.assumptionCells || []).some(a => a.year === y && a.r === -1 && a.c === -1); }
+  function setAssumLock(actor, year, locked) {
+    assertAccounting(actor);
+    const y = Number(year);
+    db.assumptionCells = db.assumptionCells || [];
+    const i = db.assumptionCells.findIndex(a => a.year === y && a.r === -1 && a.c === -1);
+    if (locked) { if (i < 0) db.assumptionCells.push({ year: y, r: -1, c: -1, v: 1, updatedAt: new Date().toISOString(), updatedBy: actor.name }); }
+    else { if (i >= 0) db.assumptionCells.splice(i, 1); }
+    audit(actor, locked ? 'ล็อก Assumption' : 'ปลดล็อก Assumption', { newValue: `ปี ${y}` });
+    save();
+  }
+  function assertAssum(actor, year) {
+    if (actor && actor.role === 'ACCOUNTING') return;   // แอดมินแก้ได้เสมอ (รวมตอนล็อก)
     const code = actor && actor.departmentId ? String((dept(actor.departmentId) || {}).code || '') : '';
-    if (actor && actor.role === 'USER' && ASSUM_DEPTS.includes(code)) return;
+    if (actor && actor.role === 'USER' && ASSUM_DEPTS.includes(code)) {
+      if (year != null && assumLocked(year)) throw new Error('Assumption ปีนี้ถูกล็อกโดยแอดมิน — แก้ไม่ได้');
+      return;
+    }
     throw new Error('ไม่มีสิทธิ์แก้ Assumption');
   }
-  function assumEdits(year) { const y = Number(year); const m = {}; (db.assumptionCells || []).forEach(a => { if (a.year === y) m[a.r + '_' + a.c] = a.v; }); return m; }
+  function assumEdits(year) { const y = Number(year); const m = {}; (db.assumptionCells || []).forEach(a => { if (a.year === y && a.r >= 0) m[a.r + '_' + a.c] = a.v; }); return m; }
   function assumSet(actor, year, r, c, v) {
-    assertAssum(actor);
+    assertAssum(actor, year);
     const y = Number(year);
     db.assumptionCells = db.assumptionCells || [];
     const i = db.assumptionCells.findIndex(a => a.year === y && a.r === r && a.c === c);
@@ -1476,7 +1491,7 @@ const Store = (() => {
     else { const row = { year: y, r, c, v: Number(v), updatedAt: new Date().toISOString(), updatedBy: actor.name }; if (i >= 0) db.assumptionCells[i] = row; else db.assumptionCells.push(row); }
     save();
   }
-  function assumClear(actor, year) { assertAccounting(actor); const y = Number(year); const n = (db.assumptionCells || []).length; db.assumptionCells = (db.assumptionCells || []).filter(a => a.year !== y); if (db.assumptionCells.length !== n) save(); }
+  function assumClear(actor, year) { assertAccounting(actor); const y = Number(year); const n = (db.assumptionCells || []).length; db.assumptionCells = (db.assumptionCells || []).filter(a => !(a.year === y && a.r >= 0)); if (db.assumptionCells.length !== n) save(); }
   function addGL(actor, code, name, glGroup, ioGroup) {
     assertAccounting(actor);
     if (db.glAccounts.some(g => g.code === code)) throw new Error('รหัส GL ซ้ำ');
@@ -2055,7 +2070,7 @@ const Store = (() => {
     cellDetail, setCellDetail, clearDeptYear, clearAllDeptYear, clearMock,
     needRevision, needRevisionBulk, lockDept, mgrApprove, mgrReturn, lockPeriod, unlockPeriod, openPeriod, openBudgetRound, deletePeriod,
     addDepartment, addCct, toggleDepartment, addGL, addGLRow, assignGL, unassignGL, setRate, setFuelPrice,
-    assumEdits, assumSet, assumClear,
+    assumEdits, assumSet, assumClear, assumLocked, setAssumLock,
     VOLUME_METRICS, volume, canEditVolume, setVolume, isYearEditable,
     pptAmount, canEditPpt, setPptAmount, pptSubmitted, pptSubmitsFor, isPptFiller, submitPpt, unlockPpt, reopenOwnPpt, submitAllPpt, unlockAllPpt,
     myNotifications, markNotificationsRead, notify, postAnnouncement, isAnnouncement,
