@@ -86,7 +86,7 @@ const PagesAssum = (() => {
   const JYO = () => { if (!_JYO) { _JYO = {}; COLS.forEach(c => { _JYO[c.j] = c.yo; }); } return _JYO; };
   function fxVal(i, j) {
     const pair = FX_ROWS[i]; if (!pair) return undefined;
-    const yo = JYO()[j]; if (yo == null) return undefined;           // ผลต่าง/%Growth → ใช้สูตรตามปกติ
+    const yo = JYO()[j]; if (yo !== 0) return undefined;             // ดึงเฉพาะคอลัมน์ปีงบปัจจุบัน — ปีก่อน/อนาคต กรอกเอง
     const y = UI.year() + yo;
     const rate = cur => (Store.db.exchangeRates || []).find(x => x.year === y && x.currency === cur)?.rateToLAK ?? null;
     const [a, b] = pair;
@@ -94,7 +94,7 @@ const PagesAssum = (() => {
     const ra = rate(a), rb = rate(b);
     return (ra != null && rb != null && rb !== 0) ? ra / rb : null;  // A:B = rate(A)/rate(B)
   }
-  const isFxCell = (i, j) => FX_ROWS[i] !== undefined && JYO()[j] != null;
+  const isFxCell = (i, j) => FX_ROWS[i] !== undefined && JYO()[j] === 0;
 
   // คำนวณทั้งกริด → คืน number[][] (memoized + กัน circular)
   function compute() {
